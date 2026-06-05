@@ -1,7 +1,7 @@
 'use client';
 
 import { arrayMove } from '@dnd-kit/sortable';
-import { ArrowDown, ArrowUp, Check, Play, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, Globe, Play, Plus, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import type {
@@ -15,9 +15,11 @@ type FallbackSetsPanelProps = {
     slides: SlideAsset[];
     assets: MediaAsset[];
     carousel: FallbackCarousel | null;
+    activeFallbackSetId: string | null;
     saveSet: (formData: FormData) => Promise<void>;
     activateSet: (formData: FormData) => Promise<void>;
     deleteSet: (formData: FormData) => Promise<void>;
+    setActiveFallbackSet: (formData: FormData) => Promise<void>;
 };
 
 type DraftCard = FallbackCarouselCard & {
@@ -28,9 +30,11 @@ export function FallbackSetsPanel({
     slides,
     assets,
     carousel,
+    activeFallbackSetId,
     saveSet,
     activateSet,
     deleteSet,
+    setActiveFallbackSet,
 }: FallbackSetsPanelProps) {
     const readySlides = useMemo(
         () => slides.filter((slide) => slide.status === 'ready').sort(sortSlides),
@@ -130,10 +134,19 @@ export function FallbackSetsPanel({
                             duplicates, then save one named fallback loop as active.
                         </p>
                     </div>
-                    <div className="rounded-md border border-line bg-panel-soft px-3 py-2 text-xs font-semibold text-muted">
-                        Active:{' '}
-                        <span className="text-ink">
-                            {activeSet ? activeSet.name : 'No fallback set'}
+                    <div className="flex flex-col gap-1 rounded-md border border-line bg-panel-soft px-3 py-2 text-xs font-semibold text-muted">
+                        <span>
+                            Carousel active set:{' '}
+                            <span className="text-ink">{activeSet ? activeSet.name : 'None'}</span>
+                        </span>
+                        <span>
+                            Global fallback:{' '}
+                            <span className="text-ink">
+                                {activeFallbackSetId
+                                    ? (carousel?.sets.find((s) => s.id === activeFallbackSetId)
+                                          ?.name ?? activeFallbackSetId)
+                                    : 'Not set to a carousel set'}
+                            </span>
                         </span>
                     </div>
                 </div>
@@ -346,12 +359,20 @@ export function FallbackSetsPanel({
                                             s
                                         </p>
                                     </div>
-                                    {set.id === carousel.activeSetId ? (
-                                        <span className="inline-flex items-center gap-1 rounded-md border border-ok-line bg-ok-soft px-2 py-1 text-xs font-semibold text-ok-strong">
-                                            <Check size={13} aria-hidden="true" />
-                                            Active
-                                        </span>
-                                    ) : null}
+                                    <div className="flex shrink-0 flex-col items-end gap-1">
+                                        {set.id === carousel.activeSetId ? (
+                                            <span className="inline-flex items-center gap-1 rounded-md border border-ok-line bg-ok-soft px-2 py-1 text-xs font-semibold text-ok-strong">
+                                                <Check size={13} aria-hidden="true" />
+                                                Active set
+                                            </span>
+                                        ) : null}
+                                        {set.id === activeFallbackSetId ? (
+                                            <span className="inline-flex items-center gap-1 rounded-md border border-info-line bg-info-soft px-2 py-1 text-xs font-semibold text-info-strong">
+                                                <Globe size={13} aria-hidden="true" />
+                                                Active fallback
+                                            </span>
+                                        ) : null}
+                                    </div>
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     <button
@@ -365,7 +386,17 @@ export function FallbackSetsPanel({
                                         <input type="hidden" name="set_id" value={set.id} />
                                         <button className="btn-secondary min-h-9 gap-2">
                                             <Play size={14} aria-hidden="true" />
-                                            Set active
+                                            Make active set
+                                        </button>
+                                    </form>
+                                    <form action={setActiveFallbackSet}>
+                                        <input type="hidden" name="set_id" value={set.id} />
+                                        <button
+                                            className="btn-secondary min-h-9 gap-2"
+                                            disabled={set.id === activeFallbackSetId}
+                                        >
+                                            <Globe size={14} aria-hidden="true" />
+                                            Use as fallback
                                         </button>
                                     </form>
                                     <form action={deleteSet}>

@@ -1,6 +1,10 @@
 import { and, asc, desc, eq, or, sql } from 'drizzle-orm';
 
+import { getActiveFallback } from '@/lib/fallback-active';
 import { withKvCache } from '@/lib/helpers/kv-cache';
+
+import type { ActiveFallback } from '@/lib/fallback-active';
+import type { DrizzleD1Client } from '@/lib/db/client';
 import {
     isoDateInTimezone,
     PLAYOUT_TIMEZONE,
@@ -48,7 +52,7 @@ async function computeBroadcastStatus(): Promise<BroadcastStatus> {
         const db = await getDb();
         const today = isoDateInTimezone(new Date(), PLAYOUT_TIMEZONE);
 
-        const [dayRow, fallbackRow, carouselRow, healthStatus] = await Promise.all([
+        const [dayRow, fallbackRow, carouselRow, activeFallback, healthStatus] = await Promise.all([
             db
                 .select({
                     id: programDays.id,
@@ -86,6 +90,8 @@ async function computeBroadcastStatus(): Promise<BroadcastStatus> {
                 .where(eq(integrationSettings.provider, 'fallback_carousel'))
                 .limit(1)
                 .then((rows) => rows[0] ?? null),
+
+            getActiveFallback(),
 
             getHealthStatus(),
         ]);
@@ -134,7 +140,15 @@ async function computeBroadcastStatus(): Promise<BroadcastStatus> {
                 ? (carouselRow.publicConfig as Record<string, unknown>)
                 : undefined;
         const carouselEnabled = carousel?.enabled === true;
-        const fallbackTitle = fallbackRow?.title ?? (carouselEnabled ? 'Slide carousel' : null);
+        const computedFallbackTitle =
+            fallbackRow?.title ?? (carouselEnabled ? 'Slide carousel' : null);
+        const fallbackTitle = await resolveActiveFallbackTitle(
+            db,
+            activeFallback,
+            fallbackRow,
+            carousel,
+            computedFallbackTitle,
+        );
 
         return {
             ok: true,
@@ -158,6 +172,58 @@ async function computeBroadcastStatus(): Promise<BroadcastStatus> {
             fallbackTitle: null,
         };
     }
+}
+
+async function resolveActiveFallbackTitle(
+    db: DrizzleD1Client,
+    active: ActiveFallback | null,
+    fallbackRow: { id: string; title: string } | null,
+    carousel: Record<string, unknown> | undefined,
+    computedFallbackTitle: string | null,
+): Promise<string | null> {
+    if (!active) {
+        return computedFallbackTitle;
+    }
+
+    if (active.kind === 'asset') {
+        if (fallbackRow && fallbackRow.id === active.id) {
+            return fallbackRow.title;
+        }
+        const [row] = await db
+            .select({ title: mediaAssets.title })
+            .from(mediaAssets)
+            .where(eq(mediaAssets.id, active.id))
+            .limit(1);
+
+        return row?.title ?? computedFallbackTitle;
+    }
+    const setName = activeCarouselSetName(carousel, active.id);
+
+    return setName ?? computedFallbackTitle;
+}
+
+function activeCarouselSetName(
+    carousel: Record<string, unknown> | undefined,
+    setId: string,
+): string | null {
+    const sets = carousel?.sets;
+
+    if (!Array.isArray(sets)) {
+        return null;
+    }
+
+    for (const candidate of sets) {
+        if (!candidate || typeof candidate !== 'object') {
+            continue;
+        }
+        const record = candidate as Record<string, unknown>;
+
+        if (record.id === setId && typeof record.name === 'string' && record.name) {
+            return record.name;
+        }
+    }
+
+    return null;
 }
 
 async function getHealthStatus(): Promise<HealthStatus> {

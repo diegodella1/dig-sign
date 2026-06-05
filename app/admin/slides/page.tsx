@@ -6,6 +6,7 @@ import { StatusPill } from '@/components/ui/status-pill';
 import { EmptyState, FormHeader } from '@/components/ui';
 import { getAssets, getSlides } from '@/lib/data';
 import { getGlobalFallbackCarousel } from '@/lib/fallback-carousel';
+import { getActiveFallback } from '@/lib/fallback-active';
 import {
     activateFallbackCarouselSet,
     archiveSlideAsset,
@@ -14,6 +15,7 @@ import {
     createYouTubeSlide,
     deleteFallbackCarouselSet,
     saveFallbackCarouselSet,
+    setActiveFallback,
     updateWeatherPlate,
 } from '@/lib/mutations';
 import { slidePreviewHref } from '@/lib/helpers/slide-preview';
@@ -63,11 +65,13 @@ const SYSTEM_SLIDE_PRESETS = SLIDE_TEMPLATES.map((template) => ({
 }));
 
 export default async function SlidesPage() {
-    const [slides, assets, fallbackCarousel] = await Promise.all([
+    const [slides, assets, fallbackCarousel, activeFallback] = await Promise.all([
         getSlides(),
         getAssets(),
         getGlobalFallbackCarousel(),
+        getActiveFallback(),
     ]);
+    const activeFallbackSetId = activeFallback?.kind === 'carousel' ? activeFallback.id : null;
     const activeSlides = slides.filter((slide) => slide.status !== 'archived');
     const archivedSlides = slides.filter((slide) => slide.status === 'archived');
     const currentTemplateIds = new Set(SLIDE_TEMPLATES.map((template) => template.id));
@@ -285,6 +289,16 @@ export default async function SlidesPage() {
         }
     }
 
+    async function setActiveFallbackSet(formData: FormData) {
+        'use server';
+        const setId = String(formData.get('set_id') || '');
+        const result = await setActiveFallback({ kind: 'carousel', id: setId });
+
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+    }
+
     return (
         <AdminShell
             title="Graphics"
@@ -310,9 +324,11 @@ export default async function SlidesPage() {
                     slides={activeSlides}
                     assets={assets}
                     carousel={fallbackCarousel}
+                    activeFallbackSetId={activeFallbackSetId}
                     saveSet={saveFallbackSet}
                     activateSet={activateFallbackSet}
                     deleteSet={deleteFallbackSet}
+                    setActiveFallbackSet={setActiveFallbackSet}
                 />
             </div>
 

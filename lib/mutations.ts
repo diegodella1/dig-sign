@@ -24,8 +24,11 @@ export {
     createMediaAsset,
     createSlideAsset,
     deleteMediaAsset,
+    setAssetFallbackTagged,
     updateMediaAsset,
 } from './mutations/assets';
+
+export { clearActiveFallback, setActiveFallback } from './mutations/fallback';
 
 export {
     archiveGuest,

@@ -17,10 +17,20 @@ import {
 } from '@/components/ui';
 import { getAssets, getSlides } from '@/lib/data';
 import { fallbackCarouselDisplayName, getGlobalFallbackCarousel } from '@/lib/fallback-carousel';
-import { createMediaAsset, deleteMediaAsset, updateMediaAsset } from '@/lib/mutations';
+import { listFallbackOptions } from '@/lib/fallback-active';
+import {
+    clearActiveFallback,
+    createMediaAsset,
+    deleteMediaAsset,
+    setActiveFallback,
+    setAssetFallbackTagged,
+    updateMediaAsset,
+} from '@/lib/mutations';
 import { slidePreviewHref } from '@/lib/helpers/slide-preview';
 import { isoDateInTimezone, PLAYOUT_TIMEZONE } from '@/lib/helpers/time';
+import { isFallbackTagged } from '@/lib/scheduling/fallback';
 
+import type { FallbackOption } from '@/lib/fallback-active';
 import type { MediaAsset, SlideAsset } from '@/lib/types';
 import type { ReactNode } from 'react';
 
@@ -48,13 +58,17 @@ export default async function AssetsPage({
         playback?: string;
         count?: string;
         fallback_loop?: string;
+        fallback_tagged?: string;
+        fallback_active?: string;
+        fallback_clear?: string;
     }>;
 }) {
     const params = await searchParams;
-    const [assets, slides, fallbackCarousel] = await Promise.all([
+    const [assets, slides, fallbackCarousel, fallbackOptions] = await Promise.all([
         getAssets(),
         getSlides(),
         getGlobalFallbackCarousel(),
+        listFallbackOptions(),
     ]);
     const libraryItems: LibraryItem[] = [
         ...assets.map((asset) => ({
@@ -276,6 +290,41 @@ export default async function AssetsPage({
         }
         redirect('/admin/assets?kind=fallback&fallback_loop=1');
     }
+    async function toggleFallbackTagged(formData: FormData) {
+        'use server';
+        const id = String(formData.get('id'));
+        const currentlyTagged = formData.get('currently_tagged') === '1';
+        const result = await setAssetFallbackTagged({ id, tagged: !currentlyTagged });
+
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+        redirect('/admin/assets?fallback_tagged=1');
+    }
+    async function setActive(formData: FormData) {
+        'use server';
+        const kind = String(formData.get('kind'));
+        const id = String(formData.get('id'));
+
+        if (kind !== 'asset' && kind !== 'carousel') {
+            throw new Error('Invalid fallback kind');
+        }
+        const result = await setActiveFallback({ kind, id });
+
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+        redirect('/admin/assets?fallback_active=1');
+    }
+    async function clearActive() {
+        'use server';
+        const result = await clearActiveFallback();
+
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+        redirect('/admin/assets?fallback_clear=1');
+    }
 
     return (
         <AdminShell
@@ -291,6 +340,9 @@ export default async function AssetsPage({
                 <Notice tone="ok">Media uploaded and saved as an asset.</Notice>
             ) : null}
             {params.fallback_loop ? <Notice tone="ok">Silent fallback loop updated.</Notice> : null}
+            {params.fallback_tagged ? <Notice tone="ok">Fallback tag updated.</Notice> : null}
+            {params.fallback_active ? <Notice tone="ok">Active fallback set.</Notice> : null}
+            {params.fallback_clear ? <Notice tone="ok">Active fallback cleared.</Notice> : null}
             {params.imported ? (
                 <Notice tone={params.playback === 'failed' ? 'warn' : 'ok'} title="Vimeo imported">
                     {params.count ?? '1'} episode added to the library.
@@ -587,6 +639,12 @@ export default async function AssetsPage({
                     </details>
                 </div>
             </section>
+            <FallbackSection
+                options={fallbackOptions}
+                setActive={setActive}
+                clearActive={clearActive}
+            />
+
             <div className="surface-panel overflow-hidden">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 text-sm text-muted">
                     <span>
@@ -604,6 +662,7 @@ export default async function AssetsPage({
                         editAsset={editAsset}
                         deleteAsset={deleteAsset}
                         setFallbackLoop={setFallbackLoop}
+                        toggleFallbackTagged={toggleFallbackTagged}
                     />
                 ))}
                 {filteredItems.length === 0 && (
@@ -872,6 +931,7 @@ function LibraryItemRow({
     editAsset,
     deleteAsset,
     setFallbackLoop,
+    toggleFallbackTagged,
 }: {
     item: LibraryItem;
     today: string;
@@ -879,11 +939,13 @@ function LibraryItemRow({
     editAsset: (formData: FormData) => Promise<void>;
     deleteAsset: (formData: FormData) => Promise<void>;
     setFallbackLoop: (formData: FormData) => Promise<void>;
+    toggleFallbackTagged: (formData: FormData) => Promise<void>;
 }) {
     const status = item.kind === 'asset' ? item.asset.status : item.slide.status;
     const isFallbackLoop = item.kind === 'asset' && fallbackLoopEnabled(item.asset);
     const canUseFallbackLoop =
         item.kind === 'asset' && canUseAsFallbackLoop(item.asset) && !isFallbackLoop;
+    const isTagged = item.kind === 'asset' && isFallbackTagged(item.asset);
 
     return (
         <details
@@ -914,6 +976,9 @@ function LibraryItemRow({
                         )}
                         {isFallbackLoop ? (
                             <ClearStateBadge tone="ok">Fallback loop active</ClearStateBadge>
+                        ) : null}
+                        {isTagged ? (
+                            <ClearStateBadge tone="info">Fallback tagged</ClearStateBadge>
                         ) : null}
                     </p>
                 </div>
@@ -970,6 +1035,15 @@ function LibraryItemRow({
                     <form action={setFallbackLoop}>
                         <input type="hidden" name="id" value={item.asset.id} />
                         <button className="btn-secondary">Use as fallback loop</button>
+                    </form>
+                ) : null}
+                {item.kind === 'asset' ? (
+                    <form action={toggleFallbackTagged}>
+                        <input type="hidden" name="id" value={item.asset.id} />
+                        <input type="hidden" name="currently_tagged" value={isTagged ? '1' : '0'} />
+                        <button className={isTagged ? 'btn-secondary' : 'btn-secondary'}>
+                            {isTagged ? 'Remove fallback tag' : 'Tag as fallback'}
+                        </button>
                     </form>
                 ) : null}
             </div>
@@ -1516,4 +1590,88 @@ function formatBytes(bytes: number) {
     }
 
     return `${value.toFixed(value >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
+}
+
+function FallbackSection({
+    options,
+    setActive,
+    clearActive,
+}: {
+    options: FallbackOption[];
+    setActive: (formData: FormData) => Promise<void>;
+    clearActive: () => Promise<void>;
+}) {
+    const activeOption = options.find((o) => o.isActive) ?? null;
+
+    return (
+        <section className="surface-panel mb-4 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+                <div>
+                    <p className="text-[10px] font-bold uppercase text-muted">Active fallback</p>
+                    <p
+                        className={
+                            activeOption
+                                ? 'text-sm font-semibold text-success'
+                                : 'text-sm font-semibold text-warn'
+                        }
+                    >
+                        {activeOption ? activeOption.title : 'None set'}
+                    </p>
+                </div>
+                {activeOption ? (
+                    <form action={clearActive}>
+                        <button className="btn-secondary">Clear active</button>
+                    </form>
+                ) : null}
+            </div>
+            {options.length === 0 ? (
+                <div className="p-4">
+                    <p className="text-sm text-muted">
+                        No fallback options available. Tag an asset as fallback or add carousel
+                        sets.
+                    </p>
+                </div>
+            ) : (
+                <ul className="divide-y divide-line">
+                    {options.map((option) => (
+                        <li
+                            key={`${option.kind}-${option.id}`}
+                            className="flex flex-wrap items-center gap-3 px-4 py-3"
+                        >
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-ink">{option.title}</p>
+                                <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs">
+                                    <span className="rounded border border-info-line bg-info-soft px-1.5 py-0.5 font-bold uppercase text-info-strong">
+                                        {option.kind}
+                                    </span>
+                                    {option.kind === 'carousel' ? (
+                                        <span className="text-muted">
+                                            {option.cardCount} card
+                                            {option.cardCount === 1 ? '' : 's'}
+                                        </span>
+                                    ) : null}
+                                    {option.kind === 'asset' && option.durationSeconds ? (
+                                        <span className="text-muted">
+                                            {option.durationSeconds}s
+                                        </span>
+                                    ) : null}
+                                </p>
+                            </div>
+                            {option.isActive ? (
+                                <span className="rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-sm font-semibold text-success">
+                                    Active
+                                </span>
+                            ) : (
+                                <form action={setActive}>
+                                    <input type="hidden" name="kind" value={option.kind} />
+                                    <input type="hidden" name="id" value={option.id} />
+                                    <button className="btn-secondary">Set active</button>
+                                </form>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </section>
+    );
 }

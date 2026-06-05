@@ -1,17 +1,19 @@
 import { appUrl } from '@/lib/helpers/app-url';
 import { getLiveSchedule, getPlaybackScheduleForBlock } from '@/lib/data';
+import { getActiveFallback } from '@/lib/fallback-active';
 import { getGlobalFallbackCarousel, selectFallbackCarouselSlide } from '@/lib/fallback-carousel';
 import { getLatestMusicPreference } from '@/lib/operator-preferences';
 import { getActiveOutputOverride } from '@/lib/output-overrides';
 import { recordedBugFromBlock } from '@/lib/recorded-bug';
 import { getLiveObjectConfig, youtubeLiveEmbedUrl } from '@/lib/live-object';
-import { findPlayableFallback } from '@/lib/scheduling/fallback';
+import { findPlayableFallback, isPlayableFallback } from '@/lib/scheduling/fallback';
 import { findActiveLayers, findActiveSchedule } from '@/lib/scheduling/scheduler';
 import { getVimeoToken } from '@/lib/settings';
 import { PLAYOUT_TIMEZONE, secondsSinceMidnightInTimezone } from '@/lib/helpers/time';
 import { getVimeoPlayback } from '@/lib/services/vimeo';
 import { isYouTubeSlide } from '@/lib/slides/youtube';
 
+import type { FallbackCarousel } from '@/lib/fallback-carousel';
 import type { MediaAsset, OutputOverride, ScheduleBundle, SlideAsset } from '@/lib/types';
 
 export type ChannelStateInputs = {
@@ -406,6 +408,34 @@ async function fallbackStateForBundle(
     mediaAccessToken = '',
     backgroundMusic: BackgroundMusic = null,
 ) {
+    const active = await getActiveFallback();
+
+    if (active?.kind === 'asset') {
+        const asset = bundle.mediaAssets.find((candidate) => candidate.id === active.id);
+
+        if (asset && isPlayableFallback(asset)) {
+            const activeState = await fallbackVideoState(asset, reason, base, mediaAccessToken);
+
+            if (activeState) {
+                return activeState;
+            }
+        }
+    }
+
+    if (active?.kind === 'carousel') {
+        const activeCarouselState = await fallbackCarouselState(
+            bundle,
+            reason,
+            base,
+            mediaAccessToken,
+            backgroundMusic,
+            active.id,
+        );
+
+        if (activeCarouselState) {
+            return activeCarouselState;
+        }
+    }
     const fallbackAsset = findFallbackLoopAsset(bundle);
 
     if (fallbackAsset) {
@@ -437,9 +467,10 @@ async function fallbackCarouselState(
     base: ChannelStateBase,
     mediaAccessToken = '',
     backgroundMusic: BackgroundMusic = null,
+    activeSetId?: string,
 ) {
     const selection = selectFallbackCarouselSlide(
-        await getGlobalFallbackCarousel(),
+        carouselForActiveSet(await getGlobalFallbackCarousel(), activeSetId),
         bundle,
         base.serverSeconds,
     );
@@ -624,6 +655,22 @@ async function fallbackVimeoLoopState(
 
 function findFallbackLoopAsset(bundle: ScheduleBundle) {
     return findPlayableFallback(bundle.mediaAssets);
+}
+
+function carouselForActiveSet(
+    carousel: FallbackCarousel | null,
+    activeSetId?: string,
+): FallbackCarousel | null {
+    if (!carousel || !activeSetId) {
+        return carousel;
+    }
+    const set = carousel.sets.find((candidate) => candidate.id === activeSetId);
+
+    if (!set) {
+        return null;
+    }
+
+    return { ...carousel, cards: set.cards, activeSetId };
 }
 
 function loopOffset(serverSeconds: number, durationSeconds?: number | null) {

@@ -31,9 +31,11 @@ describe('FallbackSetsPanel', () => {
                 slides={slides}
                 assets={[]}
                 carousel={carousel}
+                activeFallbackSetId={null}
                 saveSet={vi.fn()}
                 activateSet={vi.fn()}
                 deleteSet={vi.fn()}
+                setActiveFallbackSet={vi.fn()}
             />,
         );
 
@@ -55,9 +57,11 @@ describe('FallbackSetsPanel', () => {
                 slides={slides}
                 assets={[]}
                 carousel={carousel}
+                activeFallbackSetId={null}
                 saveSet={vi.fn()}
                 activateSet={vi.fn()}
                 deleteSet={vi.fn()}
+                setActiveFallbackSet={vi.fn()}
             />,
         );
 
