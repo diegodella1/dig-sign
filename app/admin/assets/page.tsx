@@ -615,28 +615,18 @@ export default async function AssetsPage({
                     <FilterLink href="/admin/assets?kind=audio" active={params.kind === 'audio'}>
                         Music
                     </FilterLink>
-                    <details className="rounded-md border border-line bg-panel-soft px-3 py-2 text-sm">
-                        <summary className="cursor-pointer font-semibold text-muted">
-                            More Types
-                        </summary>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            <FilterLink
-                                href="/admin/assets?kind=fallback"
-                                active={params.kind === 'fallback'}
-                            >
-                                Fallbacks
-                            </FilterLink>
-                            <FilterLink href="/admin/assets?kind=ad" active={params.kind === 'ad'}>
-                                Ads
-                            </FilterLink>
-                            <FilterLink
-                                href="/admin/assets?kind=promo"
-                                active={params.kind === 'promo'}
-                            >
-                                Promos
-                            </FilterLink>
-                        </div>
-                    </details>
+                    <FilterLink
+                        href="/admin/assets?kind=fallback"
+                        active={params.kind === 'fallback'}
+                    >
+                        Fallbacks
+                    </FilterLink>
+                    <FilterLink href="/admin/assets?kind=ad" active={params.kind === 'ad'}>
+                        Ads
+                    </FilterLink>
+                    <FilterLink href="/admin/assets?kind=promo" active={params.kind === 'promo'}>
+                        Promos
+                    </FilterLink>
                 </div>
             </section>
             <FallbackSection
