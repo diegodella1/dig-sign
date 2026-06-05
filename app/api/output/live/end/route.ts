@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/auth';
 import { isOutputRequestAllowed, outputAccessDeniedReason } from '@/lib/auth/output-auth';
 import { markLiveObjectEnded } from '@/lib/mutations';
+import { outputLiveEndSchema } from '@/lib/schemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,18 +16,19 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: outputAccessDeniedReason() }, { status: 401 });
     }
 
-    const body = (await request.json().catch(() => ({}))) as {
-        blockId?: string;
-        reason?: string;
-    };
+    const parsed = outputLiveEndSchema.safeParse(await request.json().catch(() => ({})));
 
-    if (!body.blockId) {
+    if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+
+    if (!parsed.data.blockId) {
         return NextResponse.json({ error: 'blockId is required' }, { status: 400 });
     }
     const result = await markLiveObjectEnded({
-        blockId: body.blockId,
-        reason: body.reason || 'manual',
-        failed: body.reason === 'dead-timeout' || body.reason === 'failed',
+        blockId: parsed.data.blockId,
+        reason: parsed.data.reason || 'manual',
+        failed: parsed.data.reason === 'dead-timeout' || parsed.data.reason === 'failed',
     });
 
     if (!result.success) {

@@ -5,6 +5,7 @@ import { getLiveSchedule } from '@/lib/data';
 import { secondsSinceMidnightInTimezone } from '@/lib/helpers/time';
 import { getLiveObjectConfig } from '@/lib/live-object';
 import { markLiveObjectEnded } from '@/lib/mutations';
+import { liveCancelSchema } from '@/lib/schemas';
 import { findActiveSchedule } from '@/lib/scheduling/scheduler';
 
 export const dynamic = 'force-dynamic';
@@ -13,8 +14,13 @@ export async function POST(request: Request) {
     try {
         await requireAdmin();
 
-        const body = (await request.json().catch(() => ({}))) as { blockId?: string };
-        const blockId = body.blockId || (await activeLiveBlockId());
+        const parsed = liveCancelSchema.safeParse(await request.json().catch(() => ({})));
+
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+        }
+
+        const blockId = parsed.data.blockId || (await activeLiveBlockId());
 
         if (!blockId) {
             return NextResponse.json({ error: 'No active live to cancel' }, { status: 400 });
