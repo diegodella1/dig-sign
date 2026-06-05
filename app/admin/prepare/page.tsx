@@ -1,18 +1,23 @@
-import { CloudSun, DatabaseZap, Music, PackageOpen, Users, Video } from 'lucide-react';
+import { CloudSun, DatabaseZap, Music, PackageOpen, Repeat, Users, Video } from 'lucide-react';
 
 import { FlowCard, FlowGrid, FlowHero, FlowRail } from '@/components/admin/admin-flow';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { ButtonLink } from '@/components/ui';
 import { getAssetSummaries, getGuests, getSlides } from '@/lib/data';
+import { getGlobalFallbackCarousel } from '@/lib/fallback-carousel';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PreparePage() {
-    const [assets, slides, guests] = await Promise.all([
+    const [assets, slides, guests, fallbackCarousel] = await Promise.all([
         getAssetSummaries(),
         getSlides(),
         getGuests(),
+        getGlobalFallbackCarousel(),
     ]);
+    const fallbackSetCount = fallbackCarousel?.sets.length ?? 0;
+    const activeFallbackSet =
+        fallbackCarousel?.sets.find((set) => set.id === fallbackCarousel.activeSetId) ?? null;
     const readyAssets = assets.filter((asset) => asset.status === 'ready');
     const reviewAssets = assets.filter((asset) => asset.status !== 'ready');
     const musicAssets = assets.filter((asset) => asset.assetType === 'music');
@@ -96,6 +101,21 @@ export default async function PreparePage() {
                         detail="Use real-data plates with visible provider fallback and freshness checks."
                         tone="prepare"
                         badge={`${dataPlates.length} plates`}
+                    />
+                    <FlowCard
+                        href="/admin/slides#fallback-sets"
+                        icon={Repeat}
+                        label="Fallback"
+                        title="Fallback slide loop"
+                        detail="Build a loop of slides, tag it as the fallback, then activate it to cover output gaps and errors."
+                        tone={activeFallbackSet && fallbackCarousel?.enabled ? 'prepare' : 'warn'}
+                        badge={
+                            activeFallbackSet
+                                ? `Active: ${activeFallbackSet.name}`
+                                : fallbackSetCount
+                                  ? `${fallbackSetCount} set${fallbackSetCount === 1 ? '' : 's'}, none active`
+                                  : 'No fallback'
+                        }
                     />
                 </FlowGrid>
                 <FlowRail

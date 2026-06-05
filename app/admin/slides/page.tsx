@@ -305,14 +305,16 @@ export default async function SlidesPage() {
                 <MetricCard icon={Archive} label="Legacy active" value={legacySlides.length} />
             </section>
 
-            <FallbackSetsPanel
-                slides={activeSlides}
-                assets={assets}
-                carousel={fallbackCarousel}
-                saveSet={saveFallbackSet}
-                activateSet={activateFallbackSet}
-                deleteSet={deleteFallbackSet}
-            />
+            <div id="fallback-sets" className="scroll-mt-24">
+                <FallbackSetsPanel
+                    slides={activeSlides}
+                    assets={assets}
+                    carousel={fallbackCarousel}
+                    saveSet={saveFallbackSet}
+                    activateSet={activateFallbackSet}
+                    deleteSet={deleteFallbackSet}
+                />
+            </div>
 
             <section className="surface-panel mb-5 p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
