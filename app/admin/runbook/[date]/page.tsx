@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { adminSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { StatusPill } from '@/components/ui/status-pill';
 import { ButtonLink, EmptyState, Notice } from '@/components/ui';
@@ -69,15 +70,16 @@ export default async function OperatorRunbookPage({
 
     return (
         <AdminShell
-            title={`Operator runbook ${date}`}
-            description="Persisted per-day checklist and incident notes for live operation."
+            title={`Runbook ${date}`}
+            description="Preflight, live, incident, and shutdown checklist."
+            subNav={adminSubNav}
             actions={
                 <>
                     <ButtonLink href={`/admin/schedule/${date}`} variant="secondary">
                         Schedule
                     </ButtonLink>
                     <ButtonLink href="/admin/output" variant="secondary">
-                        Control
+                        Capture
                     </ButtonLink>
                     <ButtonLink href={liveOutputHref(true)}>Live output</ButtonLink>
                 </>

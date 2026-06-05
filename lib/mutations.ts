@@ -24,11 +24,8 @@ export {
     createMediaAsset,
     createSlideAsset,
     deleteMediaAsset,
-    setAssetFallbackTagged,
     updateMediaAsset,
 } from './mutations/assets';
-
-export { clearActiveFallback, setActiveFallback } from './mutations/fallback';
 
 export {
     archiveGuest,
@@ -63,3 +60,9 @@ export {
     searchVimeoCatalog,
     setReutersOutputOverride,
 } from './mutations/output';
+
+export {
+    forceEmergencyLoopOutput,
+    forceNextBlockOutput,
+    skipActiveBlock,
+} from './mutations/output-advance';

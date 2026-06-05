@@ -380,7 +380,7 @@ export function ContentPicker({
                 ))}
                 {!filteredOptions.length ? (
                     <p className="rounded-md border border-warn-line bg-warn-soft px-3 py-2 text-sm text-warn-strong">
-                        No ready content for this type. Add it in Library first, then come back
+                        No ready content for this type. Add it in Media first, then come back
                         here.
                     </p>
                 ) : null}

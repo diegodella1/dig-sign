@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { programSubNavForDate } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { ConfirmSubmitButton } from '@/components/forms/confirm-submit-button';
 import { PlayoutTime } from '@/components/output/playout-time';
@@ -150,7 +151,8 @@ export default async function BlockPage({
     return (
         <AdminShell
             title={block.title}
-            description="Block control room for base content, timing, fallback, overlays, graphics and background music behavior."
+            description="Overlays, layers, Reuters/live sources, and delete. Use the schedule drawer for timing and content."
+            subNav={programSubNavForDate(date)}
         >
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <Link

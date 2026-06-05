@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
+import { resolveAdminLoginLanding } from '@/lib/auth/login-landing';
 import {
     ADMIN_SESSION_COOKIE,
     createOperatorSession,
@@ -22,7 +23,7 @@ export default async function LoginPage({
     const returnTo = safeAdminReturnTo(params.return_to);
 
     if (await getCurrentOperatorSession()) {
-        redirect(returnTo);
+        redirect(await resolveAdminLoginLanding(returnTo));
     }
     const t = await getTranslations('login');
 
@@ -83,7 +84,7 @@ export default async function LoginPage({
             path: '/',
             maxAge: 60 * 60 * 12,
         });
-        redirect(formReturnTo);
+        redirect(await resolveAdminLoginLanding(formReturnTo));
     }
 
     return (

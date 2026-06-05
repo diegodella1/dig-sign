@@ -1,3 +1,4 @@
+import { prepareSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { MusicBulkUpload } from '@/components/media/music-bulk-upload';
 import { EmptyState, FormHeader, MetricTile, Notice } from '@/components/ui';
@@ -49,6 +50,7 @@ export default async function MusicPage({
         <AdminShell
             title="Music"
             description="Background playlist tracks that flow across slide, image and visual fallback blocks."
+            subNav={prepareSubNav}
         >
             {params.uploaded ? (
                 <Notice tone="ok">Track uploaded and added to the background playlist.</Notice>

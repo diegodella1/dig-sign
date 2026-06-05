@@ -1,15 +1,6 @@
 'use client';
 
-import {
-    CalendarDays,
-    HeartPulse,
-    LayoutDashboard,
-    MonitorPlay,
-    Music,
-    PackageOpen,
-    RadioTower,
-    Video,
-} from 'lucide-react';
+import { CalendarDays, PackageOpen, RadioTower, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -23,50 +14,36 @@ type NavItem = {
     activePaths?: string[];
 };
 
-type NavGroup = {
-    label: string;
-    items: NavItem[];
-};
-
-export const navGroups: NavGroup[] = [
+export const primaryNavItems: NavItem[] = [
     {
-        label: 'Flow',
-        items: [
-            { label: 'Cockpit', href: '/admin', icon: LayoutDashboard, match: 'exact' },
-            {
-                label: 'Prepare',
-                href: '/admin/prepare',
-                icon: PackageOpen,
-                activePaths: [
-                    '/admin/assets',
-                    '/admin/vimeo',
-                    '/admin/slides',
-                    '/admin/guests',
-                    '/admin/music',
-                ],
-            },
-            {
-                label: 'Program',
-                href: '/admin/program',
-                icon: CalendarDays,
-                activePaths: ['/admin/calendar', '/admin/schedule'],
-            },
-            {
-                label: 'Operate',
-                href: '/admin/operate',
-                icon: RadioTower,
-                activePaths: ['/admin/output', '/admin/health', '/admin/runbook', '/admin/audit'],
-            },
+        label: 'Operate',
+        href: '/admin/operate',
+        icon: RadioTower,
+        activePaths: ['/admin/output'],
+    },
+    {
+        label: 'Prepare',
+        href: '/admin/prepare',
+        icon: PackageOpen,
+        activePaths: [
+            '/admin/assets',
+            '/admin/vimeo',
+            '/admin/slides',
+            '/admin/guests',
+            '/admin/music',
         ],
     },
     {
-        label: 'Direct',
-        items: [
-            { label: 'Output', href: '/admin/output', icon: MonitorPlay },
-            { label: 'Music', href: '/admin/music', icon: Music },
-            { label: 'Library', href: '/admin/assets', icon: Video },
-            { label: 'Health', href: '/admin/health', icon: HeartPulse },
-        ],
+        label: 'Program',
+        href: '/admin/program',
+        icon: CalendarDays,
+        activePaths: ['/admin/calendar', '/admin/schedule'],
+    },
+    {
+        label: 'Admin',
+        href: '/admin/settings',
+        icon: Settings,
+        activePaths: ['/admin/health', '/admin/runbook', '/admin/audit'],
     },
 ];
 
@@ -74,15 +51,13 @@ export function AdminNav({ mobile = false }: { mobile?: boolean }) {
     const pathname = usePathname();
     const activeHref = findActiveHref(pathname);
 
-    const links = mobile ? navGroups.flatMap((group) => group.items) : null;
-
     if (mobile) {
         return (
             <nav
-                className="mt-4 flex max-w-full flex-wrap gap-2 pb-1 md:hidden"
+                className="mt-2 flex max-w-full gap-1 overflow-x-auto pb-1 md:hidden"
                 aria-label="Admin sections"
             >
-                {links!.map(({ label, href, icon: Icon }) => {
+                {primaryNavItems.map(({ label, href, icon: Icon }) => {
                     const active = href === activeHref;
 
                     return (
@@ -90,15 +65,16 @@ export function AdminNav({ mobile = false }: { mobile?: boolean }) {
                             key={href}
                             href={href}
                             aria-current={active ? 'page' : undefined}
+                            aria-label={label}
+                            title={label}
                             className={[
-                                'inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-semibold',
+                                'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border',
                                 active
                                     ? 'border-accent-positive bg-surface-selected-positive text-accent-positive'
                                     : 'border-line bg-surface text-muted',
                             ].join(' ')}
                         >
-                            <Icon size={16} aria-hidden="true" />
-                            {label}
+                            <Icon size={18} aria-hidden="true" />
                         </Link>
                     );
                 })}
@@ -107,73 +83,68 @@ export function AdminNav({ mobile = false }: { mobile?: boolean }) {
     }
 
     return (
-        <nav className="mt-8 grid gap-5" aria-label="Admin sections">
-            {navGroups.map((group) => (
-                <section key={group.label}>
-                    <p className="px-3 text-[0.68rem] font-bold uppercase text-muted">
-                        {group.label}
-                    </p>
-                    <div className="mt-2 grid gap-1">
-                        {group.items.map(({ label, href, icon: Icon }) => {
-                            const active = href === activeHref;
-
-                            return (
-                                <Link
-                                    key={href}
-                                    href={href}
-                                    aria-current={active ? 'page' : undefined}
-                                    className={[
-                                        'flex min-h-10 items-center gap-3 rounded-md px-3 text-sm font-semibold',
-                                        active
-                                            ? 'border border-accent-positive bg-surface-selected-positive text-accent-positive'
-                                            : 'text-muted hover:bg-panel-soft hover:text-ink',
-                                    ].join(' ')}
-                                >
-                                    <Icon size={17} aria-hidden="true" />
-                                    <span>{label}</span>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </section>
+        <nav className="mt-6 flex flex-col items-center gap-1" aria-label="Admin sections">
+            {primaryNavItems.map((item) => (
+                <NavIconLink key={item.href} item={item} active={item.href === activeHref} />
             ))}
         </nav>
     );
 }
 
+function NavIconLink({ item, active }: { item: NavItem; active: boolean }) {
+    const Icon = item.icon;
+
+    return (
+        <Link
+            href={item.href}
+            aria-current={active ? 'page' : undefined}
+            aria-label={item.label}
+            title={item.label}
+            className={[
+                'grid h-10 w-10 place-items-center rounded-md transition-colors',
+                active
+                    ? 'bg-surface-selected-positive text-accent-positive shadow-accent-positive-glow'
+                    : 'text-muted hover:bg-panel-soft hover:text-ink',
+            ].join(' ')}
+        >
+            <Icon size={20} aria-hidden="true" />
+        </Link>
+    );
+}
+
 function findActiveHref(pathname: string): string | null {
-    for (const group of navGroups) {
-        for (const item of group.items) {
-            if (pathname === item.href.split('?')[0]) {
-                return item.href;
-            }
+    for (const item of primaryNavItems) {
+        if (pathname === item.href.split('?')[0]) {
+            return item.href;
         }
     }
 
-    for (const group of navGroups) {
-        for (const item of group.items) {
-            if (
-                item.activePaths?.some(
-                    (path) => pathname === path || pathname.startsWith(`${path}/`),
-                )
-            ) {
-                return item.href;
-            }
+    for (const item of primaryNavItems) {
+        if (
+            item.activePaths?.some(
+                (path) => pathname === path || pathname.startsWith(`${path}/`),
+            )
+        ) {
+            return item.href;
         }
     }
 
-    for (const group of navGroups) {
-        for (const item of group.items) {
-            if (item.match === 'exact') {
-                continue;
-            }
-            const basePath = item.href.split('?')[0]!;
-
-            if (pathname.startsWith(`${basePath}/`)) {
-                return item.href;
-            }
+    for (const item of primaryNavItems) {
+        if (item.match === 'exact') {
+            continue;
         }
+        const basePath = item.href.split('?')[0]!;
+
+        if (pathname.startsWith(`${basePath}/`)) {
+            return item.href;
+        }
+    }
+
+    if (pathname === '/admin') {
+        return '/admin/program';
     }
 
     return null;
 }
+
+export const navGroups = [{ label: 'Flow', items: primaryNavItems }];

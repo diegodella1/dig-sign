@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { prepareSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
-import { EmptyState, Field, FilterLink, MetricTile, Notice } from '@/components/ui';
+import { EmptyState, Field, FilterLink, MetricTile, Notice, ButtonLink } from '@/components/ui';
 import { VimeoSyncControl } from '@/components/vimeo/vimeo-sync-control';
 import { recordAuditEvent } from '@/lib/audit/audit';
 import { requireAdmin } from '@/lib/auth/auth';
@@ -101,12 +102,13 @@ export default async function VimeoSyncPage({
 
     return (
         <AdminShell
-            title="Vimeo Sync"
-            description="Vimeo sync mirrors shows and episodes into Library Videos. Schedule playback from synced Library assets."
+            title="Vimeo Import"
+            description="Sync Vimeo shows into Media. Browse synced episodes from the library."
+            subNav={prepareSubNav}
             actions={
-                <Link className="btn-secondary" href="/admin/assets?kind=videos">
-                    Open Videos
-                </Link>
+                <ButtonLink href="/admin/assets?kind=videos" variant="secondary">
+                    Open synced videos
+                </ButtonLink>
             }
         >
             {params.synced ? (

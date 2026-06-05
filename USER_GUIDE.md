@@ -12,21 +12,35 @@ https://rtvtime.diegodella.ar/admin/login
 
 Use the configured admin token or named operator handle/token.
 
+## Navigation
+
+The console uses four modes:
+
+| Mode | Route | Purpose |
+|------|-------|---------|
+| **Operate** | `/admin/operate` | Control room — on-air, next, health, recovery |
+| **Prepare** | `/admin/prepare` | Plates, gap fill, media, people, import |
+| **Program** | `/admin/program` | Calendar, rundown, timed loops, activate |
+| **Admin** | `/admin/settings` | Settings, health, runbook, audit, capture |
+
+During live hours, start at **Operate**. Use **Capture** (`/admin/output`) on the OBS/vMix machine only. Operate is the monitor; Output is capture-only.
+
 ## Daily Workflow
 
 1. **Prepare content**
     - Start at `/admin/prepare`.
-    - Use it as the front door for uploads, remote URLs, Vimeo, music, guest plates, weather city
-      plates and data plates.
-    - Direct routes still exist: `/admin/assets`, `/admin/vimeo`, `/admin/slides`, `/admin/guests`
-      and `/admin/music`.
+    - **Plates** (`/admin/slides`): weather, markets, guest lineups, YouTube, custom graphics.
+    - **Gap fill** (`/admin/prepare/gap-fill`): silent fallback video + rotating carousel when nothing is on air.
+    - **Media** (`/admin/assets`): upload and verify playable files only.
+    - **People** (`/admin/guests`): guest directory for lineup plates.
+    - **Music** (`/admin/music`): background playlist for visual blocks.
+    - **Import** (`/admin/vimeo`): sync Vimeo shows into Media.
 
 2. **Program the day**
     - Start at `/admin/program`.
     - Create or open the day from Calendar.
     - Add blocks in `/admin/schedule/[date]`.
-    - Use Loop Builder for silent slide loops.
-    - Choose the loop intent clearly: scheduled loop, fallback carousel only, or both.
+    - Use Loop Builder for **timed slide loops** only (not global gap fill).
     - Assign ready media, slides, overlays, and fallback assets.
     - For normal video programs that need disclosure, enable `Previously Recorded bug` and choose
       one of the four screen corners. This does not apply to ads, promos, slides, images, fallback,
@@ -34,21 +48,20 @@ Use the configured admin token or named operator handle/token.
 
 3. **Check readiness**
     - Fix schedule health errors.
-    - Confirm fallback policy. Fallback can be a ready fallback video or the visual fallback
-      carousel from Loop Builder.
+    - Confirm gap fill in Prepare → Gap fill (silent video optional, then carousel).
     - Open `/admin/runbook/[date]`.
     - Complete critical preflight checks.
 
 4. **Go live**
-    - Set the program day `active`.
-    - Open `/admin/operate`.
-    - From Operate, open `/admin/output`.
+    - Activate the day from **Program** hub or today's **Schedule** (Draft → Ready → Active).
+    - Open `/admin/operate` for the control room (on-air, next, health, recovery).
+    - Open `/admin/output` on the capture machine only.
     - Launch Live Browser Output.
     - Click `Start Output` once to unlock audio.
     - Capture that browser window in OBS/vMix.
 
 5. **During live**
-    - Watch `/admin/output` monitor.
+    - Watch alerts and diagnostics on **Operate** (merged monitor panel).
     - Check active block, next block, fallback reason, clock skew, and drift.
     - Use the runbook for incidents and handoff notes.
 
@@ -98,8 +111,13 @@ Run this before trusting a machine for broadcast:
 
 - `/manual` - public manual
 - `/pending` - backlog
-- `/admin/prepare` - content and plate intake
-- `/admin/program` - schedule, loop and fallback hub
+- `/admin/prepare` - hub: Plates, Gap fill, Media, People, Music, Import
+- `/admin/prepare/gap-fill` - silent video + carousel when off-air
+- `/admin/slides` - plates (graphics)
+- `/admin/assets` - media library (operator label: Media)
+- `/admin/guests` - guest directory (People)
+- `/admin/vimeo` - Vimeo import
+- `/admin/program` - schedule, timed loops, activate
 - `/admin/operate` - live control-room hub
 - `/admin/health` - readiness checks
 - `/api/health` - machine-readable health

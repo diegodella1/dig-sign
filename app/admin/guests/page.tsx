@@ -1,19 +1,16 @@
+import { prepareSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { CsrfInput } from '@/components/forms/csrf-input';
 import { CsrfRefreshingForm } from '@/components/forms/csrf-refreshing-form';
 import { MediaFilePicker } from '@/components/media/media-file-picker';
 import { StatusPill } from '@/components/ui/status-pill';
 import { EmptyState, Field, FormHeader } from '@/components/ui';
-import { getGuests, getSlides } from '@/lib/data';
+import { getGuests } from '@/lib/data';
 import {
     archiveGuest,
-    archiveGuestPlate,
     createGuest,
-    createGuestPlate,
     updateGuest,
-    updateGuestPlate,
 } from '@/lib/mutations';
-import { slidePreviewHref } from '@/lib/helpers/slide-preview';
 
 import type { GuestStatus } from '@/lib/types';
 
@@ -22,8 +19,7 @@ export const dynamic = 'force-dynamic';
 const CATEGORIES = ['bitcoin', 'macro', 'markets', 'policy', 'technology', 'culture'];
 
 export default async function GuestsPage() {
-    const [guests, slides] = await Promise.all([getGuests(), getSlides()]);
-    const guestPlates = slides.filter((slide) => slide.templateId === 'guest-lineup');
+    const guests = await getGuests();
 
     async function addGuest(formData: FormData) {
         'use server';
@@ -55,48 +51,23 @@ export default async function GuestsPage() {
         }
     }
 
-    async function addPlate(formData: FormData) {
-        'use server';
-        const result = await createGuestPlate(readPlateForm(formData));
-
-        if (!result.success) {
-            throw new Error(result.error);
-        }
-    }
-
-    async function savePlate(formData: FormData) {
-        'use server';
-        const result = await updateGuestPlate({
-            slideId: String(formData.get('slide_id')),
-            ...readPlateForm(formData),
-        });
-
-        if (!result.success) {
-            throw new Error(result.error);
-        }
-    }
-
-    async function removePlate(formData: FormData) {
-        'use server';
-        const result = await archiveGuestPlate(String(formData.get('slide_id')));
-
-        if (!result.success) {
-            throw new Error(result.error);
-        }
-    }
-
     const readyGuests = guests.filter((guest) => guest.status === 'ready');
-    const selectableGuests = guests.filter((guest) => guest.status !== 'archived');
 
     return (
         <AdminShell
-            title="Guests"
-            description="Editorial guest records used by the on-air guest lineup plate."
+            title="People"
+            description="Guest directory for lineup plates and on-air graphics."
+            subNav={prepareSubNav}
+            actions={
+                <a className="btn-primary" href="/admin/slides?tab=guests">
+                    Guest lineup plates
+                </a>
+            }
         >
             <section className="surface-panel mb-5 p-4">
                 <FormHeader
-                    title="Guest lineup source"
-                    detail="Guests marked Ready are shown by the Guest Lineup system slide. Drafts stay out of playout."
+                    title="Guest directory"
+                    detail="Add and maintain guest records here. Build lineup plates in Prepare → Plates → Guests."
                 />
                 <div className="mt-4 grid gap-3 md:grid-cols-3">
                     <Metric label="Ready" value={String(readyGuests.length)} />
@@ -116,102 +87,6 @@ export default async function GuestsPage() {
                     <GuestFields />
                     <button className="btn-primary lg:col-span-4">Add guest</button>
                 </form>
-            </section>
-
-            <section className="surface-panel mb-5 p-4">
-                <FormHeader
-                    title="Guest plates"
-                    detail="Create individual Guest Lineup plates. Each plate keeps its own selected guests and order."
-                />
-                <form action={addPlate} className="mt-4 grid gap-3 lg:grid-cols-[1fr_130px_130px]">
-                    <input
-                        name="title"
-                        required
-                        placeholder="Plate title"
-                        className="border border-line px-3 py-2 text-sm"
-                    />
-                    <input
-                        name="default_duration_seconds"
-                        type="number"
-                        min="1"
-                        defaultValue="30"
-                        className="border border-line px-3 py-2 text-sm"
-                    />
-                    <select
-                        name="status"
-                        defaultValue="ready"
-                        className="border border-line px-3 py-2 text-sm"
-                    >
-                        <option value="ready">Ready</option>
-                        <option value="draft">Draft</option>
-                    </select>
-                    <GuestCheckboxes guests={readyGuests} />
-                    <button className="btn-primary lg:col-span-3">Create guest plate</button>
-                </form>
-            </section>
-
-            <section className="surface-panel mb-5 overflow-hidden">
-                {guestPlates.map((plate) => {
-                    const selectedIds = guestIdsFromMetadata(plate.metadata);
-
-                    return (
-                        <div key={plate.id} className="border-b border-line p-4 last:border-b-0">
-                            <form
-                                action={savePlate}
-                                className="grid gap-3 lg:grid-cols-[1fr_130px_130px_90px]"
-                            >
-                                <input type="hidden" name="slide_id" value={plate.id} />
-                                <input
-                                    name="title"
-                                    required
-                                    defaultValue={plate.title}
-                                    className="border border-line px-3 py-2 text-sm"
-                                />
-                                <input
-                                    name="default_duration_seconds"
-                                    type="number"
-                                    min="1"
-                                    defaultValue={plate.defaultDurationSeconds ?? 30}
-                                    className="border border-line px-3 py-2 text-sm"
-                                />
-                                <select
-                                    name="status"
-                                    defaultValue={plate.status}
-                                    className="border border-line px-3 py-2 text-sm"
-                                >
-                                    <option value="ready">Ready</option>
-                                    <option value="draft">Draft</option>
-                                    <option value="archived">Archived</option>
-                                </select>
-                                <a
-                                    className="btn-secondary justify-center"
-                                    href={slidePreviewHref(plate.id)}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    View
-                                </a>
-                                <GuestCheckboxes
-                                    guests={selectableGuests}
-                                    selectedIds={selectedIds}
-                                />
-                                <div className="flex flex-wrap gap-2 lg:col-span-4">
-                                    <button className="btn-primary">Save plate</button>
-                                    <button formAction={removePlate} className="btn-secondary">
-                                        Archive
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    );
-                })}
-                {guestPlates.length === 0 ? (
-                    <div className="p-4">
-                        <EmptyState title="No guest plates yet">
-                            Create one plate per lineup, then schedule it like any other graphic.
-                        </EmptyState>
-                    </div>
-                ) : null}
             </section>
 
             <section className="surface-panel overflow-hidden">
@@ -395,48 +270,6 @@ function GuestFields({ guest }: { guest?: Awaited<ReturnType<typeof getGuests>>[
     );
 }
 
-function GuestCheckboxes({
-    guests,
-    selectedIds = [],
-}: {
-    guests: Awaited<ReturnType<typeof getGuests>>;
-    selectedIds?: string[];
-}) {
-    const selected = new Set(selectedIds);
-
-    return (
-        <div className="grid gap-2 rounded-md border border-line bg-panel-soft p-3 lg:col-span-full">
-            <p className="text-xs font-bold uppercase text-muted">Guests in this plate</p>
-            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                {guests.map((guest) => (
-                    <label key={guest.id} className="flex min-w-0 items-center gap-2 text-sm">
-                        <input
-                            type="checkbox"
-                            name="guest_ids"
-                            value={guest.id}
-                            defaultChecked={selected.has(guest.id)}
-                        />
-                        <span className="min-w-0 truncate">
-                            {guest.name}{' '}
-                            <span className="text-muted">
-                                {[
-                                    guest.program,
-                                    guest.category,
-                                    guest.status !== 'ready' ? guest.status : '',
-                                ]
-                                    .filter(Boolean)
-                                    .join(' · ')}
-                            </span>
-                        </span>
-                    </label>
-                ))}
-            </div>
-            {guests.length === 0 ? (
-                <p className="text-sm text-muted">No ready guests yet.</p>
-            ) : null}
-        </div>
-    );
-}
 
 function GuestMediaUploadForm({
     guestId,
@@ -506,20 +339,6 @@ function readGuestForm(formData: FormData) {
     };
 }
 
-function readPlateForm(formData: FormData) {
-    return {
-        title: String(formData.get('title') || '').trim(),
-        guestIds: formData.getAll('guest_ids').map(String),
-        defaultDurationSeconds: Number(formData.get('default_duration_seconds') || 30) || 30,
-        status: String(formData.get('status') || 'ready'),
-    };
-}
-
-function guestIdsFromMetadata(metadata: Record<string, unknown> | null | undefined) {
-    const guestIds = metadata?.guestIds;
-
-    return Array.isArray(guestIds) ? guestIds.map(String).filter(Boolean) : [];
-}
 
 function datetimeLocalToIso(value: string) {
     if (!value) {

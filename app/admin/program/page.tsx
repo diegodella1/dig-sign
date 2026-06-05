@@ -1,10 +1,12 @@
-import { CalendarDays, CheckCircle2, ListChecks, Repeat, ShieldCheck } from 'lucide-react';
+import { redirect } from 'next/navigation';
 
-import { FlowCard, FlowGrid, FlowHero, FlowRail } from '@/components/admin/admin-flow';
+import { programSubNavForDate } from '@/components/broadcast/mode-sub-nav-items';
+import { FlowLinkList } from '@/components/admin/admin-flow';
 import { AdminShell } from '@/components/admin/admin-shell';
-import { ButtonLink } from '@/components/ui';
+import { ProgramActivatePanel } from '@/components/program/program-activate-panel';
 import { getDays, getScheduleForDate } from '@/lib/data';
 import { fallbackCarouselDisplayName, getGlobalFallbackCarousel } from '@/lib/fallback-carousel';
+import { updateProgramDayStatus } from '@/lib/mutations';
 import { findFallbackCandidate } from '@/lib/scheduling/fallback';
 import { analyzeSchedule } from '@/lib/scheduling/schedule-health';
 import { isoDateInTimezone, PLAYOUT_TIMEZONE } from '@/lib/helpers/time';
@@ -22,96 +24,72 @@ export default async function ProgramPage() {
     const health = analyzeSchedule(schedule, blocks);
     const fallbackVideo = findFallbackCandidate(schedule.mediaAssets);
     const fallbackLabel =
-        fallbackCarouselDisplayName(fallbackCarousel) ?? fallbackVideo?.title ?? 'Missing';
-    const fallbackTone = fallbackVideo || fallbackCarousel?.enabled ? 'ok' : 'warn';
+        fallbackCarouselDisplayName(fallbackCarousel) ?? fallbackVideo?.title ?? 'Not set';
+    const gapFillTone = fallbackVideo || fallbackCarousel?.enabled ? undefined : ('warn' as const);
+    const dayStatus = schedule.day?.status ?? 'missing';
+
+    async function activateDay(formData: FormData) {
+        'use server';
+        const result = await updateProgramDayStatus({
+            date: today,
+            status: 'active',
+            allowWarnings: formData.get('allow_warnings') === 'on',
+        });
+
+        if (!result.success) {
+            redirect(`/admin/program?error=${encodeURIComponent(result.error)}`);
+        }
+
+        redirect('/admin/operate');
+    }
+
+    async function markDayReady() {
+        'use server';
+        const result = await updateProgramDayStatus({
+            date: today,
+            status: 'ready',
+            allowWarnings: true,
+        });
+
+        if (!result.success) {
+            redirect(`/admin/program?error=${encodeURIComponent(result.error)}`);
+        }
+
+        redirect('/admin/program');
+    }
 
     return (
-        <AdminShell
-            title="Program"
-            description="Build the day, create slide loops and set fallback policy."
-            actions={
-                <>
-                    <ButtonLink href={`/admin/schedule/${today}`}>Open today</ButtonLink>
-                    <ButtonLink href="/admin/calendar" variant="secondary">
-                        Calendar
-                    </ButtonLink>
-                </>
-            }
-        >
-            <FlowHero
-                eyebrow="One rundown"
-                title="Program the day from time, loops and fallback."
-                detail="Calendar and Schedule stay available, but the mental model is smaller: choose day, build rundown, create loop, set fallback, fix health, activate."
+        <AdminShell title="Program" subNav={programSubNavForDate(today)}>
+            <ProgramActivatePanel
+                today={today}
+                dayStatus={dayStatus}
+                hasDay={Boolean(schedule.day)}
+                criticalCount={health.criticalCount}
+                warnCount={health.warnCount}
+                activateAction={activateDay}
+                setReadyAction={markDayReady}
             />
-            <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <FlowGrid>
-                    <FlowCard
-                        href="/admin/calendar"
-                        icon={CalendarDays}
-                        label="Day"
-                        title="Calendar"
-                        detail="Create or open program days. Daily programming remains the source of truth."
-                        tone="program"
-                        badge={`${days.length} days`}
-                    />
-                    <FlowCard
-                        href={`/admin/schedule/${today}`}
-                        icon={ListChecks}
-                        label="Rundown"
-                        title="Today schedule"
-                        detail="Place ready media, slides, promos and ads on the timed rundown."
-                        tone={health.criticalCount ? 'warn' : 'program'}
-                        badge={`${blocks.length} blocks`}
-                    />
-                    <FlowCard
-                        href={`/admin/schedule/${today}#bulk-cards`}
-                        icon={Repeat}
-                        label="Loop builder"
-                        title="Bulk slide loop"
-                        detail="Create a scheduled loop, a fallback carousel, or both from the same slide list."
-                        tone="program"
-                    />
-                    <FlowCard
-                        href={`/admin/schedule/${today}#bulk-cards`}
-                        icon={ShieldCheck}
-                        label="Fallback"
-                        title="Fallback policy"
-                        detail="Use one place to understand what wins when output needs protection."
-                        tone={fallbackTone === 'ok' ? 'program' : 'warn'}
-                        badge={fallbackLabel}
-                    />
-                    <FlowCard
-                        href={`/admin/schedule/${today}`}
-                        icon={CheckCircle2}
-                        label="Health"
-                        title="Fix before active"
-                        detail="Critical issues should be solved before a day becomes active."
-                        tone={health.criticalCount ? 'warn' : 'program'}
-                        badge={
-                            health.criticalCount
-                                ? `${health.criticalCount} critical`
-                                : health.warnCount
-                                  ? `${health.warnCount} warn`
-                                  : 'Clear'
-                        }
-                    />
-                </FlowGrid>
-                <FlowRail
-                    title="Program state"
-                    items={[
-                        { label: 'Today', value: today },
-                        { label: 'Day status', value: schedule.day?.status ?? 'missing' },
-                        { label: 'Fallback', value: fallbackLabel, tone: fallbackTone },
-                        {
-                            label: 'Health',
-                            value: health.criticalCount
-                                ? `${health.criticalCount} critical`
-                                : 'Clear',
-                            tone: health.criticalCount ? 'danger' : 'ok',
-                        },
-                    ]}
-                />
-            </section>
+            <FlowLinkList
+                items={[
+                    { href: '/admin/calendar', label: 'Calendar', badge: `${days.length} days` },
+                    {
+                        href: `/admin/schedule/${today}`,
+                        label: "Today's rundown",
+                        badge: `${blocks.length} blocks`,
+                        ...(health.criticalCount ? { tone: 'warn' as const } : {}),
+                    },
+                    {
+                        href: `/admin/schedule/${today}#bulk-cards`,
+                        label: 'Loop builder',
+                    },
+                    {
+                        href: '/admin/prepare/gap-fill',
+                        label: 'Gap fill',
+                        badge: fallbackLabel,
+                        ...(gapFillTone ? { tone: gapFillTone } : {}),
+                    },
+                ]}
+            />
         </AdminShell>
     );
 }

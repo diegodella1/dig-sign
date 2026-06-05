@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { programSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { StatusPill } from '@/components/ui/status-pill';
 import { ButtonLink, EmptyState, Field, FormHeader, MetricTile } from '@/components/ui';
@@ -99,8 +100,9 @@ export default async function CalendarPage({
 
     return (
         <AdminShell
-            title="Schedule"
-            description="Choose a broadcast day, check coverage and open the timeline planner."
+            title="Calendar"
+            description="Choose broadcast days and open the rundown."
+            subNav={programSubNav}
             actions={<ButtonLink href={`/admin/schedule/${today}`}>Open Today</ButtonLink>}
         >
             <section className="mb-5 grid gap-3 md:grid-cols-4">

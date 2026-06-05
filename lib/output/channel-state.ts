@@ -1,19 +1,17 @@
 import { appUrl } from '@/lib/helpers/app-url';
 import { getLiveSchedule, getPlaybackScheduleForBlock } from '@/lib/data';
-import { getActiveFallback } from '@/lib/fallback-active';
 import { getGlobalFallbackCarousel, selectFallbackCarouselSlide } from '@/lib/fallback-carousel';
 import { getLatestMusicPreference } from '@/lib/operator-preferences';
 import { getActiveOutputOverride } from '@/lib/output-overrides';
 import { recordedBugFromBlock } from '@/lib/recorded-bug';
 import { getLiveObjectConfig, youtubeLiveEmbedUrl } from '@/lib/live-object';
-import { findPlayableFallback, isPlayableFallback } from '@/lib/scheduling/fallback';
+import { findPlayableFallback } from '@/lib/scheduling/fallback';
 import { findActiveLayers, findActiveSchedule } from '@/lib/scheduling/scheduler';
 import { getVimeoToken } from '@/lib/settings';
 import { PLAYOUT_TIMEZONE, secondsSinceMidnightInTimezone } from '@/lib/helpers/time';
 import { getVimeoPlayback } from '@/lib/services/vimeo';
 import { isYouTubeSlide } from '@/lib/slides/youtube';
 
-import type { FallbackCarousel } from '@/lib/fallback-carousel';
 import type { MediaAsset, OutputOverride, ScheduleBundle, SlideAsset } from '@/lib/types';
 
 export type ChannelStateInputs = {
@@ -77,8 +75,41 @@ type ResolveChannelStateArgs = {
 async function resolveChannelState(args: ResolveChannelStateArgs) {
     const { bundle, active, override, music, base, mediaAccessToken } = args;
 
-    if (bundle.day && override?.sourceType === 'reuters' && override.streamUrl) {
-        return reutersOverrideState(override, base, music);
+    if (bundle.day && override?.enabled) {
+        if (override.sourceType === 'reuters' && override.streamUrl) {
+            return reutersOverrideState(override, base, music);
+        }
+
+        if (override.sourceType === 'scheduled_block' && override.blockId) {
+            const forced = previewActiveSchedule(bundle, override.blockId, 0);
+
+            return resolveChannelState({
+                bundle,
+                active: forced,
+                override: null,
+                music,
+                base,
+                mediaAccessToken,
+            });
+        }
+
+        if (override.sourceType === 'slide' && override.slideId) {
+            const slide =
+                bundle.slideAssets.find((item) => item.id === override.slideId) ?? null;
+
+            if (slide) {
+                return forcedSlideOverrideState(override, slide, base, music);
+            }
+        }
+
+        if (override.assetId) {
+            const asset =
+                bundle.mediaAssets.find((item) => item.id === override.assetId) ?? null;
+
+            if (asset) {
+                return forcedAssetOverrideState(override, asset, base, music, mediaAccessToken);
+            }
+        }
     }
 
     if (!bundle.day || !active.block) {
@@ -160,6 +191,75 @@ function reutersOverrideState(
         durationSeconds: null,
         sourceType: 'reuters' as const,
         streamProtocol: override.streamProtocol,
+        backgroundMusic: suppressBackgroundMusic(music),
+    };
+}
+
+function forcedSlideOverrideState(
+    override: NonNullable<OutputOverride>,
+    slide: SlideAsset,
+    base: ChannelStateBase,
+    music: BackgroundMusic,
+) {
+    const renderUrl = appUrl(`/output/slide/${slide.id}`);
+
+    return {
+        ...base,
+        kind: 'slide' as const,
+        signature: `override-slide:${override.id}:${slide.id}:${override.updatedAt}`,
+        blockId: override.blockId,
+        title: override.label ?? slide.title,
+        slideId: slide.id,
+        templateId: slide.templateId,
+        ...(shouldRenderSlideInIframe(slide) ? { renderUrl: renderUrl.toString() } : {}),
+        ...(slide.imageUrl ? { imageUrl: slide.imageUrl } : {}),
+        ...(slide.content || slide.htmlContent
+            ? { content: slide.content ?? slide.htmlContent ?? '' }
+            : {}),
+        startOffsetSeconds: 0,
+        durationSeconds: null,
+        backgroundMusic: slideBackgroundMusic(slide, music),
+    };
+}
+
+function forcedAssetOverrideState(
+    override: NonNullable<OutputOverride>,
+    asset: MediaAsset,
+    base: ChannelStateBase,
+    music: BackgroundMusic,
+    mediaAccessToken: string,
+) {
+    const mediaUrl = asset.url ? withMediaAccessToken(asset.url, mediaAccessToken) : null;
+
+    if (!mediaUrl) {
+        return fallbackState('override-asset-missing-url', base, suppressBackgroundMusic(music));
+    }
+
+    if (asset.mediaKind === 'image' || asset.sourceType.includes('image')) {
+        return {
+            ...base,
+            kind: 'image' as const,
+            signature: `override-image:${override.id}:${asset.id}:${override.updatedAt}`,
+            blockId: override.blockId,
+            assetId: asset.id,
+            title: override.label ?? asset.title,
+            imageUrl: mediaUrl,
+            startOffsetSeconds: 0,
+            durationSeconds: null,
+            backgroundMusic: music,
+        };
+    }
+
+    return {
+        ...base,
+        kind: 'mp4' as const,
+        signature: `override-mp4:${override.id}:${asset.id}:${override.updatedAt}`,
+        blockId: override.blockId,
+        assetId: asset.id,
+        title: override.label ?? asset.title,
+        url: mediaUrl,
+        startOffsetSeconds: 0,
+        durationSeconds: asset.durationSeconds ?? null,
         backgroundMusic: suppressBackgroundMusic(music),
     };
 }
@@ -408,34 +508,6 @@ async function fallbackStateForBundle(
     mediaAccessToken = '',
     backgroundMusic: BackgroundMusic = null,
 ) {
-    const active = await getActiveFallback();
-
-    if (active?.kind === 'asset') {
-        const asset = bundle.mediaAssets.find((candidate) => candidate.id === active.id);
-
-        if (asset && isPlayableFallback(asset)) {
-            const activeState = await fallbackVideoState(asset, reason, base, mediaAccessToken);
-
-            if (activeState) {
-                return activeState;
-            }
-        }
-    }
-
-    if (active?.kind === 'carousel') {
-        const activeCarouselState = await fallbackCarouselState(
-            bundle,
-            reason,
-            base,
-            mediaAccessToken,
-            backgroundMusic,
-            active.id,
-        );
-
-        if (activeCarouselState) {
-            return activeCarouselState;
-        }
-    }
     const fallbackAsset = findFallbackLoopAsset(bundle);
 
     if (fallbackAsset) {
@@ -467,10 +539,9 @@ async function fallbackCarouselState(
     base: ChannelStateBase,
     mediaAccessToken = '',
     backgroundMusic: BackgroundMusic = null,
-    activeSetId?: string,
 ) {
     const selection = selectFallbackCarouselSlide(
-        carouselForActiveSet(await getGlobalFallbackCarousel(), activeSetId),
+        await getGlobalFallbackCarousel(),
         bundle,
         base.serverSeconds,
     );
@@ -655,22 +726,6 @@ async function fallbackVimeoLoopState(
 
 function findFallbackLoopAsset(bundle: ScheduleBundle) {
     return findPlayableFallback(bundle.mediaAssets);
-}
-
-function carouselForActiveSet(
-    carousel: FallbackCarousel | null,
-    activeSetId?: string,
-): FallbackCarousel | null {
-    if (!carousel || !activeSetId) {
-        return carousel;
-    }
-    const set = carousel.sets.find((candidate) => candidate.id === activeSetId);
-
-    if (!set) {
-        return null;
-    }
-
-    return { ...carousel, cards: set.cards, activeSetId };
 }
 
 function loopOffset(serverSeconds: number, durationSeconds?: number | null) {

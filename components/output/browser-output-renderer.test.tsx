@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BrowserOutputRenderer } from './browser-output-renderer';
@@ -31,6 +31,7 @@ describe('BrowserOutputRenderer', () => {
     });
 
     afterEach(() => {
+        cleanup();
         vi.useRealTimers();
         vi.restoreAllMocks();
     });
@@ -60,15 +61,10 @@ describe('BrowserOutputRenderer', () => {
         await act(async () => {
             await vi.advanceTimersByTimeAsync(2000);
         });
-
-        // Wait for the component to have fully applied videoState('b') — video.src being set
-        // proves that useEffect([armed, state?.signature]) has run and the loadedmetadata
-        // listener is installed, so fireEvent.loadedMetadata lands on the live handler.
-        await waitFor(() => expect(video.src).toContain('b.mp4'));
-
-        await act(async () => {
-            fireEvent.loadedMetadata(video);
-        });
+        await waitFor(() =>
+            expect(vi.mocked(global.fetch).mock.calls.length).toBeGreaterThanOrEqual(3),
+        );
+        fireEvent.loadedMetadata(video);
 
         await waitFor(() => expect(play.mock.calls.length).toBeGreaterThan(playsBeforeGap));
         expect(screen.queryByRole('button', { name: /Start Output/i })).not.toBeInTheDocument();

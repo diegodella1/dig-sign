@@ -1,6 +1,10 @@
 'use client';
 
-import type { MouseEvent, PointerEvent } from 'react';
+import { closestCenter, DndContext, type DragEndEvent, type SensorDescriptor } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Archive, Copy, GripVertical } from 'lucide-react';
+import type { MouseEvent, PointerEvent, ReactNode } from 'react';
 
 import { getScheduleLiveState } from '@/lib/scheduling/schedule-live-state';
 import { formatPlayoutTimeLabel } from '@/lib/helpers/time';
@@ -20,150 +24,244 @@ import {
 // ─── RundownTable ────────────────────────────────────────────────────────────
 
 export type RundownTableProps = {
-    visibleItems: ReturnType<typeof buildRundownItems>;
+    items: ReturnType<typeof buildRundownItems>;
     selectedBlockId: string;
     createdBlockId: string;
     hasReadyFallback: boolean;
     liveState: ReturnType<typeof getScheduleLiveState>;
     issueMap: Map<string | undefined, { severity: string }>;
-    viewportStartSeconds: number;
-    viewportDurationSeconds: number;
+    disabled?: boolean;
+    sortableBlockIds?: string[];
+    sensors?: SensorDescriptor<object>[];
+    onDragEnd?: (event: DragEndEvent) => void;
     onSelect: (blockId: string) => void;
     onAdd: (startSeconds?: number, durationSeconds?: number) => void;
+    onDuplicate?: (blockId: string) => void;
+    onArchive?: (blockId: string) => void;
+    headerTrailing?: ReactNode;
 };
 
 export function RundownTable({
-    visibleItems,
+    items,
     selectedBlockId,
     createdBlockId,
     hasReadyFallback,
     liveState,
     issueMap,
-    viewportStartSeconds,
-    viewportDurationSeconds,
+    disabled = false,
+    sortableBlockIds = [],
+    sensors,
+    onDragEnd,
     onSelect,
     onAdd,
+    onDuplicate,
+    onArchive,
+    headerTrailing,
 }: RundownTableProps) {
+    const tableBody = (
+        <div className="divide-y divide-line">
+            {items.length ? (
+                items.map((item) =>
+                    item.kind === 'gap' ? (
+                        <button
+                            key={`gap-${item.startSeconds}-${item.durationSeconds}`}
+                            type="button"
+                            data-calendar-gap
+                            onClick={() => onAdd(item.startSeconds, item.durationSeconds)}
+                            className="grid w-full grid-cols-[96px_minmax(0,1fr)_96px_92px_88px] items-center gap-3 px-3 py-3 text-left text-sm hover:bg-warn-soft"
+                        >
+                            <span className="font-semibold tabular-nums text-warn-strong">
+                                {formatPlayoutTimeLabel(item.startSeconds)}
+                            </span>
+                            <span className="min-w-0">
+                                <span className="block truncate font-semibold text-ink">
+                                    {hasReadyFallback ? 'Fallback loop' : 'Open gap'}
+                                </span>
+                                <span className="mt-0.5 block truncate text-xs text-muted">
+                                    {formatCalendarRange(item.startSeconds, item.durationSeconds)}
+                                </span>
+                            </span>
+                            <span className="tabular-nums text-muted">
+                                {formatDurationLabel(item.durationSeconds)}
+                            </span>
+                            <span
+                                className={
+                                    hasReadyFallback ? 'text-success' : 'text-warn-strong'
+                                }
+                            >
+                                {hasReadyFallback ? 'Covered' : 'Risk'}
+                            </span>
+                            <span />
+                        </button>
+                    ) : (
+                        <SortableRundownBlockRow
+                            key={item.block.id}
+                            block={item.block}
+                            selected={selectedBlockId === item.block.id}
+                            created={createdBlockId === item.block.id}
+                            live={liveState.activeBlock?.id === item.block.id}
+                            issueSeverity={issueMap.get(item.block.id)?.severity}
+                            disabled={disabled}
+                            onSelect={() => onSelect(item.block.id)}
+                            onDuplicate={
+                                onDuplicate ? () => onDuplicate(item.block.id) : undefined
+                            }
+                            onArchive={onArchive ? () => onArchive(item.block.id) : undefined}
+                        />
+                    ),
+                )
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => onAdd(0, DEFAULT_MANUAL_DURATION)}
+                    className="w-full px-4 py-10 text-center text-sm font-semibold text-muted hover:bg-panel-soft"
+                >
+                    No blocks yet. Click here or a gap on the map to add content.
+                </button>
+            )}
+        </div>
+    );
+
     return (
         <div className="min-w-0 overflow-hidden rounded-md border border-line bg-surface">
-            <div className="grid grid-cols-[96px_minmax(0,1fr)_96px_92px] border-b border-line bg-panel-soft px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-muted">
-                <span>Clock</span>
-                <span>Rundown</span>
-                <span>Block len</span>
-                <span>Status</span>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-panel-soft px-3 py-2">
+                <div className="grid flex-1 grid-cols-[96px_minmax(0,1fr)_96px_92px_88px] text-[10px] font-bold uppercase tracking-wide text-muted">
+                    <span>Clock</span>
+                    <span>Rundown</span>
+                    <span>Length</span>
+                    <span>Status</span>
+                    <span>Actions</span>
+                </div>
+                {headerTrailing}
             </div>
-            <div className="divide-y divide-line">
-                {visibleItems.length ? (
-                    visibleItems.map((item) =>
-                        item.kind === 'gap' ? (
-                            <button
-                                key={`gap-${item.startSeconds}-${item.durationSeconds}`}
-                                type="button"
-                                data-calendar-gap
-                                onClick={() => onAdd(item.startSeconds, item.durationSeconds)}
-                                className="grid w-full grid-cols-[96px_minmax(0,1fr)_96px_92px] items-center gap-3 px-3 py-3 text-left text-sm hover:bg-warn-soft"
-                            >
-                                <span className="font-semibold tabular-nums text-warn-strong">
-                                    {formatPlayoutTimeLabel(item.startSeconds)}
-                                </span>
-                                <span className="min-w-0">
-                                    <span className="block truncate font-semibold text-ink">
-                                        {hasReadyFallback ? 'Fallback loop' : 'Open gap'}
-                                    </span>
-                                    <span className="mt-0.5 block truncate text-xs text-muted">
-                                        {formatCalendarRange(
-                                            item.startSeconds,
-                                            item.durationSeconds,
-                                        )}
-                                    </span>
-                                </span>
-                                <span className="tabular-nums text-muted">
-                                    {formatDurationLabel(item.durationSeconds)}
-                                </span>
-                                <span
-                                    className={
-                                        hasReadyFallback ? 'text-success' : 'text-warn-strong'
-                                    }
-                                >
-                                    {hasReadyFallback ? 'Covered' : 'Risk'}
-                                </span>
-                            </button>
-                        ) : (
-                            <button
-                                key={item.block.id}
-                                id={`block-${item.block.id}`}
-                                type="button"
-                                data-calendar-block
-                                onClick={() => onSelect(item.block.id)}
-                                aria-label={`${createdBlockId === item.block.id ? 'New block: ' : 'Edit '}${item.block.title}, ${formatBlockRange(item.block)}`}
-                                className={[
-                                    'grid w-full grid-cols-[96px_minmax(0,1fr)_96px_92px] items-center gap-3 px-3 py-3 text-left text-sm hover:bg-panel-soft',
-                                    selectedBlockId === item.block.id
-                                        ? 'bg-surface-selected-positive'
-                                        : '',
-                                    createdBlockId === item.block.id
-                                        ? 'schedule-new-block bg-surface-selected-positive'
-                                        : '',
-                                    liveState.activeBlock?.id === item.block.id
-                                        ? 'bg-surface-selected-positive text-accent-live'
-                                        : '',
-                                ].join(' ')}
-                            >
-                                <span className="font-semibold tabular-nums">
-                                    {formatPlayoutTimeLabel(item.block.startTimeSeconds)}
-                                </span>
-                                <span className="min-w-0">
-                                    <span className="flex min-w-0 items-center gap-2">
-                                        <span className="truncate font-semibold text-ink">
-                                            {item.block.title}
-                                        </span>
-                                        <span className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted">
-                                            {typeLabel(item.block.blockType)}
-                                        </span>
-                                        {createdBlockId === item.block.id ? (
-                                            <span className="shrink-0 rounded border border-accent-positive/30 px-1.5 py-0.5 text-[10px] font-bold uppercase text-accent-positive">
-                                                New
-                                            </span>
-                                        ) : null}
-                                    </span>
-                                    <span className="mt-0.5 block truncate text-xs text-muted">
-                                        {formatBlockRange(item.block)}
-                                    </span>
-                                </span>
-                                <span className="tabular-nums text-muted">
-                                    {formatDurationLabel(item.block.durationSeconds)}
-                                </span>
-                                <span
-                                    className={
-                                        issueMap.get(item.block.id)?.severity === 'critical'
-                                            ? 'text-danger'
-                                            : issueMap.get(item.block.id)?.severity === 'warning'
-                                              ? 'text-warn'
-                                              : 'text-muted'
-                                    }
-                                >
-                                    {liveState.activeBlock?.id === item.block.id
-                                        ? 'On air'
-                                        : (issueMap.get(item.block.id)?.severity ??
-                                          item.block.status)}
-                                </span>
-                            </button>
-                        ),
-                    )
-                ) : (
+            {sensors && onDragEnd && sortableBlockIds.length ? (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                    <SortableContext
+                        items={sortableBlockIds}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {tableBody}
+                    </SortableContext>
+                </DndContext>
+            ) : (
+                tableBody
+            )}
+        </div>
+    );
+}
+
+function SortableRundownBlockRow({
+    block,
+    selected,
+    created,
+    live,
+    issueSeverity,
+    disabled,
+    onSelect,
+    onDuplicate,
+    onArchive,
+}: {
+    block: ProgramBlock;
+    selected: boolean;
+    created: boolean;
+    live: boolean;
+    issueSeverity?: string | undefined;
+    disabled: boolean;
+    onSelect: () => void;
+    onDuplicate?: (() => void) | undefined;
+    onArchive?: (() => void) | undefined;
+}) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+        id: block.id,
+        disabled,
+    });
+
+    return (
+        <div
+            id={`block-${block.id}`}
+            ref={setNodeRef}
+            style={{ transform: CSS.Transform.toString(transform), transition }}
+            className={[
+                'grid grid-cols-[96px_minmax(0,1fr)_96px_92px_88px] items-center gap-3 px-3 py-3 text-sm',
+                selected ? 'bg-surface-selected-positive' : '',
+                created ? 'schedule-new-block bg-surface-selected-positive' : '',
+                live ? 'bg-surface-selected-positive text-accent-live' : '',
+                isDragging ? 'relative z-20 shadow-lg' : '',
+            ].join(' ')}
+        >
+            <button
+                type="button"
+                onClick={onSelect}
+                className="contents text-left"
+                aria-label={`${created ? 'New block: ' : 'Edit '}${block.title}, ${formatBlockRange(block)}`}
+            >
+                <span className="font-semibold tabular-nums">
+                    {formatPlayoutTimeLabel(block.startTimeSeconds)}
+                </span>
+                <span className="min-w-0">
+                    <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate font-semibold text-ink">{block.title}</span>
+                        <span className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted">
+                            {typeLabel(block.blockType)}
+                        </span>
+                        {created ? (
+                            <span className="shrink-0 rounded border border-accent-positive/30 px-1.5 py-0.5 text-[10px] font-bold uppercase text-accent-positive">
+                                New
+                            </span>
+                        ) : null}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-muted">
+                        {formatBlockRange(block)}
+                    </span>
+                </span>
+                <span className="tabular-nums text-muted">
+                    {formatDurationLabel(block.durationSeconds)}
+                </span>
+                <span
+                    className={
+                        issueSeverity === 'critical'
+                            ? 'text-danger'
+                            : issueSeverity === 'warning'
+                              ? 'text-warn'
+                              : 'text-muted'
+                    }
+                >
+                    {live ? 'On air' : (issueSeverity ?? block.status)}
+                </span>
+            </button>
+            <div className="flex items-center gap-1">
+                <button
+                    type="button"
+                    className="grid size-8 place-items-center rounded-md border border-line bg-surface text-muted"
+                    disabled={disabled}
+                    aria-label={`Drag ${block.title}`}
+                    {...attributes}
+                    {...listeners}
+                >
+                    <GripVertical size={14} aria-hidden="true" />
+                </button>
+                {onDuplicate ? (
                     <button
                         type="button"
-                        onClick={() =>
-                            onAdd(
-                                viewportStartSeconds,
-                                Math.min(DEFAULT_MANUAL_DURATION, viewportDurationSeconds),
-                            )
-                        }
-                        className="w-full px-4 py-10 text-center text-sm font-semibold text-muted hover:bg-panel-soft"
+                        className="grid size-8 place-items-center rounded-md border border-line bg-surface"
+                        disabled={disabled}
+                        onClick={onDuplicate}
+                        aria-label={`Duplicate ${block.title}`}
                     >
-                        No blocks in this lens. Add content here.
+                        <Copy size={14} aria-hidden="true" />
                     </button>
-                )}
+                ) : null}
+                {onArchive ? (
+                    <button
+                        type="button"
+                        className="grid size-8 place-items-center rounded-md border border-line bg-surface"
+                        disabled={disabled}
+                        onClick={onArchive}
+                        aria-label={`Remove ${block.title}`}
+                    >
+                        <Archive size={14} aria-hidden="true" />
+                    </button>
+                ) : null}
             </div>
         </div>
     );
@@ -219,7 +317,7 @@ export function CalendarMiniMap({
 }: CalendarMiniMapProps) {
     return (
         <div
-            className="relative h-[520px] rounded-md border border-line bg-panel-soft"
+            className="relative h-[min(420px,calc(100vh-12rem))] min-h-[280px] rounded-md border border-line bg-panel-soft"
             aria-label="Calendar schedule"
             data-testid="calendar-schedule-canvas"
             role="button"

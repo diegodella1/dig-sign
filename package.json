@@ -24,8 +24,7 @@
         "i18n:check": "node scripts/i18n-check.mjs",
         "prepare": "husky",
         "cf:build": "opennextjs-cloudflare build",
-        "cf:dev": "opennextjs-cloudflare build && wrangler dev --env dev --remote",
-        "cf:dev:local": "opennextjs-cloudflare build && wrangler dev",
+        "cf:dev": "opennextjs-cloudflare build && wrangler dev",
         "cf:deploy": "opennextjs-cloudflare build && wrangler deploy --keep-vars",
         "cf:preview": "opennextjs-cloudflare build && wrangler versions upload",
         "deploy": "opennextjs-cloudflare build && wrangler deploy --keep-vars",
@@ -55,7 +54,7 @@
         "hls.js": "^1.6.16",
         "lucide-react": "^0.468.0",
         "next": "^15.3.1",
-        "next-intl": "^4.11.0",
+        "next-intl": "^4.1.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "zod": "^3.24.2"
@@ -72,9 +71,9 @@
         "@types/react": "^19.1.2",
         "@types/react-dom": "^19.1.2",
         "@vitejs/plugin-react": "^4.7.0",
-        "@vitest/coverage-v8": "^3.2.4",
+        "@vitest/coverage-v8": "^4.1.8",
         "autoprefixer": "^10.4.21",
-        "drizzle-kit": "^0.31.10",
+        "drizzle-kit": "^0.18.1",
         "eslint": "^9.25.1",
         "eslint-config-next": "^15.3.1",
         "eslint-plugin-jsx-a11y": "^6.10.2",
@@ -87,7 +86,7 @@
         "prettier": "^3.8.3",
         "tailwindcss": "^3.4.17",
         "typescript": "^5.8.3",
-        "vitest": "^3.1.2",
+        "vitest": "^4.1.8",
         "wrangler": "^4"
     }
 }
