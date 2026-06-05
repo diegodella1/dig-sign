@@ -1,4 +1,4 @@
-import { and, asc, eq, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, or, sql } from 'drizzle-orm';
 
 import { withKvCache } from '@/lib/helpers/kv-cache';
 import {
@@ -72,6 +72,10 @@ async function computeBroadcastStatus(): Promise<BroadcastStatus> {
                             sql`json_extract(${mediaAssets.metadata}, '$.fallback_loop') = true`,
                         ),
                     ),
+                )
+                .orderBy(
+                    sql`(json_extract(${mediaAssets.metadata}, '$.fallback_loop') = true) desc`,
+                    desc(mediaAssets.updatedAt),
                 )
                 .limit(1)
                 .then((rows) => rows[0] ?? null),

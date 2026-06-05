@@ -21,5 +21,9 @@ export function findFallbackCandidate(assets: MediaAsset[]): MediaAsset | null {
 }
 
 export function findPlayableFallback(assets: MediaAsset[]): MediaAsset | null {
-    return assets.find(isPlayableFallback) ?? null;
+    const designated = assets.find(
+        (asset) => isPlayableFallback(asset) && asset.metadata?.fallback_loop === true,
+    );
+
+    return designated ?? assets.find(isPlayableFallback) ?? null;
 }
