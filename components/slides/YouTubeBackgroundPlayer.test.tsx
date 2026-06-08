@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
     BACKGROUND_PLAY_TIMEOUT_MS,
+    BACKGROUND_START_REVEAL_MS,
     YouTubeBackgroundPlayer,
 } from './YouTubeBackgroundPlayer';
 
@@ -92,5 +93,47 @@ describe('YouTubeBackgroundPlayer', () => {
         });
 
         expect(onFailed).toHaveBeenCalledTimes(1);
+    });
+
+    it('starts blurred and reveals after 4.5 seconds', async () => {
+        const onFailed = vi.fn();
+
+        class MockPlayer {
+            mute = vi.fn();
+            playVideo = vi.fn();
+            destroy = vi.fn();
+
+            constructor(element: HTMLElement, options: Record<string, unknown>) {
+                void element;
+                void options;
+            }
+        }
+
+        window.YT = {
+            Player: MockPlayer as unknown as typeof window.YT.Player,
+            PlayerState: {
+                PLAYING: 1,
+                ENDED: 0,
+            },
+        };
+
+        const { getByTestId } = render(
+            <YouTubeBackgroundPlayer videoId="dQw4w9WgXcQ" onFailed={onFailed} />,
+        );
+
+        await act(async () => {
+            window.onYouTubeIframeAPIReady?.();
+            await Promise.resolve();
+        });
+
+        const playerShell = getByTestId('youtube-background-player').firstElementChild;
+        expect(playerShell?.className).toContain('blur-xl');
+        expect(getByTestId('youtube-background-start-mask')).toBeTruthy();
+
+        await act(async () => {
+            vi.advanceTimersByTime(BACKGROUND_START_REVEAL_MS);
+        });
+
+        expect(playerShell?.className).toContain('blur-0');
     });
 });

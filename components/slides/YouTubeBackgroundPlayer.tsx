@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export const BACKGROUND_PLAY_TIMEOUT_MS = 12_000;
+export const BACKGROUND_START_REVEAL_MS = 4_500;
 
 const YT_SCRIPT_SRC = 'https://www.youtube.com/iframe_api';
 
@@ -75,10 +76,18 @@ export function YouTubeBackgroundPlayer({ videoId, onFailed }: YouTubeBackground
     const playerRef = useRef<YouTubePlayerInstance | null>(null);
     const failedRef = useRef(false);
     const onFailedRef = useRef(onFailed);
+    const [revealed, setRevealed] = useState(false);
 
     useEffect(() => {
         onFailedRef.current = onFailed;
     }, [onFailed]);
+
+    useEffect(() => {
+        setRevealed(false);
+        const revealTimer = setTimeout(() => setRevealed(true), BACKGROUND_START_REVEAL_MS);
+
+        return () => clearTimeout(revealTimer);
+    }, [videoId]);
 
     useEffect(() => {
         failedRef.current = false;
@@ -112,6 +121,7 @@ export function YouTubeBackgroundPlayer({ videoId, onFailed }: YouTubeBackground
                 height: '100%',
                 playerVars: {
                     autoplay: 1,
+                    cc_load_policy: 0,
                     controls: 0,
                     disablekb: 1,
                     enablejsapi: 1,
@@ -167,8 +177,25 @@ export function YouTubeBackgroundPlayer({ videoId, onFailed }: YouTubeBackground
     }, [videoId]);
 
     return (
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-            <div ref={containerRef} className="absolute inset-0 h-full w-full scale-105" />
+        <div
+            className="pointer-events-none absolute inset-0 overflow-hidden bg-black"
+            aria-hidden="true"
+            data-testid="youtube-background-player"
+        >
+            <div
+                className={[
+                    'absolute inset-0 origin-center transition-[filter,transform] duration-[4500ms] ease-out',
+                    revealed ? 'scale-125 blur-0' : 'scale-[1.3] blur-xl',
+                ].join(' ')}
+            >
+                <div ref={containerRef} className="h-full w-full" />
+            </div>
+            {!revealed ? (
+                <div
+                    data-testid="youtube-background-start-mask"
+                    className="pointer-events-none absolute inset-0 bg-black/70 transition-opacity duration-[4500ms] ease-out"
+                />
+            ) : null}
         </div>
     );
 }
