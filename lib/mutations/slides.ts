@@ -16,7 +16,7 @@ import {
     slideAssets,
 } from '../db/schema';
 import { parseTimecode } from '../helpers/time';
-import { youtubeSlideMetadata } from '../slides/youtube';
+import { weatherBackgroundMetadata, youtubeSlideMetadata } from '../slides/youtube';
 
 import { createSlideAsset } from './assets';
 
@@ -44,12 +44,31 @@ function normalizeWeatherLocation(input: WeatherLocationInput): Result<WeatherLo
     return ok({ locationName, lat, lon });
 }
 
-function weatherPlateMetadata(location: WeatherLocationInput) {
-    return {
+function buildWeatherPlateMetadata(
+    location: WeatherLocationInput,
+    youtubeUrl?: string | undefined,
+): Result<Record<string, unknown>> {
+    const base = {
         weatherLocationName: location.locationName,
         weatherLat: location.lat,
         weatherLon: location.lon,
     };
+    const trimmedUrl = youtubeUrl?.trim() ?? '';
+
+    if (!trimmedUrl) {
+        return ok(base);
+    }
+
+    const youtube = weatherBackgroundMetadata(trimmedUrl);
+
+    if (!youtube) {
+        return err('Invalid YouTube URL. Use a watch?v= or youtu.be link.');
+    }
+
+    return ok({
+        ...base,
+        ...youtube,
+    });
 }
 
 function normalizeWeatherStatus(status: string | undefined): 'draft' | 'archived' | 'ready' {
@@ -117,6 +136,7 @@ export type WeatherPlateBaseInput = {
     locationName: string;
     lat: number;
     lon: number;
+    youtubeUrl?: string | undefined;
     defaultDurationSeconds?: number | undefined;
     status?: string | undefined;
 };
@@ -252,6 +272,26 @@ export async function saveFallbackCarouselSet(
     }
 }
 
+export async function setFallbackCarouselEnabled(enabled: boolean): Promise<Result<void>> {
+    try {
+        const db = await getDb();
+        const existing = await readFallbackCarouselConfig(db);
+
+        await writeFallbackCarouselConfig(db, {
+            activeSetId: existing.activeSetId,
+            sets: existing.sets,
+            cards: existing.cards,
+            enabled,
+            action: enabled ? 'fallback_carousel.enabled' : 'fallback_carousel.disabled',
+            next: { enabled },
+        });
+
+        return ok(undefined);
+    } catch (error) {
+        return err(extractError(error));
+    }
+}
+
 export async function activateFallbackCarouselSet(setId: string): Promise<Result<void>> {
     try {
         const db = await getDb();
@@ -372,6 +412,9 @@ async function writeFallbackCarouselConfig(
     revalidatePath('/admin/schedule');
     revalidatePath('/admin/assets');
     revalidatePath('/admin/output');
+    revalidatePath('/admin/program');
+    revalidatePath('/admin/program/fallback');
+    revalidatePath('/admin/program/fallback');
 }
 
 export async function createWeatherPlate(input: WeatherPlateBaseInput): Promise<Result<void>> {
@@ -382,6 +425,12 @@ export async function createWeatherPlate(input: WeatherPlateBaseInput): Promise<
             return normalized;
         }
 
+        const metadata = buildWeatherPlateMetadata(normalized.data, input.youtubeUrl);
+
+        if (!metadata.success) {
+            return metadata;
+        }
+
         const result = await createSlideAsset({
             title: input.title,
             slideType: 'template',
@@ -389,7 +438,7 @@ export async function createWeatherPlate(input: WeatherPlateBaseInput): Promise<
             content: `Weather plate for ${normalized.data.locationName}.`,
             defaultDurationSeconds: input.defaultDurationSeconds ?? 30,
             status: input.status || 'ready',
-            metadata: weatherPlateMetadata(normalized.data),
+            metadata: metadata.data,
         });
 
         if (!result.success) {
@@ -414,6 +463,12 @@ export async function updateWeatherPlate(
             return normalized;
         }
 
+        const metadata = buildWeatherPlateMetadata(normalized.data, input.youtubeUrl);
+
+        if (!metadata.success) {
+            return metadata;
+        }
+
         const status = normalizeWeatherStatus(input.status);
         const db = await getDb();
 
@@ -432,7 +487,7 @@ export async function updateWeatherPlate(
                         content: `Weather plate for ${normalized.data.locationName}.`,
                         defaultDurationSeconds: input.defaultDurationSeconds ?? 30,
                         status,
-                        metadata: weatherPlateMetadata(normalized.data),
+                        metadata: metadata.data,
                         updatedAt: new Date().toISOString(),
                     })
                     .where(

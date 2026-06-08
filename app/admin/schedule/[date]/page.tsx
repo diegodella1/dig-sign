@@ -3,6 +3,7 @@ import { AdminShell } from '@/components/admin/admin-shell';
 import { ScheduleWorkspace } from '@/components/schedule-workspace';
 import { ButtonLink, Field, FormHeader, Notice } from '@/components/ui';
 import { getScheduleForDate } from '@/lib/data';
+import { loadFallbackPolicyStatus } from '@/lib/fallback-policy';
 import { DAY_TEMPLATES } from '@/lib/scheduling/day-templates';
 import { analyzeSchedule, withScheduleIssueLinks } from '@/lib/scheduling/schedule-health';
 import {
@@ -101,7 +102,10 @@ export default async function ScheduleDatePage({
     }
 
     const totalScheduledSeconds = blocks.reduce((total, block) => total + block.durationSeconds, 0);
-    const health = analyzeSchedule(schedule, blocks);
+    const fallbackPolicy = await loadFallbackPolicyStatus(schedule);
+    const health = analyzeSchedule(schedule, blocks, {
+        fallbackPolicyReady: fallbackPolicy.ready,
+    });
     const readyBlocks = blocks.filter(
         (block) => block.status === 'ready' || block.status === 'active',
     ).length;
@@ -197,6 +201,8 @@ export default async function ScheduleDatePage({
                 initialFilters={initialContentFilters(query)}
                 createdBlockId={query.created}
                 initialMessage={query.error}
+                fallbackPolicyReady={fallbackPolicy.ready}
+                fallbackPolicyLabel={fallbackPolicy.label}
             />
         </AdminShell>
     );

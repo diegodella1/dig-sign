@@ -229,8 +229,8 @@ export default async function AssetsPage({
             subNav={prepareSubNav}
             actions={
                 <>
-                    <ButtonLink href="/admin/prepare/gap-fill" variant="secondary">
-                        Gap fill
+                    <ButtonLink href="/admin/program/fallback" variant="secondary">
+                        Fallback policy
                     </ButtonLink>
                     <a className="btn-primary" href="/admin/vimeo">
                         Import Vimeo
@@ -533,10 +533,10 @@ export default async function AssetsPage({
                                     </Link>{' '}
                                     and configure{' '}
                                     <Link
-                                        href="/admin/prepare/gap-fill"
+                                        href="/admin/program/fallback"
                                         className="font-semibold underline"
                                     >
-                                        gap fill
+                                        fallback policy
                                     </Link>{' '}
                                     first.
                                 </>
@@ -626,12 +626,12 @@ function LibraryConsoleBar({
                     tone={attention ? 'warn' : 'ok'}
                 />
                 <div className="min-w-0 flex-1 rounded-md border border-line bg-panel-soft px-3 py-2 text-sm">
-                    <p className="text-[10px] font-bold uppercase text-muted">Gap fill</p>
-                    <p className="truncate font-semibold text-ink">Configure in Prepare</p>
+                    <p className="text-[10px] font-bold uppercase text-muted">Fallback</p>
+                    <p className="truncate font-semibold text-ink">Configure in Program</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <ButtonLink href="/admin/prepare/gap-fill" variant="secondary">
-                        Gap fill
+                    <ButtonLink href="/admin/program/fallback" variant="secondary">
+                        Fallback policy
                     </ButtonLink>
                     <ButtonLink href={`/admin/schedule/${today}`} variant="secondary">
                         Schedule
@@ -852,8 +852,8 @@ function LibraryItemRow({
                     Choose Day
                 </a>
                 {isFallbackLoop ? (
-                    <ButtonLink href="/admin/prepare/gap-fill" variant="secondary">
-                        Edit gap fill
+                    <ButtonLink href="/admin/program/fallback" variant="secondary">
+                        Fallback policy
                     </ButtonLink>
                 ) : null}
             </div>

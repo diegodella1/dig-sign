@@ -120,9 +120,9 @@ describe('ScheduleWorkspace', () => {
     it('opens loop builder modal for ready slides', () => {
         renderWorkspace({ blocks: [] });
 
-        fireEvent.click(screen.getByRole('button', { name: 'Loop builder' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Fill range with plates' }));
 
-        expect(screen.getByRole('heading', { name: 'Loop Builder' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Fill range with plates' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Create timed loop' })).toBeEnabled();
 
         fireEvent.click(screen.getByRole('button', { name: 'Add card' }));

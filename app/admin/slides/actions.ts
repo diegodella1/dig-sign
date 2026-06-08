@@ -106,6 +106,7 @@ export async function addWeatherPlateAction(formData: FormData) {
         lon: showAdvanced
             ? Number(formData.get('lon'))
             : Number(formData.get('lon') || -58.3816),
+        youtubeUrl: String(formData.get('youtube_url') || ''),
         defaultDurationSeconds: Number(formData.get('default_duration_seconds') || 30),
         status: String(formData.get('status') || 'ready'),
     });
@@ -124,6 +125,7 @@ export async function updateWeatherPlateAction(formData: FormData) {
         locationName: String(formData.get('location_name') || ''),
         lat: Number(formData.get('lat')),
         lon: Number(formData.get('lon')),
+        youtubeUrl: String(formData.get('youtube_url') || ''),
         defaultDurationSeconds: Number(formData.get('default_duration_seconds') || 30),
         status: String(formData.get('status') || 'ready'),
     });

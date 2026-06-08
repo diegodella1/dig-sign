@@ -1,12 +1,24 @@
 'use client';
 
+import { useState } from 'react';
+
+import { YouTubeBackgroundPlayer } from './YouTubeBackgroundPlayer';
+
 import type { WeatherSlideData } from '@/lib/slides/types';
 
 export type WeatherSlideProps = {
     data: WeatherSlideData;
 };
 
+export function WeatherGradientBackground() {
+    return (
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(118,247,181,0.22),transparent_28%),radial-gradient(circle_at_80%_8%,rgba(59,130,246,0.2),transparent_24%),linear-gradient(135deg,#07130f_0%,#0d1f24_52%,#05080a_100%)]" />
+    );
+}
+
 export function WeatherSlide({ data }: WeatherSlideProps) {
+    const [showBackgroundVideo, setShowBackgroundVideo] = useState(Boolean(data.backgroundVideo));
+
     if (!data.available) {
         return (
             <section className="grid h-full w-full place-items-center bg-[#07130f] px-16 text-center text-white">
@@ -23,7 +35,16 @@ export function WeatherSlide({ data }: WeatherSlideProps) {
 
     return (
         <section className="relative h-full w-full overflow-hidden bg-[#07130f] text-white">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(118,247,181,0.22),transparent_28%),radial-gradient(circle_at_80%_8%,rgba(59,130,246,0.2),transparent_24%),linear-gradient(135deg,#07130f_0%,#0d1f24_52%,#05080a_100%)]" />
+            <WeatherGradientBackground />
+            {showBackgroundVideo && data.backgroundVideo ? (
+                <>
+                    <YouTubeBackgroundPlayer
+                        videoId={data.backgroundVideo.videoId}
+                        onFailed={() => setShowBackgroundVideo(false)}
+                    />
+                    <div className="absolute inset-0 bg-black/35" aria-hidden="true" />
+                </>
+            ) : null}
             <div className="relative z-10 grid h-full grid-rows-[auto_1fr_auto] gap-8 p-12">
                 <header className="flex items-start justify-between gap-8">
                     <div>

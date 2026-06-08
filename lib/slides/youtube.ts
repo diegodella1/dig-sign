@@ -100,6 +100,66 @@ export function isYouTubeSlide(slide: SlideAsset | null | undefined) {
     );
 }
 
+export type WeatherBackgroundVideo = {
+    videoId: string;
+};
+
+export function weatherBackgroundMetadata(youtubeUrl: string | undefined) {
+    const trimmed = youtubeUrl?.trim() ?? '';
+
+    if (!trimmed) {
+        return null;
+    }
+
+    const videoId = parseYouTubeVideoId(trimmed);
+
+    if (!videoId) {
+        return null;
+    }
+
+    return {
+        youtubeUrl: trimmed,
+        youtubeVideoId: videoId,
+        youtubeMuted: true,
+    };
+}
+
+export function getWeatherBackgroundVideo(
+    slide: SlideAsset | null | undefined,
+): WeatherBackgroundVideo | null {
+    if (slide?.templateId !== 'weather') {
+        return null;
+    }
+
+    const metadata = slide.metadata ?? {};
+    const videoId = parseYouTubeVideoId(
+        stringMetadata(metadata.youtubeVideoId) || stringMetadata(metadata.youtubeUrl),
+    );
+
+    if (!videoId) {
+        return null;
+    }
+
+    return { videoId };
+}
+
+export function youTubeBackgroundEmbedUrl(videoId: string) {
+    const params = new URLSearchParams({
+        autoplay: '1',
+        controls: '0',
+        disablekb: '1',
+        enablejsapi: '1',
+        fs: '0',
+        iv_load_policy: '3',
+        modestbranding: '1',
+        mute: '1',
+        playsinline: '1',
+        rel: '0',
+    });
+
+    return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
+}
+
 export function youTubeEmbedUrl(config: YouTubeSlideConfig) {
     const params = new URLSearchParams({
         autoplay: '1',

@@ -2,25 +2,21 @@ import { prepareSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { FlowLinkList } from '@/components/admin/admin-flow';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { getAssets, getGuests, getSlides } from '@/lib/data';
-import { fallbackCarouselDisplayName, getGlobalFallbackCarousel } from '@/lib/fallback-carousel';
-import { findFallbackCandidate } from '@/lib/scheduling/fallback';
+import { loadFallbackPolicyStatus } from '@/lib/fallback-policy';
 
 export const dynamic = 'force-dynamic';
 
 export default async function PreparePage() {
-    const [assets, slides, carousel, guests] = await Promise.all([
+    const [assets, slides, fallbackPolicy, guests] = await Promise.all([
         getAssets(),
         getSlides(),
-        getGlobalFallbackCarousel(),
+        loadFallbackPolicyStatus(),
         getGuests(),
     ]);
     const readyAssets = assets.filter((asset) => asset.status === 'ready');
     const reviewAssets = assets.filter((asset) => asset.status !== 'ready');
     const musicAssets = assets.filter((asset) => asset.assetType === 'music');
-    const silentVideo = findFallbackCandidate(assets);
-    const carouselActive = Boolean(carousel?.enabled && carousel.cards.length);
-    const carouselSetName = fallbackCarouselDisplayName(carousel);
-    const gapFillReady = Boolean(silentVideo || carouselActive);
+    const gapFillReady = fallbackPolicy.ready;
     const activeGuests = guests.filter((guest) => guest.status !== 'archived');
     const readyGuests = guests.filter((guest) => guest.status === 'ready');
     const plateCount = slides.filter((slide) => slide.status !== 'archived').length;
@@ -35,9 +31,9 @@ export default async function PreparePage() {
                         badge: `${plateCount} active`,
                     },
                     {
-                        href: '/admin/prepare/gap-fill',
-                        label: 'Gap fill',
-                        badge: gapFillReady ? (carouselSetName ?? 'Ready') : 'Not set',
+                        href: '/admin/program/fallback',
+                        label: 'Fallback policy',
+                        badge: fallbackPolicy.label,
                         ...(gapFillReady ? {} : { tone: 'warn' as const }),
                     },
                     {

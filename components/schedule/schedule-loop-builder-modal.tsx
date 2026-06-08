@@ -85,13 +85,13 @@ export function LoopBuilderModal({ schedule, action, open, onClose }: LoopBuilde
                     <div>
                         <p className="eyebrow">Timed loop</p>
                         <h2 id="loop-builder-title" className="text-lg font-semibold">
-                            Loop Builder
+                            Fill range with plates
                         </h2>
                         <p className="mt-1 text-sm text-muted">
-                            Create a plate loop for a clock window on this day. Global gap fill
-                            lives in{' '}
-                            <Link href="/admin/prepare/gap-fill" className="font-semibold underline">
-                                Prepare → Gap fill
+                            Create a plate loop for a clock window on this day. Global fallback
+                            policy lives in{' '}
+                            <Link href="/admin/program/fallback" className="font-semibold underline">
+                                Program → Fallback
                             </Link>
                             .
                         </p>

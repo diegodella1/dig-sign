@@ -5,9 +5,8 @@ import { FlowLinkList } from '@/components/admin/admin-flow';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { ProgramActivatePanel } from '@/components/program/program-activate-panel';
 import { getDays, getScheduleForDate } from '@/lib/data';
-import { fallbackCarouselDisplayName, getGlobalFallbackCarousel } from '@/lib/fallback-carousel';
+import { loadFallbackPolicyStatus } from '@/lib/fallback-policy';
 import { updateProgramDayStatus } from '@/lib/mutations';
-import { findFallbackCandidate } from '@/lib/scheduling/fallback';
 import { analyzeSchedule } from '@/lib/scheduling/schedule-health';
 import { isoDateInTimezone, PLAYOUT_TIMEZONE } from '@/lib/helpers/time';
 
@@ -15,17 +14,17 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProgramPage() {
     const today = isoDateInTimezone(new Date(), PLAYOUT_TIMEZONE);
-    const [days, schedule, fallbackCarousel] = await Promise.all([
+    const [days, schedule, fallbackPolicy] = await Promise.all([
         getDays(),
         getScheduleForDate(today),
-        getGlobalFallbackCarousel(),
+        loadFallbackPolicyStatus(),
     ]);
     const blocks = [...schedule.blocks].sort((a, b) => a.startTimeSeconds - b.startTimeSeconds);
-    const health = analyzeSchedule(schedule, blocks);
-    const fallbackVideo = findFallbackCandidate(schedule.mediaAssets);
-    const fallbackLabel =
-        fallbackCarouselDisplayName(fallbackCarousel) ?? fallbackVideo?.title ?? 'Not set';
-    const gapFillTone = fallbackVideo || fallbackCarousel?.enabled ? undefined : ('warn' as const);
+    const health = analyzeSchedule(schedule, blocks, {
+        fallbackPolicyReady: fallbackPolicy.ready,
+    });
+    const fallbackLabel = fallbackPolicy.label;
+    const gapFillTone = fallbackPolicy.ready ? undefined : ('warn' as const);
     const dayStatus = schedule.day?.status ?? 'missing';
 
     async function activateDay(formData: FormData) {
@@ -80,11 +79,11 @@ export default async function ProgramPage() {
                     },
                     {
                         href: `/admin/schedule/${today}#bulk-cards`,
-                        label: 'Loop builder',
+                        label: 'Fill range with plates',
                     },
                     {
-                        href: '/admin/prepare/gap-fill',
-                        label: 'Gap fill',
+                        href: '/admin/program/fallback',
+                        label: 'Fallback policy',
                         badge: fallbackLabel,
                         ...(gapFillTone ? { tone: gapFillTone } : {}),
                     },

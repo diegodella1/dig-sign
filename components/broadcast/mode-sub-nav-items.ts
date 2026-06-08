@@ -7,7 +7,7 @@ export type ModeSubNavItem = {
 export const prepareSubNav: ModeSubNavItem[] = [
     { label: 'Overview', href: '/admin/prepare' },
     { label: 'Plates', href: '/admin/slides', match: ['/admin/slides'] },
-    { label: 'Gap fill', href: '/admin/prepare/gap-fill', match: ['/admin/prepare/gap-fill'] },
+    { label: 'Fallback', href: '/admin/program/fallback', match: ['/admin/program/fallback'] },
     { label: 'Media', href: '/admin/assets', match: ['/admin/assets'] },
     { label: 'People', href: '/admin/guests', match: ['/admin/guests'] },
     { label: 'Import', href: '/admin/vimeo', match: ['/admin/vimeo'] },
@@ -24,6 +24,11 @@ export function programSubNavForDate(today: string): ModeSubNavItem[] {
     return [
         { label: 'Overview', href: '/admin/program' },
         { label: 'Calendar', href: '/admin/calendar', match: ['/admin/calendar'] },
+        {
+            label: 'Fallback',
+            href: '/admin/program/fallback',
+            match: ['/admin/program/fallback'],
+        },
         {
             label: 'Today',
             href: `/admin/schedule/${today}`,

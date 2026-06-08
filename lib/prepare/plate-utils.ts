@@ -98,10 +98,14 @@ export function isLegacyPlate(slide: SlideAsset) {
 }
 
 export function weatherDefaults(slide?: SlideAsset) {
+    const youtubeUrl =
+        typeof slide?.metadata?.youtubeUrl === 'string' ? slide.metadata.youtubeUrl.trim() : '';
+
     return {
         locationName: stringMeta(slide?.metadata?.weatherLocationName, 'Buenos Aires'),
         lat: numberMeta(slide?.metadata?.weatherLat, -34.6037),
         lon: numberMeta(slide?.metadata?.weatherLon, -58.3816),
+        youtubeUrl,
     };
 }
 

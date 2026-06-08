@@ -45,10 +45,13 @@ export {
     createYouTubeSlide,
     saveFallbackCarouselSet,
     saveGlobalFallbackCarouselFromSlides,
+    setFallbackCarouselEnabled,
     setScheduledLayerEnabled,
     updateRunbookCheck,
     updateWeatherPlate,
 } from './mutations/slides';
+
+export { setFallbackPolicy } from './mutations/fallback';
 
 export {
     clearOutputOverride,

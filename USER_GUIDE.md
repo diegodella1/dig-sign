@@ -19,8 +19,8 @@ The console uses four modes:
 | Mode | Route | Purpose |
 |------|-------|---------|
 | **Operate** | `/admin/operate` | Control room — on-air, next, health, recovery |
-| **Prepare** | `/admin/prepare` | Plates, gap fill, media, people, import |
-| **Program** | `/admin/program` | Calendar, rundown, timed loops, activate |
+| **Prepare** | `/admin/prepare` | Plates, media, people, import |
+| **Program** | `/admin/program` | Calendar, rundown, timed loops, fallback policy, activate |
 | **Admin** | `/admin/settings` | Settings, health, runbook, audit, capture |
 
 During live hours, start at **Operate**. Use **Capture** (`/admin/output`) on the OBS/vMix machine only. Operate is the monitor; Output is capture-only.
@@ -30,7 +30,7 @@ During live hours, start at **Operate**. Use **Capture** (`/admin/output`) on th
 1. **Prepare content**
     - Start at `/admin/prepare`.
     - **Plates** (`/admin/slides`): weather, markets, guest lineups, YouTube, custom graphics.
-    - **Gap fill** (`/admin/prepare/gap-fill`): silent fallback video + rotating carousel when nothing is on air.
+    - Mark eligible silent videos in **Media** when you plan to use silent-video fallback.
     - **Media** (`/admin/assets`): upload and verify playable files only.
     - **People** (`/admin/guests`): guest directory for lineup plates.
     - **Music** (`/admin/music`): background playlist for visual blocks.
@@ -40,15 +40,20 @@ During live hours, start at **Operate**. Use **Capture** (`/admin/output`) on th
     - Start at `/admin/program`.
     - Create or open the day from Calendar.
     - Add blocks in `/admin/schedule/[date]`.
-    - Use Loop Builder for **timed slide loops** only (not global gap fill).
-    - Assign ready media, slides, overlays, and fallback assets.
+    - Configure **Fallback policy** at `/admin/program/fallback`: silent video, plate rotation, or
+      emergency slate only. This is the global safety net when nothing is on air or playback fails.
+    - Use **Fill range with plates** on the schedule page for **timed slide loops** in the rundown
+      only. It does not change fallback policy.
+    - Assign ready media, slides, overlays, and per-block fallback overrides when needed.
     - For normal video programs that need disclosure, enable `Previously Recorded bug` and choose
       one of the four screen corners. This does not apply to ads, promos, slides, images, fallback,
       Reuters, or manual overrides.
 
 3. **Check readiness**
     - Fix schedule health errors.
-    - Confirm gap fill in Prepare → Gap fill (silent video optional, then carousel).
+    - Confirm **Fallback policy** is Ready in Program → Fallback (toolbar chip on Schedule shows the
+      same status). Unscheduled gaps read **Protected** when fallback is ready, **Unprotected** when
+      it is not.
     - Open `/admin/runbook/[date]`.
     - Complete critical preflight checks.
 
@@ -95,9 +100,10 @@ Run this before trusting a machine for broadcast:
 
 - Use Prepare -> Program -> Operate. That is the primary path.
 - Do not schedule draft/failed media.
-- Every active day should have a fallback asset.
-- Slide loops and visual fallback blocks use the background playlist; video, ad, promo and live
-  blocks pause it.
+- Every active day should have a ready fallback policy (silent video, plate rotation, or emergency
+  slate).
+- Plate rotations for fallback and timed slide loops on the schedule use the background playlist;
+  video, ad, promo and live blocks pause it.
 - Guest plates can be different per segment because each Guest Lineup plate stores its own selected
   guests and order.
 - Weather plates can be created per city; use lat/lon only as advanced correction data.
@@ -111,13 +117,14 @@ Run this before trusting a machine for broadcast:
 
 - `/manual` - public manual
 - `/pending` - backlog
-- `/admin/prepare` - hub: Plates, Gap fill, Media, People, Music, Import
-- `/admin/prepare/gap-fill` - silent video + carousel when off-air
+- `/admin/prepare` - hub: Plates, Media, People, Music, Import
+- `/admin/program/fallback` - global fallback policy (silent video, plate rotation, emergency slate)
+- `/admin/prepare/gap-fill` - redirects to `/admin/program/fallback`
 - `/admin/slides` - plates (graphics)
 - `/admin/assets` - media library (operator label: Media)
 - `/admin/guests` - guest directory (People)
 - `/admin/vimeo` - Vimeo import
-- `/admin/program` - schedule, timed loops, activate
+- `/admin/program` - schedule, timed loops, fallback policy, activate
 - `/admin/operate` - live control-room hub
 - `/admin/health` - readiness checks
 - `/api/health` - machine-readable health

@@ -27,7 +27,7 @@ export type RundownTableProps = {
     items: ReturnType<typeof buildRundownItems>;
     selectedBlockId: string;
     createdBlockId: string;
-    hasReadyFallback: boolean;
+    fallbackPolicyReady: boolean;
     liveState: ReturnType<typeof getScheduleLiveState>;
     issueMap: Map<string | undefined, { severity: string }>;
     disabled?: boolean;
@@ -45,7 +45,7 @@ export function RundownTable({
     items,
     selectedBlockId,
     createdBlockId,
-    hasReadyFallback,
+    fallbackPolicyReady,
     liveState,
     issueMap,
     disabled = false,
@@ -75,7 +75,7 @@ export function RundownTable({
                             </span>
                             <span className="min-w-0">
                                 <span className="block truncate font-semibold text-ink">
-                                    {hasReadyFallback ? 'Fallback loop' : 'Open gap'}
+                                    Unscheduled time
                                 </span>
                                 <span className="mt-0.5 block truncate text-xs text-muted">
                                     {formatCalendarRange(item.startSeconds, item.durationSeconds)}
@@ -86,10 +86,10 @@ export function RundownTable({
                             </span>
                             <span
                                 className={
-                                    hasReadyFallback ? 'text-success' : 'text-warn-strong'
+                                    fallbackPolicyReady ? 'text-success' : 'text-warn-strong'
                                 }
                             >
-                                {hasReadyFallback ? 'Covered' : 'Risk'}
+                                {fallbackPolicyReady ? 'Protected' : 'Unprotected'}
                             </span>
                             <span />
                         </button>

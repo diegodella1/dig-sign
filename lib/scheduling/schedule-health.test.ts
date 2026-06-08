@@ -76,6 +76,23 @@ describe('schedule health', () => {
         expect(readiness.severity).toBe('critical');
     });
 
+    it('warns when fallback policy is not ready', () => {
+        const health = analyzeSchedule(mockSchedule, mockSchedule.blocks, {
+            fallbackPolicyReady: false,
+        });
+
+        expect(health.fallbackIssues).toHaveLength(1);
+        expect(health.fallbackIssues[0]?.actionHref).toBe('/admin/program/fallback');
+    });
+
+    it('does not warn when fallback policy is ready', () => {
+        const health = analyzeSchedule(mockSchedule, mockSchedule.blocks, {
+            fallbackPolicyReady: true,
+        });
+
+        expect(health.fallbackIssues).toHaveLength(0);
+    });
+
     it('flags failed Vimeo playback readiness as critical', () => {
         const asset: MediaAsset = {
             ...firstAsset,

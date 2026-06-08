@@ -35,8 +35,8 @@ export default async function SlidesPage({
             subNav={prepareSubNav}
             actions={
                 <>
-                    <ButtonLink href="/admin/prepare/gap-fill" variant="secondary">
-                        Gap fill
+                    <ButtonLink href="/admin/program/fallback" variant="secondary">
+                        Fallback policy
                     </ButtonLink>
                     <ButtonLink href="/admin/guests">People</ButtonLink>
                 </>

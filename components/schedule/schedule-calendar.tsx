@@ -4,7 +4,6 @@ import type { DragEndEvent, SensorDescriptor } from '@dnd-kit/core';
 import type { MouseEvent, PointerEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
-import { isFallbackCandidate } from '@/lib/scheduling/fallback';
 import { findSameDayGaps } from '@/lib/scheduling/schedule-conflicts';
 import type { ProgramBlock, ScheduleBundle } from '@/lib/types';
 import type { ScheduleIssue } from '@/lib/scheduling/schedule-health';
@@ -35,6 +34,7 @@ type CalendarScheduleViewProps = {
     onAdd: (startSeconds?: number, durationSeconds?: number) => void;
     onDuplicate: (blockId: string) => void;
     onArchive: (blockId: string) => void;
+    fallbackPolicyReady?: boolean;
 };
 
 export function CalendarScheduleView({
@@ -52,6 +52,7 @@ export function CalendarScheduleView({
     onAdd,
     onDuplicate,
     onArchive,
+    fallbackPolicyReady = false,
 }: CalendarScheduleViewProps) {
     const [zoom, setZoom] = useState<TimelineZoom>('work');
     const [dragStartSeconds, setDragStartSeconds] = useState<number | null>(null);
@@ -67,7 +68,6 @@ export function CalendarScheduleView({
     const issueMap = new Map(
         issues.filter((issue) => issue.blockId).map((issue) => [issue.blockId, issue]),
     );
-    const hasReadyFallback = schedule.mediaAssets.some(isFallbackCandidate);
     const selection =
         dragStartSeconds !== null && dragCurrentSeconds !== null
             ? normalizeCalendarSelection(dragStartSeconds, dragCurrentSeconds)
@@ -244,7 +244,7 @@ export function CalendarScheduleView({
                         items={rundownItems}
                         selectedBlockId={selectedBlockId}
                         createdBlockId={createdBlockId}
-                        hasReadyFallback={hasReadyFallback}
+                        fallbackPolicyReady={fallbackPolicyReady}
                         liveState={liveState}
                         issueMap={issueMap}
                         disabled={disabled}

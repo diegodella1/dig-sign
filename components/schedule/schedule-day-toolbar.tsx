@@ -13,6 +13,8 @@ type ScheduleDayToolbarProps = {
     totalScheduledSeconds: number;
     healthCriticalCount: number;
     healthWarnCount: number;
+    fallbackPolicyLabel?: string;
+    fallbackPolicyReady?: boolean;
     actions?: ReactNode;
 };
 
@@ -25,6 +27,8 @@ export function ScheduleDayToolbar({
     totalScheduledSeconds,
     healthCriticalCount,
     healthWarnCount,
+    fallbackPolicyLabel = 'Not ready',
+    fallbackPolicyReady = false,
     actions,
 }: ScheduleDayToolbarProps) {
     const hasIssues = healthCriticalCount > 0 || healthWarnCount > 0;
@@ -49,6 +53,17 @@ export function ScheduleDayToolbar({
                 </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+                <a
+                    href="/admin/program/fallback"
+                    className={[
+                        'rounded-md border px-2 py-1 text-xs font-semibold',
+                        fallbackPolicyReady
+                            ? 'border-success-line bg-success-soft text-success-strong'
+                            : 'border-warn-line bg-warn-soft text-warn-strong',
+                    ].join(' ')}
+                >
+                    Fallback: {fallbackPolicyLabel}
+                </a>
                 {actions}
                 {hasIssues ? (
                     <a

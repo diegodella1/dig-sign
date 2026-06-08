@@ -194,6 +194,7 @@ export type WeatherSlideData = {
     forecast: WeatherForecastPoint[];
     updatedAt: string;
     reason?: string;
+    backgroundVideo?: { videoId: string } | null;
 };
 
 export type GuestLineupGuest = {

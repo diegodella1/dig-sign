@@ -62,6 +62,8 @@ type ScheduleWorkspaceProps = {
     initialFilters?: InitialContentFilters | undefined;
     createdBlockId?: string | undefined;
     initialMessage?: string | undefined;
+    fallbackPolicyReady?: boolean;
+    fallbackPolicyLabel?: string;
 };
 
 export function ScheduleWorkspace({
@@ -81,6 +83,8 @@ export function ScheduleWorkspace({
     initialFilters,
     createdBlockId,
     initialMessage,
+    fallbackPolicyReady = false,
+    fallbackPolicyLabel = 'Not ready',
 }: ScheduleWorkspaceProps) {
     const activeBlocks = useMemo(
         () => blocks.filter((block) => block.status !== 'archived'),
@@ -123,8 +127,11 @@ export function ScheduleWorkspace({
         .filter(Boolean) as ProgramBlock[];
     const selectedBlock = blockById.get(selectedBlockId) ?? orderedBlocks[0] ?? null;
     const health = useMemo(
-        () => analyzeSchedule(schedule, orderedBlocks),
-        [orderedBlocks, schedule],
+        () =>
+            analyzeSchedule(schedule, orderedBlocks, {
+                fallbackPolicyReady,
+            }),
+        [fallbackPolicyReady, orderedBlocks, schedule],
     );
 
     const openAdd = useCallback((startSeconds?: number, durationSeconds?: number) => {
@@ -252,7 +259,7 @@ export function ScheduleWorkspace({
                 onClick={() => setLoopBuilderOpen(true)}
             >
                 <Repeat size={15} aria-hidden="true" />
-                Loop builder
+                Fill range with plates
             </button>
         </>
     );
@@ -269,6 +276,8 @@ export function ScheduleWorkspace({
                     totalScheduledSeconds={dayMeta.totalScheduledSeconds}
                     healthCriticalCount={dayMeta.healthCriticalCount}
                     healthWarnCount={dayMeta.healthWarnCount}
+                    fallbackPolicyLabel={fallbackPolicyLabel}
+                    fallbackPolicyReady={fallbackPolicyReady}
                     actions={toolbarActions}
                 />
                 <ScheduleHealthPoller date={date} initial={healthInitial} />
@@ -292,6 +301,7 @@ export function ScheduleWorkspace({
                     onAdd={openAdd}
                     onDuplicate={handleDuplicate}
                     onArchive={handleArchive}
+                    fallbackPolicyReady={fallbackPolicyReady}
                 />
             </div>
             {editor}

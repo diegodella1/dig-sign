@@ -154,8 +154,8 @@ export function PlatesWorkspace({
                             ) : tab === 'all' && !slides.filter((s) => s.status !== 'archived').length ? (
                                 <>
                                     Start with a plate type via New plate, or configure{' '}
-                                    <Link href="/admin/prepare/gap-fill" className="font-semibold underline">
-                                        gap fill
+                                    <Link href="/admin/program/fallback" className="font-semibold underline">
+                                        fallback policy
                                     </Link>
                                     .
                                 </>
@@ -168,9 +168,9 @@ export function PlatesWorkspace({
             </section>
 
             <p className="text-center text-xs text-muted">
-                Gap fill carousel lives in{' '}
-                <Link href="/admin/prepare/gap-fill" className="font-semibold underline">
-                    Prepare → Gap fill
+                Plate rotation for fallback lives in{' '}
+                <Link href="/admin/program/fallback" className="font-semibold underline">
+                    Program → Fallback
                 </Link>
                 .
             </p>
@@ -267,6 +267,18 @@ function PlateCreatePanel({
                             />
                         </div>
                     </details>
+                    <label className="grid gap-1 text-xs font-semibold text-muted md:col-span-2">
+                        YouTube background URL (optional)
+                        <input
+                            name="youtube_url"
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            className="border border-line px-3 py-2 text-sm font-normal text-ink"
+                        />
+                        <span className="font-normal">
+                            Muted live/video background. Use a watch?v= or youtu.be link. Leave empty
+                            for gradient only.
+                        </span>
+                    </label>
                     <button className="btn-primary md:col-span-2">Create weather plate</button>
                 </form>
             ) : null}
@@ -383,6 +395,19 @@ function PlateListRow({
                     <option value="draft">Draft</option>
                     <option value="archived">Archived</option>
                 </select>
+                <label className="grid gap-1 text-xs font-semibold text-muted md:col-span-2">
+                    YouTube background URL (optional)
+                    <input
+                        name="youtube_url"
+                        defaultValue={weather.youtubeUrl}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        className="border border-line px-3 py-2 text-sm font-normal text-ink"
+                    />
+                    <span className="font-normal">
+                        Muted live/video background. Use a watch?v= or youtu.be link. Clear to use
+                        gradient only.
+                    </span>
+                </label>
                 <div className="flex gap-2 md:col-span-2">
                     <button className="btn-primary">Save</button>
                     <button type="button" className="btn-secondary" onClick={() => setEditing(false)}>
