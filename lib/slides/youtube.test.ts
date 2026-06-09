@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    getWeatherBackgroundVideo,
     getYouTubeSlideConfig,
     parseYouTubeVideoId,
+    weatherBackgroundMetadata,
+    youTubeBackgroundEmbedUrl,
     youTubeEmbedUrl,
     youtubeSlideMetadata,
 } from './youtube';
@@ -30,6 +33,66 @@ describe('youtube helpers', () => {
         expect(url).toContain('loop=1');
         expect(url).toContain('playlist=dQw4w9WgXcQ');
         expect(url).toContain('start=7');
+    });
+
+    it('builds background embed urls for muted live-style playback', () => {
+        const url = youTubeBackgroundEmbedUrl('dQw4w9WgXcQ');
+
+        expect(url).toContain('youtube-nocookie.com/embed/dQw4w9WgXcQ');
+        expect(url).toContain('mute=1');
+        expect(url).toContain('enablejsapi=1');
+        expect(url).not.toContain('loop=1');
+        expect(url).not.toContain('playlist=');
+    });
+
+    it('builds weather background metadata from valid urls', () => {
+        expect(
+            weatherBackgroundMetadata('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+        ).toEqual({
+            youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            youtubeVideoId: 'dQw4w9WgXcQ',
+            youtubeMuted: true,
+        });
+        expect(weatherBackgroundMetadata('')).toBeNull();
+        expect(weatherBackgroundMetadata('https://www.youtube.com/@channel/live')).toBeNull();
+    });
+
+    it('reads weather background video ids from weather plates only', () => {
+        expect(
+            getWeatherBackgroundVideo({
+                id: 'slide-weather-1',
+                title: 'Miami Weather',
+                slideType: 'template',
+                templateId: 'weather',
+                content: '',
+                imageUrl: null,
+                htmlContent: null,
+                defaultDurationSeconds: 30,
+                status: 'ready',
+                metadata: {
+                    youtubeUrl: 'https://youtu.be/dQw4w9WgXcQ',
+                    youtubeVideoId: 'dQw4w9WgXcQ',
+                },
+                createdAt: '2026-06-01T00:00:00.000Z',
+                updatedAt: '2026-06-01T00:00:00.000Z',
+            }),
+        ).toEqual({ videoId: 'dQw4w9WgXcQ' });
+        expect(
+            getWeatherBackgroundVideo({
+                id: 'slide-youtube-1',
+                title: 'YouTube',
+                slideType: 'html',
+                templateId: null,
+                content: null,
+                imageUrl: null,
+                htmlContent: null,
+                defaultDurationSeconds: 30,
+                status: 'ready',
+                metadata: { youtubeVideoId: 'dQw4w9WgXcQ' },
+                createdAt: '2026-06-01T00:00:00.000Z',
+                updatedAt: '2026-06-01T00:00:00.000Z',
+            }),
+        ).toBeNull();
     });
 
     it('reads youtube config from html slides metadata', () => {

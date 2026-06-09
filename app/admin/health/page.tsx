@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { adminSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { ActionHint, ClearStateBadge, Notice } from '@/components/ui';
 import { collectOperatorHealth, type OperatorHealthCheck } from '@/lib/health/health-checks';
@@ -14,8 +15,9 @@ export default async function AdminHealthPage() {
 
     return (
         <AdminShell
-            title="Admin Health"
-            description="Operator-visible readiness checks for production playout."
+            title="System health"
+            description="Preflight checks and Go Live Drill."
+            subNav={adminSubNav}
         >
             {failed ? (
                 <Notice tone="danger" title="Production blockers">
@@ -34,21 +36,32 @@ export default async function AdminHealthPage() {
             <section className="surface-panel overflow-hidden">
                 <div className="border-b border-line bg-panel-soft px-4 py-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h2 className="font-semibold">Readiness checklist</h2>
+                        <h2 className="font-semibold">Issues first</h2>
                         <p className="text-sm text-muted">
-                            {failed} failing · {degraded} degraded · {checks.length} checks · uptime{' '}
-                            {report.uptime}s
+                            {failed} failing · {degraded} degraded · {checks.length} total
                         </p>
                     </div>
-                    <p className="mt-1 text-sm text-muted">
-                        Green checks are fine. Yellow checks should be reviewed. Red checks block
-                        production.
-                    </p>
                 </div>
-                {checks.map((check) => (
-                    <HealthRow key={check.id} check={check} />
-                ))}
+                {checks
+                    .filter((check) => check.status !== 'ok')
+                    .map((check) => (
+                        <HealthRow key={check.id} check={check} />
+                    ))}
+                {!failed && !degraded ? (
+                    <p className="px-4 py-4 text-sm text-success-strong">All checks passing.</p>
+                ) : null}
             </section>
+
+            <details className="surface-panel mt-5 overflow-hidden">
+                <summary className="cursor-pointer border-b border-line bg-panel-soft px-4 py-3 font-semibold">
+                    Passing checks ({checks.filter((check) => check.status === 'ok').length})
+                </summary>
+                {checks
+                    .filter((check) => check.status === 'ok')
+                    .map((check) => (
+                        <HealthRow key={check.id} check={check} />
+                    ))}
+            </details>
 
             <section className="surface-panel mt-5 p-5">
                 <p className="eyebrow text-accent-positive">Go Live Drill</p>

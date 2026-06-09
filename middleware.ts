@@ -150,7 +150,7 @@ function rejectCrossSiteMutation(request: NextRequest) {
         return null;
     }
 
-    if (isLocalDevOrigin(origin) && isLocalDevOrigin(request.nextUrl.origin)) {
+    if (isLocalDevOrigin(origin) && isLocalDevRequest(request)) {
         return null;
     }
 
@@ -286,15 +286,17 @@ function shouldFailClosedForMissingAdminToken() {
 }
 
 function isLocalDevOrigin(value: string) {
-    if (process.env.NODE_ENV === 'production') {
-        return false;
-    }
-
     try {
-        const host = new URL(value).hostname;
-
-        return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+        return isLoopbackHostname(new URL(value).hostname);
     } catch {
         return false;
     }
+}
+
+function isLocalDevRequest(request: NextRequest) {
+    return isLoopbackHostname(request.nextUrl.hostname);
+}
+
+function isLoopbackHostname(hostname: string) {
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
 }

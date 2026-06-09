@@ -6,19 +6,10 @@ import { ScheduleWorkspace } from './schedule-workspace';
 import type { MediaAsset, ProgramBlock, ScheduleBundle, SlideAsset } from '@/lib/types';
 
 describe('ScheduleWorkspace', () => {
-    it('opens in rundown lens mode for an empty schedule', () => {
+    it('opens in rundown mode for an empty schedule', () => {
         renderWorkspace({ blocks: [] });
 
-        expect(screen.getByRole('heading', { name: 'Rundown' })).toBeInTheDocument();
-        expect(screen.getByText('Broadcast rundown')).toBeInTheDocument();
-        expect(
-            screen.getByText(
-                'Pick an open slot, then choose content. Short ads and promos stay readable even when they only run for seconds.',
-            ),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByText('Empty day. Click any time slot on the mini map to add a block.'),
-        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Add block' })).toBeInTheDocument();
         expect(screen.getByText('00')).toBeInTheDocument();
         expect(screen.getByText('23')).toBeInTheDocument();
         expect(screen.getAllByRole('button', { name: /Fallback gap/i }).length).toBeGreaterThan(0);
@@ -83,7 +74,7 @@ describe('ScheduleWorkspace', () => {
     it('offers human duration presets for short ads and long shows', () => {
         renderWorkspace({ blocks: [] });
 
-        fireEvent.click(screen.getAllByRole('button', { name: 'Add Block' })[0]!);
+        fireEvent.click(screen.getByRole('button', { name: 'Add block' }));
         fireEvent.click(screen.getByRole('button', { name: '2h' }));
 
         expect(
@@ -96,25 +87,22 @@ describe('ScheduleWorkspace', () => {
         ).toBeEnabled();
     });
 
-    it('keeps rundown controls available for existing blocks', () => {
+    it('shows inline rundown actions for existing blocks', () => {
         renderWorkspace({ blocks: [block] });
 
-        expect(screen.getByText('Rundown Controls')).toBeInTheDocument();
         expect(screen.getAllByText('A').length).toBeGreaterThan(0);
-        expect(screen.getByRole('button', { name: 'Edit A' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Duplicate A' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Drag A' })).toBeInTheDocument();
+        expect(screen.queryByText('Rundown Controls')).not.toBeInTheDocument();
     });
 
-    it('highlights and announces the newly created block', () => {
+    it('highlights and scrolls to the newly created block', () => {
         Element.prototype.scrollIntoView = vi.fn();
         renderWorkspace({ blocks: [block], createdBlockId: block.id });
 
-        expect(screen.getByText('Block Added')).toBeInTheDocument();
         expect(screen.getAllByText(/01:00 SF → 01:15 SF/).length).toBeGreaterThan(0);
         expect(screen.getAllByText('15 min').length).toBeGreaterThan(0);
         expect(screen.getByText('New')).toBeInTheDocument();
-        expect(
-            screen.getAllByRole('button', { name: 'New block: A, 01:00 SF → 01:15 SF' }).length,
-        ).toBeGreaterThan(0);
         expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
     });
 
@@ -126,20 +114,20 @@ describe('ScheduleWorkspace', () => {
         window.location.hash = '#add-block';
         fireEvent(window, new HashChangeEvent('hashchange'));
 
-        expect(screen.getByRole('heading', { name: 'Add content to the day' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Add block' })).toBeInTheDocument();
     });
 
-    it('shows bulk card loop controls for ready slides', () => {
+    it('opens loop builder modal for ready slides', () => {
         renderWorkspace({ blocks: [] });
 
-        expect(screen.getByText('Loop Builder / Fallback Carousel')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Create scheduled loop' })).toBeEnabled();
-        expect(screen.getByRole('button', { name: 'Set fallback only' })).toBeEnabled();
-        expect(screen.getByRole('button', { name: 'Create loop + set fallback' })).toBeEnabled();
+        fireEvent.click(screen.getByRole('button', { name: 'Fill range with plates' }));
+
+        expect(screen.getByRole('heading', { name: 'Fill range with plates' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Create timed loop' })).toBeEnabled();
 
         fireEvent.click(screen.getByRole('button', { name: 'Add card' }));
 
-        expect(screen.getAllByLabelText('Card')).toHaveLength(2);
+        expect(screen.getAllByLabelText('Plate')).toHaveLength(2);
     });
 });
 
@@ -158,6 +146,26 @@ function renderWorkspace({
             date="2026-05-08"
             schedule={schedule}
             blocks={blocks}
+            dayMeta={{
+                timezone: 'America/Los_Angeles',
+                dayStatus: 'draft',
+                readyBlocks: blocks.filter(
+                    (entry) => entry.status === 'ready' || entry.status === 'active',
+                ).length,
+                totalBlocks: blocks.length,
+                totalScheduledSeconds: blocks.reduce(
+                    (total, entry) => total + entry.durationSeconds,
+                    0,
+                ),
+                healthCriticalCount: 0,
+                healthWarnCount: 0,
+            }}
+            healthInitial={{
+                generatedAt: '2026-05-08T00:00:00.000Z',
+                criticalCount: 0,
+                warnCount: 0,
+                issues: [],
+            }}
             createAction={vi.fn()}
             updateAction={vi.fn()}
             reorderAction={vi.fn()}
@@ -178,17 +186,25 @@ const asset: MediaAsset = {
     mediaKind: 'video',
     assetType: 'video',
     url: 'https://example.com/video.mp4',
-    storagePath: null,
-    durationSeconds: 60,
-    status: 'ready',
     thumbnailUrl: null,
-    vimeoId: null,
-    vimeoUri: null,
-    playbackReadinessStatus: 'ready',
-    playbackError: null,
+    durationSeconds: 900,
+    status: 'ready',
     lifecycleState: 'reviewed',
-    createdAt: '',
-    updatedAt: '',
+    vimeoId: null,
+    metadata: {},
+    createdAt: '2026-05-08T00:00:00.000Z',
+    updatedAt: '2026-05-08T00:00:00.000Z',
+};
+
+const slide: SlideAsset = {
+    id: 'slide-1',
+    title: 'Markets',
+    slideType: 'template',
+    templateId: 'metals',
+    defaultDurationSeconds: 30,
+    status: 'ready',
+    createdAt: '2026-05-08T00:00:00.000Z',
+    updatedAt: '2026-05-08T00:00:00.000Z',
 };
 
 const block: ProgramBlock = {
@@ -207,8 +223,8 @@ const block: ProgramBlock = {
     fallbackAssetId: null,
     notes: null,
     metadata: {},
-    createdAt: '',
-    updatedAt: '',
+    createdAt: '2026-05-08T00:00:00.000Z',
+    updatedAt: '2026-05-08T00:00:00.000Z',
 };
 
 const baseSchedule: ScheduleBundle = {
@@ -217,29 +233,11 @@ const baseSchedule: ScheduleBundle = {
         airDate: '2026-05-08',
         timezone: 'America/Los_Angeles',
         status: 'draft',
-        title: 'Programming 2026-05-08',
-        notes: null,
-        fallbackAssetId: null,
-        createdAt: '',
-        updatedAt: '',
+        createdAt: '2026-05-08T00:00:00.000Z',
+        updatedAt: '2026-05-08T00:00:00.000Z',
     },
     blocks: [],
     layers: [],
     mediaAssets: [asset],
-    slideAssets: [
-        {
-            id: 'slide-1',
-            title: 'Markets Card',
-            slideType: 'template',
-            content: null,
-            imageUrl: null,
-            htmlContent: null,
-            templateId: 'markets',
-            defaultDurationSeconds: 30,
-            status: 'ready',
-            metadata: null,
-            createdAt: '',
-            updatedAt: '',
-        } satisfies SlideAsset,
-    ],
+    slideAssets: [slide],
 };

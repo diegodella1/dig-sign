@@ -58,7 +58,7 @@ export async function MediaUploadForm({
                         className="border border-line px-3 py-2 text-sm font-normal text-ink"
                     />
                 </Field>
-                <Field label="Category" hint="You can change this later from the Library row.">
+                <Field label="Category" hint="You can change this later from the Media row.">
                     <select
                         name="asset_type"
                         className="border border-line px-3 py-2 text-sm font-normal text-ink"

@@ -302,56 +302,6 @@ async function clearOtherFallbackLoops(activeAssetId: string): Promise<Result<vo
     }
 }
 
-export async function setAssetFallbackTagged(input: {
-    id: string;
-    tagged: boolean;
-}): Promise<Result<void>> {
-    try {
-        if (!input.id) {
-            return err('Asset missing');
-        }
-
-        const db = await getDb();
-        const [current] = await db
-            .select({ metadata: mediaAssets.metadata })
-            .from(mediaAssets)
-            .where(eq(mediaAssets.id, input.id))
-            .limit(1);
-
-        if (!current) {
-            return err('Asset not found');
-        }
-
-        const existing =
-            current.metadata && typeof current.metadata === 'object'
-                ? { ...(current.metadata as Record<string, unknown>) }
-                : {};
-        const metadata: Record<string, unknown> = { ...existing, fallback_tagged: input.tagged };
-
-        await auditedMutation(
-            {
-                action: 'media_asset.fallback_tagged',
-                entityType: 'media_assets',
-                entityId: input.id,
-                previous: { fallback_tagged: existing.fallback_tagged ?? null },
-                next: { fallback_tagged: input.tagged },
-            },
-            async () => {
-                await db
-                    .update(mediaAssets)
-                    .set({ metadata, updatedAt: new Date().toISOString() })
-                    .where(eq(mediaAssets.id, input.id));
-            },
-        );
-        revalidatePath('/admin/assets');
-        revalidatePath('/admin/output');
-
-        return ok(undefined);
-    } catch (error) {
-        return err(extractError(error));
-    }
-}
-
 export async function deleteMediaAsset(input: {
     id: string;
     force?: boolean;

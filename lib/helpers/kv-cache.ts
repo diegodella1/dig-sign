@@ -57,7 +57,9 @@ export async function withKvCache<T>(
     const fresh = await fetcher();
 
     try {
-        await kv.put(key, JSON.stringify(fresh), { expirationTtl: ttlSeconds });
+        await kv.put(key, JSON.stringify(fresh), {
+            expirationTtl: Math.max(60, ttlSeconds),
+        });
     } catch (error) {
         console.warn(`[kv-cache] write failed for "${key}"`, error);
     }

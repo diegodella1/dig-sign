@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { adminSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { CsrfInput } from '@/components/forms/csrf-input';
 import { FormHeader, MetricTile, Notice } from '@/components/ui';
@@ -37,8 +38,9 @@ export default async function SettingsPage({
 
     return (
         <AdminShell
-            title="Integrations"
-            description="Credentials, operating timezone, and integration health."
+            title="Admin"
+            description="Integrations, operators, and system configuration."
+            subNav={adminSubNav}
             actions={
                 <Link className="btn-primary" href="/admin/vimeo">
                     Open Vimeo Sync

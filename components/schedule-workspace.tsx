@@ -8,32 +8,49 @@ import {
     type DragEndEvent,
 } from '@dnd-kit/core';
 import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { Plus } from 'lucide-react';
+import { Plus, Repeat } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 
 import { analyzeSchedule } from '@/lib/scheduling/schedule-health';
 import { formatTimecode } from '@/lib/helpers/time';
 import type { ProgramBlock, ScheduleBundle } from '@/lib/types';
+import type { ScheduleIssue } from '@/lib/scheduling/schedule-health';
 
-import { BulkCardLoopPanel } from './schedule/schedule-bulk-loop';
 import { CalendarScheduleView } from './schedule/schedule-calendar';
 import { BlockDrawer } from './schedule/schedule-drawer';
+import { ScheduleDayToolbar } from './schedule/schedule-day-toolbar';
+import { ScheduleHealthPoller } from './schedule/schedule-health-poller';
 import {
-    blockAssetLabel,
     buildContentOptions,
     type DrawerMode,
-    formatDurationLabel,
-    formatScheduleDate,
     type InitialContentFilters,
 } from './schedule/helpers';
-import { RundownControls } from './schedule/schedule-rundown';
-import { TimelineSummary } from './schedule/schedule-timeline-summary';
+import { LoopBuilderModal } from './schedule/schedule-loop-builder-modal';
+
+type ScheduleDayMeta = {
+    timezone: string;
+    dayStatus: string;
+    readyBlocks: number;
+    totalBlocks: number;
+    totalScheduledSeconds: number;
+    healthCriticalCount: number;
+    healthWarnCount: number;
+};
+
+type ScheduleHealthInitial = {
+    generatedAt: string;
+    criticalCount: number;
+    warnCount: number;
+    issues: ScheduleIssue[];
+};
 
 type ScheduleWorkspaceProps = {
     date: string;
     schedule: ScheduleBundle;
     blocks: ProgramBlock[];
+    dayMeta: ScheduleDayMeta;
+    healthInitial: ScheduleHealthInitial;
     createAction: (formData: FormData) => Promise<void>;
     updateAction: (formData: FormData) => Promise<void>;
     reorderAction: (input: { orderedBlockIds: string[] }) => Promise<void>;
@@ -45,12 +62,16 @@ type ScheduleWorkspaceProps = {
     initialFilters?: InitialContentFilters | undefined;
     createdBlockId?: string | undefined;
     initialMessage?: string | undefined;
+    fallbackPolicyReady?: boolean;
+    fallbackPolicyLabel?: string;
 };
 
 export function ScheduleWorkspace({
     date,
     schedule,
     blocks,
+    dayMeta,
+    healthInitial,
     createAction,
     updateAction,
     reorderAction,
@@ -62,6 +83,8 @@ export function ScheduleWorkspace({
     initialFilters,
     createdBlockId,
     initialMessage,
+    fallbackPolicyReady = false,
+    fallbackPolicyLabel = 'Not ready',
 }: ScheduleWorkspaceProps) {
     const activeBlocks = useMemo(
         () => blocks.filter((block) => block.status !== 'archived'),
@@ -79,6 +102,7 @@ export function ScheduleWorkspace({
         createdBlock?.id ?? activeBlocks[0]?.id ?? '',
     );
     const [drawerOpen, setDrawerOpen] = useState(Boolean(initialOption));
+    const [loopBuilderOpen, setLoopBuilderOpen] = useState(false);
     const [message, setMessage] = useState<string | null>(initialMessage ?? null);
     const [pendingStartTime, setPendingStartTime] = useState<string | null>(null);
     const [pendingDurationSeconds, setPendingDurationSeconds] = useState<number | null>(null);
@@ -103,8 +127,11 @@ export function ScheduleWorkspace({
         .filter(Boolean) as ProgramBlock[];
     const selectedBlock = blockById.get(selectedBlockId) ?? orderedBlocks[0] ?? null;
     const health = useMemo(
-        () => analyzeSchedule(schedule, orderedBlocks),
-        [orderedBlocks, schedule],
+        () =>
+            analyzeSchedule(schedule, orderedBlocks, {
+                fallbackPolicyReady,
+            }),
+        [fallbackPolicyReady, orderedBlocks, schedule],
     );
 
     const openAdd = useCallback((startSeconds?: number, durationSeconds?: number) => {
@@ -128,6 +155,10 @@ export function ScheduleWorkspace({
             if (window.location.hash === '#add-block') {
                 openAdd();
             }
+
+            if (window.location.hash === '#bulk-cards') {
+                setLoopBuilderOpen(true);
+            }
         }
 
         openFromHash();
@@ -145,7 +176,7 @@ export function ScheduleWorkspace({
         if (!element) {
             return;
         }
-        element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         window.setTimeout(() => element.focus({ preventScroll: true }), 250);
     }, [createdBlock]);
 
@@ -171,24 +202,6 @@ export function ScheduleWorkspace({
             }
             const oldIndex = displayOrderedIds.indexOf(String(active.id));
             const newIndex = displayOrderedIds.indexOf(String(over.id));
-            const nextIds = arrayMove(displayOrderedIds, oldIndex, newIndex);
-            run(
-                () => reorderAction({ orderedBlockIds: nextIds }),
-                () => setOrderedIds(nextIds),
-            );
-        },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [displayOrderedIds, reorderAction],
-    );
-
-    const moveByButton = useCallback(
-        (id: string, delta: number) => {
-            const oldIndex = displayOrderedIds.indexOf(id);
-            const newIndex = oldIndex + delta;
-
-            if (newIndex < 0 || newIndex >= displayOrderedIds.length) {
-                return;
-            }
             const nextIds = arrayMove(displayOrderedIds, oldIndex, newIndex);
             run(
                 () => reorderAction({ orderedBlockIds: nextIds }),
@@ -234,34 +247,45 @@ export function ScheduleWorkspace({
         </BlockEditorModal>
     ) : null;
 
+    const toolbarActions = (
+        <>
+            <button className="btn-primary gap-1.5 px-3 py-1.5 text-sm" type="button" onClick={() => openAdd()}>
+                <Plus size={15} aria-hidden="true" />
+                Add block
+            </button>
+            <button
+                type="button"
+                className="btn-secondary gap-1.5 px-3 py-1.5 text-sm"
+                onClick={() => setLoopBuilderOpen(true)}
+            >
+                <Repeat size={15} aria-hidden="true" />
+                Fill range with plates
+            </button>
+        </>
+    );
+
     return (
-        <section id="add-block" className="mb-5 grid min-w-0 grid-cols-1 gap-5">
+        <section id="add-block" className="min-w-0">
             <div className="surface-panel min-w-0 overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
-                    <div>
-                        <p className="eyebrow">Day Planner</p>
-                        <h2 className="mt-1 text-xl font-semibold">Rundown</h2>
-                        <p className="mt-1 text-sm text-muted">
-                            {formatScheduleDate(date, schedule.day?.timezone)} ·{' '}
-                            {schedule.day?.timezone ?? 'Schedule timezone'}
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <button className="btn-primary" type="button" onClick={() => openAdd()}>
-                            <Plus size={16} aria-hidden="true" />
-                            Add Block
-                        </button>
-                    </div>
-                </div>
+                <ScheduleDayToolbar
+                    date={date}
+                    timezone={dayMeta.timezone}
+                    dayStatus={dayMeta.dayStatus}
+                    readyBlocks={dayMeta.readyBlocks}
+                    totalBlocks={dayMeta.totalBlocks}
+                    totalScheduledSeconds={dayMeta.totalScheduledSeconds}
+                    healthCriticalCount={dayMeta.healthCriticalCount}
+                    healthWarnCount={dayMeta.healthWarnCount}
+                    fallbackPolicyLabel={fallbackPolicyLabel}
+                    fallbackPolicyReady={fallbackPolicyReady}
+                    actions={toolbarActions}
+                />
+                <ScheduleHealthPoller date={date} initial={healthInitial} />
                 {message ? (
-                    <div className="border-b border-danger-line bg-danger-soft px-4 py-3 text-sm font-semibold text-danger-strong">
+                    <div className="border-b border-danger-line bg-danger-soft px-4 py-2 text-sm font-semibold text-danger-strong">
                         {message}
                     </div>
                 ) : null}
-                {createdBlock ? (
-                    <CreatedBlockNotice date={date} schedule={schedule} block={createdBlock} />
-                ) : null}
-                <TimelineSummary schedule={schedule} blocks={orderedBlocks} health={health} />
                 <CalendarScheduleView
                     date={date}
                     schedule={schedule}
@@ -269,27 +293,24 @@ export function ScheduleWorkspace({
                     issues={health.issues}
                     selectedBlockId={drawerOpen && drawerMode === 'edit' ? selectedBlockId : ''}
                     createdBlockId={createdBlock?.id ?? ''}
+                    disabled={isPending}
+                    sortableBlockIds={displayOrderedIds}
+                    sensors={sensors}
+                    onDragEnd={onDragEnd}
                     onSelect={openEdit}
                     onAdd={openAdd}
+                    onDuplicate={handleDuplicate}
+                    onArchive={handleArchive}
+                    fallbackPolicyReady={fallbackPolicyReady}
                 />
-                <BulkCardLoopPanel schedule={schedule} action={bulkCreateAction} />
             </div>
-
-            <RundownControls
-                date={date}
-                schedule={schedule}
-                blocks={orderedBlocks}
-                selectedBlockId={drawerOpen && drawerMode === 'edit' ? selectedBlockId : ''}
-                disabled={isPending}
-                sensors={sensors}
-                displayOrderedIds={displayOrderedIds}
-                onDragEnd={onDragEnd}
-                onSelect={openEdit}
-                onMoveByButton={moveByButton}
-                onDuplicate={handleDuplicate}
-                onArchive={handleArchive}
-            />
             {editor}
+            <LoopBuilderModal
+                schedule={schedule}
+                action={bulkCreateAction}
+                open={loopBuilderOpen}
+                onClose={() => setLoopBuilderOpen(false)}
+            />
         </section>
     );
 }
@@ -307,43 +328,6 @@ function BlockEditorModal({ children, onClose }: { children: ReactNode; onClose:
         >
             <div className="w-full max-w-xl" role="dialog" aria-modal="true">
                 {children}
-            </div>
-        </div>
-    );
-}
-
-type CreatedBlockNoticeProps = {
-    date: string;
-    schedule: ScheduleBundle;
-    block: ProgramBlock;
-};
-
-function CreatedBlockNotice({ date, schedule, block }: CreatedBlockNoticeProps) {
-    const blockRange = `${formatTimecode(block.startTimeSeconds)} → ${formatTimecode(
-        Math.min(86400, block.startTimeSeconds + block.durationSeconds),
-    )}`;
-    const durationLabel = formatDurationLabel(block.durationSeconds);
-    const assetLabel = blockAssetLabel(schedule, block);
-
-    return (
-        <div
-            aria-live="polite"
-            className="border-b border-accent-positive bg-surface-selected-positive px-4 py-3 text-sm text-accent-positive"
-        >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase">Block Added</p>
-                    <p className="mt-1 truncate font-semibold text-ink">{block.title}</p>
-                    <p className="mt-0.5 text-xs text-muted">
-                        {blockRange} · {durationLabel} · {assetLabel}
-                    </p>
-                </div>
-                <a
-                    className="btn-secondary min-h-8 px-2"
-                    href={`/admin/schedule/${date}/blocks/${block.id}`}
-                >
-                    Advanced Settings
-                </a>
             </div>
         </div>
     );

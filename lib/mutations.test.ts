@@ -1702,6 +1702,72 @@ describe('weather plate mutations', () => {
         await resetMocks();
     });
 
+    it('creates weather plates with optional youtube background metadata', async () => {
+        const result = await createWeatherPlate({
+            title: 'Miami Weather',
+            locationName: 'Miami',
+            lat: 25.7617,
+            lon: -80.1918,
+            youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            defaultDurationSeconds: 45,
+            status: 'ready',
+        });
+
+        expect(result).toEqual({ success: true, data: undefined });
+        expect(drizzleMock.values).toHaveBeenCalledWith(
+            expect.objectContaining({
+                metadata: {
+                    weatherLocationName: 'Miami',
+                    weatherLat: 25.7617,
+                    weatherLon: -80.1918,
+                    youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                    youtubeVideoId: 'dQw4w9WgXcQ',
+                    youtubeMuted: true,
+                },
+            }),
+        );
+    });
+
+    it('rejects weather plates with invalid youtube urls', async () => {
+        const result = await createWeatherPlate({
+            title: 'Bad Weather',
+            locationName: 'Miami',
+            lat: 25.7617,
+            lon: -80.1918,
+            youtubeUrl: 'https://www.youtube.com/@channel/live',
+        });
+
+        expect(result).toEqual({
+            success: false,
+            error: 'Invalid YouTube URL. Use a watch?v= or youtu.be link.',
+        });
+        expect(drizzleMock.values).not.toHaveBeenCalled();
+    });
+
+    it('clears youtube metadata when weather plate url is empty on update', async () => {
+        const result = await updateWeatherPlate({
+            slideId: 'slide-weather-1',
+            title: 'Madrid Weather',
+            locationName: 'Madrid',
+            lat: 40.4168,
+            lon: -3.7038,
+            youtubeUrl: '',
+            defaultDurationSeconds: 30,
+            status: 'draft',
+        });
+
+        expect(result).toEqual({ success: true, data: undefined });
+        expect(drizzleMock.set).toHaveBeenCalledWith(
+            expect.objectContaining({
+                metadata: {
+                    weatherLocationName: 'Madrid',
+                    weatherLat: 40.4168,
+                    weatherLon: -3.7038,
+                },
+            }),
+        );
+    });
+
     it('creates weather plates with city coordinates in metadata', async () => {
         const result = await createWeatherPlate({
             title: 'Miami Weather',

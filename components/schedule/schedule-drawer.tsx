@@ -240,18 +240,10 @@ export function BlockDrawer({
 
     return (
         <section className="surface-panel max-h-[calc(100vh-2rem)] overflow-y-auto">
-            <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
-                <div>
-                    <p className="eyebrow">{mode === 'add' ? 'Add Block' : 'Edit Block'}</p>
-                    <h2 className="mt-1 text-lg font-semibold">
-                        {mode === 'add' ? 'Add content to the day' : block?.title}
-                    </h2>
-                    <p className="mt-1 text-xs text-muted">
-                        {mode === 'add'
-                            ? 'Choose what plays, when it starts, and confirm what happens next.'
-                            : 'Change what plays, when it starts, or how long it stays on air.'}
-                    </p>
-                </div>
+            <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+                <h2 className="text-base font-semibold">
+                    {mode === 'add' ? 'Add block' : block?.title ?? 'Edit block'}
+                </h2>
                 <button
                     type="button"
                     onClick={onClose}
@@ -285,21 +277,9 @@ export function BlockDrawer({
                     value={previouslyRecordedPosition}
                 />
 
-                <div className="rounded-md border border-line bg-panel-soft px-3 py-2">
-                    <p className="text-[10px] font-bold uppercase text-muted">Clock time · 24 h</p>
-                    <p className="mt-1 text-sm font-semibold tabular-nums">
-                        {formatPlayoutTimeLabel(startSeconds, true)} to{' '}
-                        {formatPlayoutTimeLabel(endSeconds, true)}
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted">
-                        These are real clock times in 24-hour format, not video timecode.
-                    </p>
-                    {initialDurationSeconds ? (
-                        <p className="mt-0.5 text-xs text-muted">
-                            Selected clock range length:{' '}
-                            {formatDurationInput(initialDurationSeconds)}
-                        </p>
-                    ) : null}
+                <div className="rounded-md border border-line bg-panel-soft px-3 py-2 text-sm tabular-nums">
+                    {formatPlayoutTimeLabel(startSeconds, true)} –{' '}
+                    {formatPlayoutTimeLabel(endSeconds, true)}
                 </div>
 
                 <p className="text-[10px] font-bold uppercase text-muted">What plays</p>

@@ -62,10 +62,5 @@ export function ScheduleImpactPreview({
         );
     }
 
-    return (
-        <div className="rounded-md border border-success-line bg-success-soft px-3 py-2 text-sm text-success-strong">
-            <p className="text-[10px] font-bold uppercase">Impact</p>
-            <p className="mt-1 font-semibold">Fits in the selected time.</p>
-        </div>
-    );
+    return null;
 }

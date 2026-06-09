@@ -1,9 +1,15 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { WeatherSlide } from './WeatherSlide';
 
 import type { WeatherSlideData } from '@/lib/slides/types';
+
+vi.mock('./YouTubeBackgroundPlayer', () => ({
+    YouTubeBackgroundPlayer: ({ videoId }: { videoId: string }) => (
+        <div data-testid="youtube-background-player">{videoId}</div>
+    ),
+}));
 
 const baseData: WeatherSlideData = {
     available: true,
@@ -35,6 +41,19 @@ describe('WeatherSlide', () => {
         expect(screen.getByText('Scattered Clouds')).toBeInTheDocument();
         expect(screen.getByText('Feels Like')).toBeInTheDocument();
         expect(screen.getByText('Rain 10%')).toBeInTheDocument();
+    });
+
+    it('mounts the youtube background player when configured', () => {
+        render(
+            <WeatherSlide
+                data={{
+                    ...baseData,
+                    backgroundVideo: { videoId: 'dQw4w9WgXcQ' },
+                }}
+            />,
+        );
+
+        expect(screen.getByTestId('youtube-background-player')).toHaveTextContent('dQw4w9WgXcQ');
     });
 
     it('renders an unavailable state when weather is not configured', () => {

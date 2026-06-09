@@ -1,9 +1,9 @@
-import { Film, Link as LinkIcon, UploadCloud } from 'lucide-react';
-import { redirect } from 'next/navigation';
+import { Link as LinkIcon, UploadCloud } from 'lucide-react';
+import Link from 'next/link';
 
+import { prepareSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { ConfirmSubmitButton } from '@/components/forms/confirm-submit-button';
-import { CsrfInput } from '@/components/forms/csrf-input';
 import { MediaUploadForm } from '@/components/media/media-upload-form';
 import { StatusPill } from '@/components/ui/status-pill';
 import {
@@ -15,30 +15,16 @@ import {
     FormHeader,
     Notice,
 } from '@/components/ui';
-import { getAssets, getSlides } from '@/lib/data';
-import { fallbackCarouselDisplayName, getGlobalFallbackCarousel } from '@/lib/fallback-carousel';
-import { listFallbackOptions } from '@/lib/fallback-active';
-import {
-    clearActiveFallback,
-    createMediaAsset,
-    deleteMediaAsset,
-    setActiveFallback,
-    setAssetFallbackTagged,
-    updateMediaAsset,
-} from '@/lib/mutations';
-import { slidePreviewHref } from '@/lib/helpers/slide-preview';
+import { getAssets } from '@/lib/data';
+import { createMediaAsset, deleteMediaAsset, updateMediaAsset } from '@/lib/mutations';
 import { isoDateInTimezone, PLAYOUT_TIMEZONE } from '@/lib/helpers/time';
-import { isFallbackTagged } from '@/lib/scheduling/fallback';
 
-import type { FallbackOption } from '@/lib/fallback-active';
-import type { MediaAsset, SlideAsset } from '@/lib/types';
+import type { MediaAsset } from '@/lib/types';
 import type { ReactNode } from 'react';
 
 export const dynamic = 'force-dynamic';
 
-type LibraryItem =
-    | { kind: 'asset'; id: string; title: string; asset: MediaAsset }
-    | { kind: 'slide'; id: string; title: string; slide: SlideAsset };
+type LibraryItem = { kind: 'asset'; id: string; title: string; asset: MediaAsset };
 
 export default async function AssetsPage({
     searchParams,
@@ -57,33 +43,16 @@ export default async function AssetsPage({
         imported?: string;
         playback?: string;
         count?: string;
-        fallback_loop?: string;
-        fallback_tagged?: string;
-        fallback_active?: string;
-        fallback_clear?: string;
     }>;
 }) {
     const params = await searchParams;
-    const [assets, slides, fallbackCarousel, fallbackOptions] = await Promise.all([
-        getAssets(),
-        getSlides(),
-        getGlobalFallbackCarousel(),
-        listFallbackOptions(),
-    ]);
-    const libraryItems: LibraryItem[] = [
-        ...assets.map((asset) => ({
-            kind: 'asset' as const,
-            id: asset.id,
-            title: asset.title,
-            asset,
-        })),
-        ...slides.map((slide) => ({
-            kind: 'slide' as const,
-            id: slide.id,
-            title: slide.title,
-            slide,
-        })),
-    ];
+    const assets = await getAssets();
+    const libraryItems: LibraryItem[] = assets.map((asset) => ({
+        kind: 'asset' as const,
+        id: asset.id,
+        title: asset.title,
+        asset,
+    }));
     const today = isoDateInTimezone(new Date(), PLAYOUT_TIMEZONE);
     const query = (params.q ?? '').trim().toLowerCase();
     const filteredItems = libraryItems
@@ -92,9 +61,6 @@ export default async function AssetsPage({
                 return false;
             }
 
-            if (item.kind === 'slide') {
-                return slideMatchesFilters(item.slide, params, query);
-            }
             const asset = item.asset;
 
             if (params.kind === 'slides' || params.kind === 'slide') {
@@ -204,13 +170,8 @@ export default async function AssetsPage({
     const pageStart = (currentPage - 1) * pageSize;
     const pageEnd = pageStart + pageSize;
     const paginatedItems = filteredItems.slice(pageStart, pageEnd);
-    const readyCount =
-        assets.filter((asset) => asset.status === 'ready').length +
-        slides.filter((slide) => slide.status === 'ready').length;
+    const readyCount = assets.filter((asset) => asset.status === 'ready').length;
     const attentionCount = libraryItems.filter(libraryItemNeedsAttention).length;
-    const fallbackLoopAsset = assets.find(fallbackLoopEnabled) ?? null;
-    const fallbackTitle =
-        fallbackCarouselDisplayName(fallbackCarousel) ?? fallbackLoopAsset?.title ?? null;
     async function addAsset(formData: FormData) {
         'use server';
         const durationSeconds = Number(formData.get('duration_seconds') || 0) || undefined;
@@ -243,7 +204,6 @@ export default async function AssetsPage({
             status: String(formData.get('status')),
             lifecycleState: String(formData.get('lifecycle_state') || 'reviewed'),
             orientation: String(formData.get('orientation') || 'auto'),
-            fallbackLoop: formData.get('fallback_loop') === 'on',
         });
 
         if (!result.success) {
@@ -261,88 +221,26 @@ export default async function AssetsPage({
             throw new Error(result.error);
         }
     }
-    async function setFallbackLoop(formData: FormData) {
-        'use server';
-        const id = String(formData.get('id'));
-        const asset = (await getAssets()).find((item) => item.id === id);
-
-        if (!asset) {
-            throw new Error('Asset not found');
-        }
-        const result = await updateMediaAsset({
-            id: asset.id,
-            title: asset.title,
-            description: asset.description ?? '',
-            sourceType: asset.sourceType,
-            mediaKind: asset.mediaKind,
-            assetType: asset.assetType,
-            url: asset.url ?? '',
-            thumbnailUrl: asset.thumbnailUrl ?? '',
-            ...(asset.durationSeconds ? { durationSeconds: asset.durationSeconds } : {}),
-            status: asset.status,
-            lifecycleState: lifecycleState(asset),
-            orientation: String(asset.metadata?.orientation || 'auto'),
-            fallbackLoop: true,
-        });
-
-        if (!result.success) {
-            throw new Error(result.error);
-        }
-        redirect('/admin/assets?kind=fallback&fallback_loop=1');
-    }
-    async function toggleFallbackTagged(formData: FormData) {
-        'use server';
-        const id = String(formData.get('id'));
-        const currentlyTagged = formData.get('currently_tagged') === '1';
-        const result = await setAssetFallbackTagged({ id, tagged: !currentlyTagged });
-
-        if (!result.success) {
-            throw new Error(result.error);
-        }
-        redirect('/admin/assets?fallback_tagged=1');
-    }
-    async function setActive(formData: FormData) {
-        'use server';
-        const kind = String(formData.get('kind'));
-        const id = String(formData.get('id'));
-
-        if (kind !== 'asset' && kind !== 'carousel') {
-            throw new Error('Invalid fallback kind');
-        }
-        const result = await setActiveFallback({ kind, id });
-
-        if (!result.success) {
-            throw new Error(result.error);
-        }
-        redirect('/admin/assets?fallback_active=1');
-    }
-    async function clearActive() {
-        'use server';
-        const result = await clearActiveFallback();
-
-        if (!result.success) {
-            throw new Error(result.error);
-        }
-        redirect('/admin/assets?fallback_clear=1');
-    }
 
     return (
         <AdminShell
-            title="Library"
-            description="Add and verify the content operators can place on Schedule."
+            title="Media library"
+            description="Upload and verify playable video, image and audio files."
+            subNav={prepareSubNav}
             actions={
-                <a className="btn-primary" href="/admin/vimeo">
-                    Import Vimeo
-                </a>
+                <>
+                    <ButtonLink href="/admin/program/fallback" variant="secondary">
+                        Fallback policy
+                    </ButtonLink>
+                    <a className="btn-primary" href="/admin/vimeo">
+                        Import Vimeo
+                    </a>
+                </>
             }
         >
             {params.uploaded ? (
                 <Notice tone="ok">Media uploaded and saved as an asset.</Notice>
             ) : null}
-            {params.fallback_loop ? <Notice tone="ok">Silent fallback loop updated.</Notice> : null}
-            {params.fallback_tagged ? <Notice tone="ok">Fallback tag updated.</Notice> : null}
-            {params.fallback_active ? <Notice tone="ok">Active fallback set.</Notice> : null}
-            {params.fallback_clear ? <Notice tone="ok">Active fallback cleared.</Notice> : null}
             {params.imported ? (
                 <Notice tone={params.playback === 'failed' ? 'warn' : 'ok'} title="Vimeo imported">
                     {params.count ?? '1'} episode added to the library.
@@ -357,71 +255,41 @@ export default async function AssetsPage({
                 total={libraryItems.length}
                 ready={readyCount}
                 attention={attentionCount}
-                fallbackTitle={fallbackTitle}
                 today={today}
             />
 
             <details className="surface-panel mb-4 overflow-hidden">
                 <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
-                    Add/import content
+                    Upload media
                 </summary>
-                <div className="grid gap-4 border-t border-line p-4 xl:grid-cols-[1.05fr_1fr]">
-                    <section className="rounded-md border border-accent-positive bg-surface p-4">
-                        <div className="flex items-start gap-3">
-                            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-accent-positive text-surface-elevated-1">
-                                <Film size={19} aria-hidden="true" />
+                <div className="grid gap-4 border-t border-line p-4 xl:grid-cols-[1fr_1fr]">
+                    <section className="rounded-md border border-line bg-surface p-4">
+                        <div className="mb-4 flex items-start gap-3">
+                            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-panel-soft text-muted">
+                                <UploadCloud size={19} aria-hidden="true" />
                             </span>
                             <FormHeader
-                                title="Import Vimeo episode"
-                                detail="Recommended for shows. Paste a Vimeo URL or ID; the episode is added to Library Videos and playback is verified for browser output."
+                                title="Upload file"
+                                detail="Use for local videos, images and MP3 music. Metadata is checked before the asset is saved."
                             />
                         </div>
-                        <form
-                            action="/api/vimeo/import"
-                            method="post"
-                            className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_190px]"
-                        >
-                            <CsrfInput />
-                            <input
-                                type="hidden"
-                                name="return_to"
-                                value="/admin/assets?kind=videos"
-                            />
-                            <Field label="Vimeo URL or ID">
-                                <input
-                                    name="video_uri"
-                                    required
-                                    placeholder="https://vimeo.com/123456789"
-                                    className="border border-line px-3 py-2 text-sm font-normal text-ink"
-                                />
-                            </Field>
-                            <button className="btn-primary self-end">Import and verify</button>
-                        </form>
-                        <LinkIconRow href="/admin/vimeo" label="Open full Vimeo sync and catalog" />
+                        <MediaUploadForm
+                            action="/api/assets/upload"
+                            title="Upload media"
+                            detail="MP4/WebM videos up to 5 minutes, images or MP3 files up to 95 MB. Use Import for Vimeo episodes."
+                            returnTo="/admin/assets?uploaded=1"
+                            includeAudio
+                            compact
+                        />
+                        <div className="mt-4">
+                            <ButtonLink href="/admin/vimeo" variant="secondary">
+                                Import from Vimeo
+                            </ButtonLink>
+                        </div>
                     </section>
 
-                    <section className="grid gap-4">
-                        <div className="rounded-md border border-line bg-surface p-4">
-                            <div className="mb-4 flex items-start gap-3">
-                                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-panel-soft text-muted">
-                                    <UploadCloud size={19} aria-hidden="true" />
-                                </span>
-                                <FormHeader
-                                    title="Upload file"
-                                    detail="Use for local videos, images and MP3 music. Metadata is checked before the asset is saved."
-                                />
-                            </div>
-                            <MediaUploadForm
-                                action="/api/assets/upload"
-                                title="Upload media"
-                                detail="MP4/WebM videos up to 5 minutes, images or MP3 files up to 95 MB. Use Vimeo or direct URLs for larger videos."
-                                returnTo="/admin/assets?uploaded=1"
-                                includeAudio
-                                compact
-                            />
-                        </div>
-
-                        <details className="rounded-md border border-line bg-surface p-4">
+                    <section className="rounded-md border border-line bg-surface p-4">
+                        <details>
                             <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
                                 <LinkIcon size={16} aria-hidden="true" />
                                 Advanced: add direct URL
@@ -606,35 +474,36 @@ export default async function AssetsPage({
                     >
                         Images
                     </FilterLink>
-                    <FilterLink
-                        href="/admin/assets?kind=slides"
-                        active={params.kind === 'slides' || params.kind === 'slide'}
-                    >
-                        Slides
-                    </FilterLink>
+                    <ButtonLink href="/admin/slides" variant="secondary">
+                        Plates
+                    </ButtonLink>
                     <FilterLink href="/admin/assets?kind=audio" active={params.kind === 'audio'}>
                         Music
                     </FilterLink>
-                    <FilterLink
-                        href="/admin/assets?kind=fallback"
-                        active={params.kind === 'fallback'}
-                    >
-                        Fallbacks
-                    </FilterLink>
-                    <FilterLink href="/admin/assets?kind=ad" active={params.kind === 'ad'}>
-                        Ads
-                    </FilterLink>
-                    <FilterLink href="/admin/assets?kind=promo" active={params.kind === 'promo'}>
-                        Promos
-                    </FilterLink>
+                    <details className="rounded-md border border-line bg-panel-soft px-3 py-2 text-sm">
+                        <summary className="cursor-pointer font-semibold text-muted">
+                            More Types
+                        </summary>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            <FilterLink
+                                href="/admin/assets?kind=fallback"
+                                active={params.kind === 'fallback'}
+                            >
+                                Fallbacks
+                            </FilterLink>
+                            <FilterLink href="/admin/assets?kind=ad" active={params.kind === 'ad'}>
+                                Ads
+                            </FilterLink>
+                            <FilterLink
+                                href="/admin/assets?kind=promo"
+                                active={params.kind === 'promo'}
+                            >
+                                Promos
+                            </FilterLink>
+                        </div>
+                    </details>
                 </div>
             </section>
-            <FallbackSection
-                options={fallbackOptions}
-                setActive={setActive}
-                clearActive={clearActive}
-            />
-
             <div className="surface-panel overflow-hidden">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 text-sm text-muted">
                     <span>
@@ -645,21 +514,38 @@ export default async function AssetsPage({
                 </div>
                 {paginatedItems.map((item) => (
                     <LibraryItemRow
-                        key={`${item.kind}-${item.id}`}
+                        key={item.id}
                         item={item}
                         today={today}
                         params={params}
                         editAsset={editAsset}
                         deleteAsset={deleteAsset}
-                        setFallbackLoop={setFallbackLoop}
-                        toggleFallbackTagged={toggleFallbackTagged}
                     />
                 ))}
                 {filteredItems.length === 0 && (
                     <div className="p-4">
                         <EmptyState title="No content for this filter">
-                            Change the filter or add a video, image, promo, ad, music track or
-                            fallback.
+                            {libraryItems.length === 0 ? (
+                                <>
+                                    Upload media here, or create{' '}
+                                    <Link href="/admin/slides" className="font-semibold underline">
+                                        plates
+                                    </Link>{' '}
+                                    and configure{' '}
+                                    <Link
+                                        href="/admin/program/fallback"
+                                        className="font-semibold underline"
+                                    >
+                                        fallback policy
+                                    </Link>{' '}
+                                    first.
+                                </>
+                            ) : (
+                                <>
+                                    Change the filter or add a video, image, promo, ad, music track
+                                    or fallback.
+                                </>
+                            )}
                         </EmptyState>
                     </div>
                 )}
@@ -722,13 +608,11 @@ function LibraryConsoleBar({
     total,
     ready,
     attention,
-    fallbackTitle,
     today,
 }: {
     total: number;
     ready: number;
     attention: number;
-    fallbackTitle: string | null;
     today: string;
 }) {
     return (
@@ -742,20 +626,12 @@ function LibraryConsoleBar({
                     tone={attention ? 'warn' : 'ok'}
                 />
                 <div className="min-w-0 flex-1 rounded-md border border-line bg-panel-soft px-3 py-2 text-sm">
-                    <p className="text-[10px] font-bold uppercase text-muted">Fallback loop</p>
-                    <p
-                        className={
-                            fallbackTitle
-                                ? 'truncate font-semibold text-success'
-                                : 'font-semibold text-warn'
-                        }
-                    >
-                        {fallbackTitle ?? 'Missing'}
-                    </p>
+                    <p className="text-[10px] font-bold uppercase text-muted">Fallback</p>
+                    <p className="truncate font-semibold text-ink">Configure in Program</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <ButtonLink href="/admin/assets?kind=fallback" variant="secondary">
-                        Fallbacks
+                    <ButtonLink href="/admin/program/fallback" variant="secondary">
+                        Fallback policy
                     </ButtonLink>
                     <ButtonLink href={`/admin/schedule/${today}`} variant="secondary">
                         Schedule
@@ -835,16 +711,12 @@ function assetPageHref(params: Record<string, string | undefined>, page: number)
     return `/admin/assets${text ? `?${text}` : ''}`;
 }
 
-function LinkIconRow({ href, label }: { href: string; label: string }) {
-    return (
-        <a
-            href={href}
-            className="mt-4 inline-flex min-h-9 items-center gap-2 rounded-md border border-line bg-panel-soft px-3 text-sm font-semibold text-ink hover:bg-panel"
-        >
-            <LinkIcon size={15} aria-hidden="true" />
-            {label}
-        </a>
-    );
+function scheduleLibraryItemHref(
+    date: string,
+    item: LibraryItem,
+    params: Record<string, string | undefined>,
+) {
+    return scheduleAssetHref(date, item.asset, params);
 }
 
 function scheduleAssetHref(
@@ -868,23 +740,6 @@ function scheduleAssetHref(
         if (value) {
             query.set(key, value);
         }
-    }
-
-    return `/admin/schedule/${date}?${query.toString()}`;
-}
-
-function scheduleLibraryItemHref(
-    date: string,
-    item: LibraryItem,
-    params: Record<string, string | undefined>,
-) {
-    if (item.kind === 'asset') {
-        return scheduleAssetHref(date, item.asset, params);
-    }
-    const query = new URLSearchParams({ slide: item.slide.id, kind: 'slide', source: 'slide' });
-
-    if (params.q) {
-        query.set('q', params.q);
     }
 
     return `/admin/schedule/${date}?${query.toString()}`;
@@ -920,55 +775,34 @@ function LibraryItemRow({
     params,
     editAsset,
     deleteAsset,
-    setFallbackLoop,
-    toggleFallbackTagged,
 }: {
     item: LibraryItem;
     today: string;
     params: Record<string, string | undefined>;
     editAsset: (formData: FormData) => Promise<void>;
     deleteAsset: (formData: FormData) => Promise<void>;
-    setFallbackLoop: (formData: FormData) => Promise<void>;
-    toggleFallbackTagged: (formData: FormData) => Promise<void>;
 }) {
-    const status = item.kind === 'asset' ? item.asset.status : item.slide.status;
-    const isFallbackLoop = item.kind === 'asset' && fallbackLoopEnabled(item.asset);
-    const canUseFallbackLoop =
-        item.kind === 'asset' && canUseAsFallbackLoop(item.asset) && !isFallbackLoop;
-    const isTagged = item.kind === 'asset' && isFallbackTagged(item.asset);
+    const status = item.asset.status;
+    const isFallbackLoop = fallbackLoopEnabled(item.asset);
 
     return (
-        <details
-            id={`${item.kind}-${item.id}`}
-            className="group border-b border-line p-4 last:border-b-0"
-        >
+        <details id={`asset-${item.id}`} className="group border-b border-line p-4 last:border-b-0">
             <summary className="grid cursor-pointer list-none gap-3 xl:grid-cols-[84px_minmax(0,1fr)_150px_170px_120px_90px] xl:items-center">
                 <LibraryPreview item={item} />
                 <div className="min-w-0">
                     <p className="font-semibold">{item.title}</p>
                     <p className="text-sm text-muted">{libraryItemMeta(item)}</p>
                     <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-muted">
-                        {item.kind === 'asset' ? (
-                            <>
-                                <ClearStateBadge tone="neutral">
-                                    {assetTypeLabel(item.asset.assetType)}
-                                </ClearStateBadge>
-                                <ClearStateBadge
-                                    tone={item.asset.status === 'ready' ? 'ok' : 'warn'}
-                                >
-                                    {item.asset.status === 'ready'
-                                        ? 'Can schedule'
-                                        : `Status ${item.asset.status}`}
-                                </ClearStateBadge>
-                            </>
-                        ) : (
-                            <ClearStateBadge tone="info">Slide</ClearStateBadge>
-                        )}
+                        <ClearStateBadge tone="neutral">
+                            {assetTypeLabel(item.asset.assetType)}
+                        </ClearStateBadge>
+                        <ClearStateBadge tone={item.asset.status === 'ready' ? 'ok' : 'warn'}>
+                            {item.asset.status === 'ready'
+                                ? 'Can schedule'
+                                : `Status ${item.asset.status}`}
+                        </ClearStateBadge>
                         {isFallbackLoop ? (
-                            <ClearStateBadge tone="ok">Fallback loop active</ClearStateBadge>
-                        ) : null}
-                        {isTagged ? (
-                            <ClearStateBadge tone="info">Fallback tagged</ClearStateBadge>
+                            <ClearStateBadge tone="ok">Silent gap fill</ClearStateBadge>
                         ) : null}
                     </p>
                 </div>
@@ -1018,61 +852,35 @@ function LibraryItemRow({
                     Choose Day
                 </a>
                 {isFallbackLoop ? (
-                    <span className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm font-semibold text-success">
-                        Active fallback loop
-                    </span>
-                ) : canUseFallbackLoop ? (
-                    <form action={setFallbackLoop}>
-                        <input type="hidden" name="id" value={item.asset.id} />
-                        <button className="btn-secondary">Use as fallback loop</button>
-                    </form>
-                ) : null}
-                {item.kind === 'asset' ? (
-                    <form action={toggleFallbackTagged}>
-                        <input type="hidden" name="id" value={item.asset.id} />
-                        <input type="hidden" name="currently_tagged" value={isTagged ? '1' : '0'} />
-                        <button className={isTagged ? 'btn-secondary' : 'btn-secondary'}>
-                            {isTagged ? 'Remove fallback tag' : 'Tag as fallback'}
-                        </button>
-                    </form>
+                    <ButtonLink href="/admin/program/fallback" variant="secondary">
+                        Fallback policy
+                    </ButtonLink>
                 ) : null}
             </div>
-            {item.kind === 'asset' ? (
-                <>
-                    <AssetEditForm asset={item.asset} action={editAsset} />
-                    <form
-                        action={deleteAsset}
-                        className="mt-3 rounded-md border border-danger-line bg-danger-soft p-4"
+            <AssetEditForm asset={item.asset} action={editAsset} />
+            <form
+                action={deleteAsset}
+                className="mt-3 rounded-md border border-danger-line bg-danger-soft p-4"
+            >
+                <input type="hidden" name="id" value={item.asset.id} />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-danger-strong">
+                        Delete this asset from the library
+                    </p>
+                    <ConfirmSubmitButton
+                        message={`Delete "${item.asset.title}" from the library? Scheduled blocks using it will show missing asset warnings.`}
+                        className="rounded-md border border-danger-line bg-surface px-4 py-2 text-sm font-semibold text-danger-strong hover:bg-danger-soft"
                     >
-                        <input type="hidden" name="id" value={item.asset.id} />
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <p className="text-sm font-semibold text-danger-strong">
-                                Delete this asset from the library
-                            </p>
-                            <ConfirmSubmitButton
-                                message={`Delete "${item.asset.title}" from the library? Scheduled blocks using it will show missing asset warnings.`}
-                                className="rounded-md border border-danger-line bg-surface px-4 py-2 text-sm font-semibold text-danger-strong hover:bg-danger-soft"
-                            >
-                                Delete asset
-                            </ConfirmSubmitButton>
-                        </div>
-                        {lifecycleState(item.asset) === 'scheduled_in_use' ? (
-                            <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-danger-strong">
-                                <input name="force_delete" type="checkbox" />
-                                Force delete even though this asset is scheduled in use.
-                            </label>
-                        ) : null}
-                    </form>
-                </>
-            ) : (
-                <div className="mt-4 rounded-md border border-line bg-panel-soft p-4 text-sm text-muted">
-                    Manage slide templates in{' '}
-                    <a className="font-semibold text-ink underline" href="/admin/slides">
-                        Graphics
-                    </a>
-                    .
+                        Delete asset
+                    </ConfirmSubmitButton>
                 </div>
-            )}
+                {lifecycleState(item.asset) === 'scheduled_in_use' ? (
+                    <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-danger-strong">
+                        <input name="force_delete" type="checkbox" />
+                        Force delete even though this asset is scheduled in use.
+                    </label>
+                ) : null}
+            </form>
         </details>
     );
 }
@@ -1088,8 +896,6 @@ function AssetEditForm({
         asset.metadata?.orientation ||
             (asset.metadata?.presentation === 'vertical_blur' ? 'vertical' : 'auto'),
     );
-    const isFallbackLoop = fallbackLoopEnabled(asset);
-    const canFallbackLoop = asset.mediaKind === 'video' && asset.assetType !== 'music';
 
     return (
         <form
@@ -1203,27 +1009,6 @@ function AssetEditForm({
                 placeholder="Description"
                 className="border border-line px-3 py-2 text-sm lg:col-span-2"
             />
-            <label className="lg:col-span-4 flex items-start gap-3 rounded-md border border-line bg-surface px-3 py-3 text-sm text-ink">
-                <input
-                    name="fallback_loop"
-                    type="checkbox"
-                    defaultChecked={isFallbackLoop}
-                    disabled={!canFallbackLoop}
-                    className="mt-1"
-                />
-                <span>
-                    <span className="block font-semibold">Use as silent fallback loop</span>
-                    <span className="block text-xs leading-5 text-muted">
-                        Plays muted in /output/live whenever no scheduled block is active. Only one
-                        library video can be the fallback loop at a time.
-                    </span>
-                    {!canFallbackLoop ? (
-                        <span className="mt-1 block text-xs font-semibold text-warn">
-                            Change this item to Video media before enabling fallback loop.
-                        </span>
-                    ) : null}
-                </span>
-            </label>
             <button className="btn-primary lg:col-span-4">Save changes</button>
             <div className="lg:col-span-4 rounded-md border border-line bg-surface px-3 py-2 text-xs leading-5 text-muted">
                 <span className="font-semibold text-ink">File details:</span>{' '}
@@ -1270,31 +1055,14 @@ function assetNeedsAttention(asset: MediaAsset) {
 }
 
 function libraryItemNeedsAttention(item: LibraryItem) {
-    if (item.kind === 'slide') {
-        return item.slide.status !== 'ready';
-    }
-
     return assetNeedsAttention(item.asset);
 }
 
 function libraryItemAttentionReason(item: LibraryItem) {
-    if (item.kind === 'slide') {
-        return item.slide.status === 'ready' ? 'Ready' : `Status: ${item.slide.status}`;
-    }
-
     return assetAttentionReason(item.asset);
 }
 
 function libraryItemMeta(item: LibraryItem) {
-    if (item.kind === 'slide') {
-        return [
-            'slide',
-            item.slide.slideType,
-            item.slide.templateId ? `template ${item.slide.templateId}` : null,
-        ]
-            .filter(Boolean)
-            .join(' · ');
-    }
     const asset = item.asset;
 
     return `${asset.sourceType} · ${asset.mediaKind} · ${asset.assetType}${
@@ -1303,24 +1071,16 @@ function libraryItemMeta(item: LibraryItem) {
 }
 
 function libraryItemDuration(item: LibraryItem) {
-    const duration =
-        item.kind === 'slide' ? item.slide.defaultDurationSeconds : item.asset.durationSeconds;
+    const duration = item.asset.durationSeconds;
 
     return duration ? `${duration}s` : 'No duration';
 }
 
 function libraryItemCanSchedule(item: LibraryItem) {
-    if (item.kind === 'slide') {
-        return true;
-    }
-
     return item.asset.assetType !== 'music' && item.asset.mediaKind !== 'audio';
 }
 
 function libraryItemViewHref(item: LibraryItem) {
-    if (item.kind === 'slide') {
-        return slidePreviewHref(item.slide.id);
-    }
     const asset = item.asset;
 
     if (asset.url && (asset.mediaKind === 'video' || asset.mediaKind === 'image')) {
@@ -1387,17 +1147,15 @@ function sortLibraryItems(a: LibraryItem, b: LibraryItem, sort: string | undefin
 }
 
 function durationValue(item: LibraryItem) {
-    return item.kind === 'slide'
-        ? (item.slide.defaultDurationSeconds ?? 0)
-        : (item.asset.durationSeconds ?? 0);
+    return item.asset.durationSeconds ?? 0;
 }
 
 function statusValue(item: LibraryItem) {
-    return item.kind === 'slide' ? item.slide.status : item.asset.status;
+    return item.asset.status;
 }
 
 function lifecycleValue(item: LibraryItem) {
-    return item.kind === 'slide' ? 'slide' : lifecycleState(item.asset);
+    return lifecycleState(item.asset);
 }
 
 function lifecycleState(asset: MediaAsset) {
@@ -1405,13 +1163,6 @@ function lifecycleState(asset: MediaAsset) {
 }
 
 function LibraryPreview({ item }: { item: LibraryItem }) {
-    if (item.kind === 'slide') {
-        return (
-            <div className="grid aspect-video place-items-center rounded-md border border-line bg-panel-soft text-xs font-semibold uppercase text-muted">
-                slide
-            </div>
-        );
-    }
     const asset = item.asset;
     const src = asset.thumbnailUrl || (asset.mediaKind === 'image' ? asset.url : '');
 
@@ -1432,45 +1183,6 @@ function LibraryPreview({ item }: { item: LibraryItem }) {
     );
 }
 
-function slideMatchesFilters(
-    slide: SlideAsset,
-    params: Record<string, string | undefined>,
-    query: string,
-) {
-    if (
-        params.status &&
-        params.status !== 'all' &&
-        params.status !== 'attention' &&
-        slide.status !== params.status
-    ) {
-        return false;
-    }
-
-    if (params.lifecycle) {
-        return false;
-    }
-
-    if (params.show_name || params.month || params.year) {
-        return false;
-    }
-
-    if (params.kind && !['all', 'slides', 'slide'].includes(params.kind)) {
-        return false;
-    }
-
-    if (
-        query &&
-        ![slide.title, slide.slideType, slide.templateId, 'slide', 'graphic']
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase()
-            .includes(query)
-    ) {
-        return false;
-    }
-
-    return true;
-}
 
 function fileDetailLine(asset: MediaAsset) {
     const metadata = asset.metadata ?? {};
@@ -1534,14 +1246,6 @@ function assetTypeLabel(value: MediaAsset['assetType']) {
     return 'Image';
 }
 
-function canUseAsFallbackLoop(asset: MediaAsset) {
-    return (
-        asset.status === 'ready' &&
-        asset.mediaKind === 'video' &&
-        Boolean(asset.url || asset.vimeoId)
-    );
-}
-
 function parseDate(value: string) {
     if (!value) {
         return null;
@@ -1580,88 +1284,4 @@ function formatBytes(bytes: number) {
     }
 
     return `${value.toFixed(value >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
-}
-
-function FallbackSection({
-    options,
-    setActive,
-    clearActive,
-}: {
-    options: FallbackOption[];
-    setActive: (formData: FormData) => Promise<void>;
-    clearActive: () => Promise<void>;
-}) {
-    const activeOption = options.find((o) => o.isActive) ?? null;
-
-    return (
-        <section className="surface-panel mb-4 overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
-                <div>
-                    <p className="text-[10px] font-bold uppercase text-muted">Active fallback</p>
-                    <p
-                        className={
-                            activeOption
-                                ? 'text-sm font-semibold text-success'
-                                : 'text-sm font-semibold text-warn'
-                        }
-                    >
-                        {activeOption ? activeOption.title : 'None set'}
-                    </p>
-                </div>
-                {activeOption ? (
-                    <form action={clearActive}>
-                        <button className="btn-secondary">Clear active</button>
-                    </form>
-                ) : null}
-            </div>
-            {options.length === 0 ? (
-                <div className="p-4">
-                    <p className="text-sm text-muted">
-                        No fallback options available. Tag an asset as fallback or add carousel
-                        sets.
-                    </p>
-                </div>
-            ) : (
-                <ul className="divide-y divide-line">
-                    {options.map((option) => (
-                        <li
-                            key={`${option.kind}-${option.id}`}
-                            className="flex flex-wrap items-center gap-3 px-4 py-3"
-                        >
-                            <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-ink">{option.title}</p>
-                                <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs">
-                                    <span className="rounded border border-info-line bg-info-soft px-1.5 py-0.5 font-bold uppercase text-info-strong">
-                                        {option.kind}
-                                    </span>
-                                    {option.kind === 'carousel' ? (
-                                        <span className="text-muted">
-                                            {option.cardCount} card
-                                            {option.cardCount === 1 ? '' : 's'}
-                                        </span>
-                                    ) : null}
-                                    {option.kind === 'asset' && option.durationSeconds ? (
-                                        <span className="text-muted">
-                                            {option.durationSeconds}s
-                                        </span>
-                                    ) : null}
-                                </p>
-                            </div>
-                            {option.isActive ? (
-                                <span className="rounded-md border border-success/30 bg-success/10 px-3 py-1.5 text-sm font-semibold text-success">
-                                    Active
-                                </span>
-                            ) : (
-                                <form action={setActive}>
-                                    <input type="hidden" name="kind" value={option.kind} />
-                                    <input type="hidden" name="id" value={option.id} />
-                                    <button className="btn-secondary">Set active</button>
-                                </form>
-                            )}
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </section>
-    );
 }

@@ -1,6 +1,5 @@
 import { formatTimecode } from '../helpers/time';
 import { isLiveObjectBlock } from '../live-object';
-import { isFallbackCandidate } from './fallback';
 
 import type {
     MediaAsset,
@@ -74,15 +73,20 @@ type BlockIssues = {
     layerIssues: ScheduleIssue[];
 };
 
+type AnalyzeScheduleOptions = {
+    fallbackPolicyReady?: boolean;
+};
+
 export function analyzeSchedule(
     schedule: ScheduleBundle,
     inputBlocks = schedule.blocks,
+    options: AnalyzeScheduleOptions = {},
 ): ScheduleHealth {
     const blocks = [...inputBlocks].sort((a, b) => a.startTimeSeconds - b.startTimeSeconds);
     const baseBlocks = blocks.filter((block) => !isLiveObjectBlock(block));
     const { gaps, overlaps } = detectAdjacencyIssues(baseBlocks);
     const blockIssues = collectBlockIssues(schedule, blocks);
-    const fallbackIssues = detectFallbackIssues(schedule);
+    const fallbackIssues = detectFallbackIssues(options.fallbackPolicyReady);
 
     return assembleScheduleHealth({ gaps, overlaps, fallbackIssues, ...blockIssues });
 }
@@ -346,20 +350,19 @@ function buildHiddenLayerIssue(block: ProgramBlock, layer: ScheduledLayer): Sche
     };
 }
 
-function detectFallbackIssues(schedule: ScheduleBundle): ScheduleIssue[] {
-    const readyFallback = schedule.mediaAssets.some(isFallbackCandidate);
-
-    if (readyFallback) {
+function detectFallbackIssues(fallbackPolicyReady = false): ScheduleIssue[] {
+    if (fallbackPolicyReady) {
         return [];
     }
 
     return [
         {
             id: 'fallback-missing',
-            title: 'No ready fallback',
-            detail: 'No fallback asset is ready to cover output errors',
+            title: 'Fallback policy not ready',
+            detail: 'Configure the global safety net before going active',
             severity: 'warning',
             kind: 'fallback',
+            actionHref: '/admin/program/fallback',
             i18n: {
                 titleKey: 'health.issues.fallbackMissing.title',
                 detailKey: 'health.issues.fallbackMissing.description',
@@ -419,7 +422,11 @@ export function scheduleIssueHref(date: string, issue: ScheduleIssue) {
         return '/admin/slides';
     }
 
-    if (issue.assetId || issue.kind === 'fallback') {
+    if (issue.kind === 'fallback') {
+        return '/admin/program/fallback';
+    }
+
+    if (issue.assetId) {
         return '/admin/assets';
     }
 
@@ -438,7 +445,7 @@ export function withScheduleIssueLinks(date: string, issue: ScheduleIssue): Sche
 
 function actionHrefForIssue(issue: ScheduleIssue) {
     if (issue.kind === 'fallback') {
-        return '/admin/assets?kind=fallback';
+        return '/admin/program/fallback';
     }
 
     if (issue.kind === 'missing_asset' && issue.slideId) {

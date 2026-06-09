@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { requireAdmin } from '@/lib/auth/auth';
 import { getScheduleForDate } from '@/lib/data';
+import { loadFallbackPolicyStatus } from '@/lib/fallback-policy';
 import { analyzeSchedule, withScheduleIssueLinks } from '@/lib/scheduling/schedule-health';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +13,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ dat
         const { date } = await params;
         const schedule = await getScheduleForDate(date);
         const blocks = [...schedule.blocks].sort((a, b) => a.startTimeSeconds - b.startTimeSeconds);
-        const health = analyzeSchedule(schedule, blocks);
+        const fallbackPolicy = await loadFallbackPolicyStatus(schedule);
+        const health = analyzeSchedule(schedule, blocks, {
+            fallbackPolicyReady: fallbackPolicy.ready,
+        });
 
         return NextResponse.json(
             {

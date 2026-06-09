@@ -5,7 +5,6 @@ import { getLiveSchedule } from '@/lib/data';
 import { secondsSinceMidnightInTimezone } from '@/lib/helpers/time';
 import { getLiveObjectConfig } from '@/lib/live-object';
 import { updateLiveObjectLowerThird } from '@/lib/mutations';
-import { liveLowerThirdSchema } from '@/lib/schemas';
 import { findActiveSchedule } from '@/lib/scheduling/scheduler';
 
 export const dynamic = 'force-dynamic';
@@ -14,13 +13,10 @@ export async function POST(request: Request) {
     try {
         await requireAdmin();
 
-        const parsed = liveLowerThirdSchema.safeParse(await request.json().catch(() => ({})));
-
-        if (!parsed.success) {
-            return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
-        }
-
-        const body = parsed.data;
+        const body = (await request.json().catch(() => ({}))) as {
+            visible?: unknown;
+            text?: unknown;
+        };
         const blockId = await activeLiveBlockId();
 
         if (!blockId) {

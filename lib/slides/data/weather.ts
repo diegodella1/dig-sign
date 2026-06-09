@@ -1,4 +1,5 @@
 import type { WeatherForecastPoint, WeatherSlideData } from '@/lib/slides/types';
+import { getWeatherBackgroundVideo } from '@/lib/slides/youtube';
 import type { SlideAsset } from '@/lib/types';
 
 const DEFAULT_LOCATION_NAME = 'Buenos Aires';
@@ -74,13 +75,19 @@ const weatherCache = new Map<string, WeatherCacheEntry>();
 export async function getWeatherSlideData(input?: {
     slide?: SlideAsset | null | undefined;
 }): Promise<WeatherSlideData> {
+    const slide = input?.slide;
+    const backgroundVideo = getWeatherBackgroundVideo(slide);
+    const attachBackground = (data: WeatherSlideData): WeatherSlideData => ({
+        ...data,
+        backgroundVideo,
+    });
     const now = Date.now();
-    const config = weatherConfigFromSlide(input?.slide);
+    const config = weatherConfigFromSlide(slide);
     const cacheKey = `${config.locationName}:${config.lat}:${config.lon}`;
     const cached = weatherCache.get(cacheKey);
 
     if (cached && now - cached.timestamp < WEATHER_CACHE_DURATION_MS) {
-        return cached.data;
+        return attachBackground(cached.data);
     }
     const rtvApiData = await fetchWeatherFromRtvApi(config).catch((error) => {
         console.warn('[lib/slides/data/weather.ts:fetchWeatherFromRtvApi]', error);
@@ -91,13 +98,13 @@ export async function getWeatherSlideData(input?: {
     if (rtvApiData) {
         weatherCache.set(cacheKey, { data: rtvApiData, timestamp: now });
 
-        return rtvApiData;
+        return attachBackground(rtvApiData);
     }
 
     const apiKey = process.env.OPENWEATHER_API_KEY ?? process.env.OPENWEATHERMAP_API_KEY ?? '';
 
     if (!apiKey) {
-        return fetchOpenMeteoWeather(config, cacheKey);
+        return attachBackground(await fetchOpenMeteoWeather(config, cacheKey));
     }
 
     try {
@@ -150,17 +157,19 @@ export async function getWeatherSlideData(input?: {
 
         weatherCache.set(cacheKey, { data, timestamp: now });
 
-        return data;
+        return attachBackground(data);
     } catch (error) {
         console.error('[lib/slides/data/weather.ts:getWeatherSlideData]', error);
 
         if (cached) {
-            return { ...cached.data, reason: 'stale weather cache' };
+            return attachBackground({ ...cached.data, reason: 'stale weather cache' });
         }
 
-        return unavailableWeatherData(
-            error instanceof Error ? error.message : 'weather fetch failed',
-            config,
+        return attachBackground(
+            unavailableWeatherData(
+                error instanceof Error ? error.message : 'weather fetch failed',
+                config,
+            ),
         );
     }
 }

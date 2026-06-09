@@ -1,3 +1,4 @@
+import { adminSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { EmptyState, Field, StatusBanner } from '@/components/ui';
 import { getAuditEvents } from '@/lib/data';
@@ -20,8 +21,9 @@ export default async function AuditPage({
 
     return (
         <AdminShell
-            title="Audit trail"
-            description="Operational record for schedule, media, Vimeo, settings and output actions."
+            title="Audit"
+            description="Operational record for schedule, media, and output actions."
+            subNav={adminSubNav}
         >
             <StatusBanner
                 tone="info"

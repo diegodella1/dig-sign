@@ -38,6 +38,38 @@ export function FlowHero({
     );
 }
 
+export function FlowLinkList({
+    items,
+}: {
+    items: Array<{
+        href: string;
+        label: string;
+        badge?: string;
+        tone?: 'neutral' | 'warn';
+    }>;
+}) {
+    return (
+        <nav className="surface-panel divide-y divide-line overflow-hidden">
+            {items.map((item) => (
+                <Link
+                    key={item.href}
+                    href={item.href}
+                    className="flex min-h-11 items-center justify-between gap-3 px-4 py-2.5 text-sm transition hover:bg-panel-soft"
+                >
+                    <span className="font-semibold">{item.label}</span>
+                    {item.badge ? (
+                        <ClearStateBadge tone={item.tone === 'warn' ? 'warn' : 'info'}>
+                            {item.badge}
+                        </ClearStateBadge>
+                    ) : (
+                        <ArrowRight size={14} className="shrink-0 text-muted" aria-hidden="true" />
+                    )}
+                </Link>
+            ))}
+        </nav>
+    );
+}
+
 export function FlowGrid({ children }: { children: ReactNode }) {
     return <section className="grid gap-3 xl:grid-cols-3">{children}</section>;
 }

@@ -15,8 +15,8 @@ What is already working:
 - timeline-first schedule UI with visible newly-added block confirmation, time ranges and gap filling
 - media library for uploads, remote URLs, Vimeo, slides, music and fallbacks
 - guest library with per-plate lineups, uploaded/remote guest photos and short muted guest videos
-- city-specific weather plates and a Loop Builder that can create scheduled slide loops, fallback
-  carousels, or both
+- city-specific weather plates, schedule-only **Fill range with plates** loops, and a unified
+  **Fallback policy** for off-air and playback-failure safety
 - Supabase database/storage backend, including local-storage media proxy for public playback
 - browser playout for OBS/vMix capture
 - Vimeo, HLS, MP4, images, slides and Reuters stream snapshots
@@ -58,7 +58,8 @@ The value is not just playing media. The value is reducing live mistakes: wrong 
 - `/admin/login` - operator login
 - `/admin` - cockpit dashboard
 - `/admin/prepare` - unified intake for assets, Vimeo, music, guests and plates
-- `/admin/program` - daily programming hub for calendar, schedule, loop builder, fallback and health
+- `/admin/program` - daily programming hub for calendar, schedule, timed loops, fallback policy and health
+- `/admin/program/fallback` - global fallback policy (silent video, plate rotation, or emergency slate)
 - `/admin/operate` - live control-room hub for output, health, runbook and audit
 - `/admin/calendar` - program days
 - `/admin/schedule/[date]` - daily rundown
@@ -83,20 +84,22 @@ The value is not just playing media. The value is reducing live mistakes: wrong 
 
 1. Open `/admin/prepare` and add or sync content: assets, Vimeo shows, music, guest plates, weather
    city plates and data plates.
-2. Open `/admin/program` and build the day: calendar, schedule, Loop Builder, fallback policy and
+2. Open `/admin/program` and build the day: calendar, schedule, timed loops, fallback policy and
    schedule health.
-3. Use Loop Builder when the day needs a silent slide loop. Choose one clear intent: create
-   scheduled blocks, set the visual fallback carousel, or do both. Background music plays under
-   slide loops and visual fallback.
-4. For normal video programs that are not live/Reuters/ads/promos, enable the optional
+3. Configure **Fallback policy** at `/admin/program/fallback` before going active: silent video
+   loop, plate rotation with background music, or emergency slate only.
+4. Use **Fill range with plates** on `/admin/schedule/[date]` when the day needs a timed slide loop
+   in the rundown. This is schedule-only and does not change the global fallback policy.
+5. For normal video programs that are not live/Reuters/ads/promos, enable the optional
    `PREVIOUSLY RECORDED` bug from the block editor when editorial needs that disclosure.
-5. Resolve schedule health issues and confirm fallback before activating the day.
-6. Open `/admin/operate`, complete the runbook, open Output, launch Live Browser Output and click
+6. Resolve schedule health issues and confirm fallback policy is **Ready** before activating the day.
+   Unscheduled gaps show as **Protected** or **Unprotected** depending on fallback readiness.
+7. Open `/admin/operate`, complete the runbook, open Output, launch Live Browser Output and click
    `Start Output` once to unlock audio.
-7. Capture the live browser window in OBS/vMix.
-8. During live, watch active block, next block, fallback reason, playlist/audio state, playback
+8. Capture the live browser window in OBS/vMix.
+9. During live, watch active block, next block, fallback reason, playlist/audio state, playback
    state and runbook notes from Operate/Output.
-9. Stop broadcast and complete shutdown checks.
+10. Stop broadcast and complete shutdown checks.
 
 If the output page reloads mid-show, it asks the server for the active block and resumes video at the current scheduled offset. Browser audio still requires one operator click after load or reload.
 
@@ -261,11 +264,11 @@ Before live use:
 - the latest Supabase migrations are applied, including guest lineup and atomic rate limits.
 - `/admin/health` Go Live Drill passes.
 - current day exists and is `active`.
-- active block has ready media or a ready fallback.
+- active block has ready media or a ready fallback policy.
 - uploaded media URLs use `https://rtvtime.diegodella.ar/api/media/assets/...`, not `127.0.0.1`.
 - `/output/live?debug=true` plays on the capture browser after `Start Output`.
 - OBS/vMix browser capture has been validated for video/audio; recheck after deploy or capture-machine changes.
-- operator confirms fallbacks, runbook and shutdown process.
+- operator confirms fallback policy, runbook and shutdown process.
 
 ## Roadmap
 

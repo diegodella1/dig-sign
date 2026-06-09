@@ -24,11 +24,8 @@ export {
     createMediaAsset,
     createSlideAsset,
     deleteMediaAsset,
-    setAssetFallbackTagged,
     updateMediaAsset,
 } from './mutations/assets';
-
-export { clearActiveFallback, setActiveFallback } from './mutations/fallback';
 
 export {
     archiveGuest,
@@ -48,10 +45,13 @@ export {
     createYouTubeSlide,
     saveFallbackCarouselSet,
     saveGlobalFallbackCarouselFromSlides,
+    setFallbackCarouselEnabled,
     setScheduledLayerEnabled,
     updateRunbookCheck,
     updateWeatherPlate,
 } from './mutations/slides';
+
+export { setFallbackPolicy } from './mutations/fallback';
 
 export {
     clearOutputOverride,
@@ -63,3 +63,9 @@ export {
     searchVimeoCatalog,
     setReutersOutputOverride,
 } from './mutations/output';
+
+export {
+    forceEmergencyLoopOutput,
+    forceNextBlockOutput,
+    skipActiveBlock,
+} from './mutations/output-advance';

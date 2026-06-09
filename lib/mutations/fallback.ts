@@ -1,180 +1,168 @@
-import { revalidatePath } from 'next/cache';
 import { eq } from 'drizzle-orm';
 
-import { auditedMutation } from '../audit/audit';
+import type { FallbackPolicyMode } from '../fallback-policy';
 import { getDb } from '../db/client';
-import { integrationSettings, mediaAssets } from '../db/schema';
-import { getGlobalFallbackCarousel } from '../fallback-carousel';
-import { getActiveFallback, type ActiveFallback } from '../fallback-active';
-import { isFallbackTagged, isPlayableFallback } from '../scheduling/fallback';
+import { mediaAssets } from '../db/schema';
 import { err, extractError, ok, type Result } from '../result';
-
+import { isPlayableFallback } from '../scheduling/fallback';
 import type { MediaAsset } from '../types';
 
-const ACTIVE_FALLBACK_PROVIDER = 'fallback_active';
+import {
+    activateFallbackCarouselSet,
+    setFallbackCarouselEnabled,
+} from './slides';
+import { updateMediaAsset } from './assets';
 
-const REVALIDATE_PATHS = [
-    '/admin/assets',
-    '/admin/output',
-    '/admin/slides',
-    '/live',
-    '/output/live',
-] as const;
+type SetFallbackPolicyInput = {
+    mode: FallbackPolicyMode;
+    videoId?: string | undefined;
+    rotationSetId?: string | undefined;
+};
 
-export async function setActiveFallback(input: ActiveFallback): Promise<Result<void>> {
+export async function setFallbackPolicy(input: SetFallbackPolicyInput): Promise<Result<void>> {
     try {
-        if (input.kind !== 'asset' && input.kind !== 'carousel') {
-            return err('Invalid fallback kind');
+        if (input.mode === 'emergency_only') {
+            await clearAllSilentFallbackLoops();
+            const disabled = await setFallbackCarouselEnabled(false);
+
+            if (!disabled.success) {
+                return disabled;
+            }
+
+            return ok(undefined);
         }
 
-        if (!input.id) {
-            return err('Fallback id is required');
+        if (input.mode === 'silent_video') {
+            const disabled = await setFallbackCarouselEnabled(false);
+
+            if (!disabled.success) {
+                return disabled;
+            }
+
+            const videoId = input.videoId?.trim();
+
+            if (!videoId) {
+                return err('Choose a silent fallback video');
+            }
+
+            const setVideo = await setSilentFallbackVideo(videoId);
+
+            if (!setVideo.success) {
+                return setVideo;
+            }
+
+            return ok(undefined);
         }
 
-        const validation = await validateFallbackTarget(input);
+        if (input.mode === 'plate_rotation') {
+            await clearAllSilentFallbackLoops();
+            const setId = input.rotationSetId?.trim();
 
-        if (!validation.success) {
-            return validation;
+            if (!setId) {
+                return err('Choose a plate rotation set');
+            }
+
+            const activated = await activateFallbackCarouselSet(setId);
+
+            if (!activated.success) {
+                return activated;
+            }
+
+            return ok(undefined);
         }
 
-        const db = await getDb();
-        const now = new Date().toISOString();
-        const previous = await getActiveFallback();
-        const publicConfig: Record<string, unknown> = { kind: input.kind, id: input.id };
-
-        await auditedMutation(
-            {
-                action: 'fallback_active.set',
-                entityType: 'integration_settings',
-                entityId: ACTIVE_FALLBACK_PROVIDER,
-                previous: previous ? { kind: previous.kind, id: previous.id } : null,
-                next: { kind: input.kind, id: input.id },
-            },
-            async () => {
-                await db
-                    .insert(integrationSettings)
-                    .values({
-                        provider: ACTIVE_FALLBACK_PROVIDER,
-                        publicConfig,
-                        status: 'connected',
-                        updatedAt: now,
-                    })
-                    .onConflictDoUpdate({
-                        target: integrationSettings.provider,
-                        set: {
-                            publicConfig,
-                            status: 'connected',
-                            updatedAt: now,
-                        },
-                    });
-            },
-        );
-
-        for (const path of REVALIDATE_PATHS) {
-            revalidatePath(path);
-        }
-
-        return ok(undefined);
+        return err('Invalid fallback policy mode');
     } catch (error) {
         return err(extractError(error));
     }
 }
 
-export async function clearActiveFallback(): Promise<Result<void>> {
-    try {
-        const db = await getDb();
-        const now = new Date().toISOString();
-
-        await auditedMutation(
-            {
-                action: 'fallback_active.cleared',
-                entityType: 'integration_settings',
-                entityId: ACTIVE_FALLBACK_PROVIDER,
-                next: {},
-            },
-            async () => {
-                await db
-                    .insert(integrationSettings)
-                    .values({
-                        provider: ACTIVE_FALLBACK_PROVIDER,
-                        publicConfig: {},
-                        status: 'unknown',
-                        updatedAt: now,
-                    })
-                    .onConflictDoUpdate({
-                        target: integrationSettings.provider,
-                        set: {
-                            publicConfig: {},
-                            status: 'unknown',
-                            updatedAt: now,
-                        },
-                    });
-            },
-        );
-
-        for (const path of REVALIDATE_PATHS) {
-            revalidatePath(path);
-        }
-
-        return ok(undefined);
-    } catch (error) {
-        return err(extractError(error));
-    }
-}
-
-async function validateFallbackTarget(input: ActiveFallback): Promise<Result<void>> {
-    if (input.kind === 'asset') {
-        return validateAssetTarget(input.id);
-    }
-
-    return validateCarouselTarget(input.id);
-}
-
-async function validateAssetTarget(id: string): Promise<Result<void>> {
+async function setSilentFallbackVideo(assetId: string): Promise<Result<void>> {
     const db = await getDb();
-    const [row] = await db
-        .select({
-            id: mediaAssets.id,
-            status: mediaAssets.status,
-            mediaKind: mediaAssets.mediaKind,
-            assetType: mediaAssets.assetType,
-            url: mediaAssets.url,
-            storagePath: mediaAssets.storagePath,
-            vimeoId: mediaAssets.vimeoId,
-            metadata: mediaAssets.metadata,
-        })
+    const [asset] = await db
+        .select()
         .from(mediaAssets)
-        .where(eq(mediaAssets.id, id))
+        .where(eq(mediaAssets.id, assetId))
         .limit(1);
 
-    if (!row) {
-        return err('Asset not found');
+    if (!asset || !isPlayableFallback(asset as MediaAsset)) {
+        return err('Selected video is not eligible for silent fallback');
     }
 
-    const asset = row as MediaAsset;
+    const metadata =
+        typeof asset.metadata === 'object' && asset.metadata !== null
+            ? (asset.metadata as Record<string, unknown>)
+            : {};
 
-    if (!isFallbackTagged(asset)) {
-        return err('Asset is not tagged as fallback');
-    }
-
-    if (!isPlayableFallback(asset)) {
-        return err('Asset is not playable (must be ready video with a playback source)');
-    }
-
-    return ok(undefined);
+    return updateMediaAsset({
+        id: asset.id,
+        title: asset.title,
+        description: asset.description ?? '',
+        sourceType: asset.sourceType,
+        mediaKind: asset.mediaKind,
+        assetType: asset.assetType,
+        url: asset.url ?? '',
+        thumbnailUrl: asset.thumbnailUrl ?? '',
+        ...(asset.durationSeconds ? { durationSeconds: asset.durationSeconds } : {}),
+        status: asset.status,
+        lifecycleState: String(metadata.lifecycle_state || asset.lifecycleState || 'reviewed'),
+        orientation: String(metadata.orientation || 'auto'),
+        fallbackLoop: true,
+    });
 }
 
-async function validateCarouselTarget(setId: string): Promise<Result<void>> {
-    const carousel = await getGlobalFallbackCarousel();
+async function clearAllSilentFallbackLoops(): Promise<Result<void>> {
+    const db = await getDb();
+    const rows = await db
+        .select({ id: mediaAssets.id, metadata: mediaAssets.metadata })
+        .from(mediaAssets);
 
-    if (!carousel) {
-        return err('No fallback carousel configured');
-    }
+    for (const row of rows) {
+        const metadata =
+            typeof row.metadata === 'object' && row.metadata !== null
+                ? { ...(row.metadata as Record<string, unknown>) }
+                : {};
 
-    const setExists = carousel.sets.some((set) => set.id === setId);
+        if (metadata.fallback_loop !== true) {
+            continue;
+        }
 
-    if (!setExists) {
-        return err('Carousel set not found');
+        const [asset] = await db
+            .select()
+            .from(mediaAssets)
+            .where(eq(mediaAssets.id, row.id))
+            .limit(1);
+
+        if (!asset) {
+            continue;
+        }
+
+        const assetMetadata =
+            typeof asset.metadata === 'object' && asset.metadata !== null
+                ? (asset.metadata as Record<string, unknown>)
+                : {};
+
+        const cleared = await updateMediaAsset({
+            id: asset.id,
+            title: asset.title,
+            description: asset.description ?? '',
+            sourceType: asset.sourceType,
+            mediaKind: asset.mediaKind,
+            assetType: asset.assetType,
+            url: asset.url ?? '',
+            thumbnailUrl: asset.thumbnailUrl ?? '',
+            ...(asset.durationSeconds ? { durationSeconds: asset.durationSeconds } : {}),
+            status: asset.status,
+            lifecycleState: String(
+                assetMetadata.lifecycle_state || asset.lifecycleState || 'reviewed',
+            ),
+            orientation: String(assetMetadata.orientation || 'auto'),
+            fallbackLoop: false,
+        });
+
+        if (!cleared.success) {
+            return cleared;
+        }
     }
 
     return ok(undefined);

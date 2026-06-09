@@ -1,12 +1,16 @@
-import { MonitorPlay, Tv } from 'lucide-react';
+import { Tv } from 'lucide-react';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { AdminNav } from '@/components/admin/admin-nav';
+import { OnAirPill } from '@/components/broadcast/on-air-pill';
+import { PlayoutClock } from '@/components/broadcast/playout-clock';
+import { ModeSubNav } from '@/components/broadcast/mode-sub-nav';
+import type { ModeSubNavItem } from '@/components/broadcast/mode-sub-nav-items';
 import { getBroadcastStatus } from '@/lib/admin/broadcast-status';
 import { requireAdmin, revokeCurrentOperatorSession, safeAdminReturnTo } from '@/lib/auth/auth';
-import { formatPlayoutTimeLabel } from '@/lib/helpers/time';
+import { formatPlayoutTimeLabel, secondsSinceMidnightInTimezone, PLAYOUT_TIMEZONE } from '@/lib/helpers/time';
 
 import type { ReactNode } from 'react';
 
@@ -14,19 +18,22 @@ export async function AdminShell({
     title,
     description,
     actions,
+    subNav,
     children,
 }: {
     title: string;
     description?: string;
     actions?: ReactNode;
+    subNav?: ModeSubNavItem[];
     children: ReactNode;
 }) {
     const requestHeaders = await headers();
     const returnTo = safeAdminReturnTo(requestHeaders.get('x-rtv-current-path'));
     const showBroadcastStatus =
-        returnTo === '/admin' ||
-        returnTo.startsWith('/admin/schedule') ||
-        returnTo === '/admin/output';
+        returnTo.startsWith('/admin') &&
+        returnTo !== '/admin/login' &&
+        !returnTo.startsWith('/admin/operate') &&
+        !returnTo.startsWith('/admin/schedule/');
     const session = await requireAdmin().catch((error) => {
         if (error instanceof Error && error.message === 'Unauthorized') {
             redirect(`/admin/login?return_to=${encodeURIComponent(returnTo)}`);
@@ -34,6 +41,9 @@ export async function AdminShell({
         throw error;
     });
     const status = await getBroadcastStatus();
+    const timezone = PLAYOUT_TIMEZONE;
+    const nowSeconds = secondsSinceMidnightInTimezone(new Date(), timezone);
+    const isLive = status.dayStatus === 'active' && Boolean(status.activeTitle);
 
     async function logout() {
         'use server';
@@ -42,68 +52,65 @@ export async function AdminShell({
     }
 
     return (
-        <div className="min-h-screen bg-panel text-ink">
-            <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-line bg-surface px-4 py-5 md:block">
+        <div className="min-h-screen bg-surface-elevated-1 text-ink">
+            <aside className="fixed inset-y-0 left-0 z-40 hidden w-14 border-r border-line bg-surface md:flex md:flex-col md:items-center md:py-4">
                 <Link
-                    href="/admin"
-                    className="flex items-center gap-3 rounded-md px-2 py-2 text-base font-semibold hover:bg-panel-soft"
+                    href="/admin/program"
+                    className="grid h-10 w-10 place-items-center rounded-md bg-ink text-surface hover:opacity-90"
+                    aria-label="Roxom TV program hub"
+                    title="Program"
                 >
-                    <span className="grid h-9 w-9 place-items-center rounded-md bg-ink text-surface">
-                        <Tv size={18} aria-hidden="true" />
-                    </span>
-                    <span>
-                        <span className="block leading-tight">Roxom TV</span>
-                        <span className="block text-xs font-medium text-muted">
-                            Playout Manager
-                        </span>
-                    </span>
+                    <Tv size={18} aria-hidden="true" />
                 </Link>
                 <AdminNav />
-                <div className="absolute bottom-5 left-4 right-4 rounded-md border border-line bg-panel-soft p-3 text-xs text-muted">
-                    <p className="truncate font-semibold text-ink">{session.displayName}</p>
-                    <p className="mt-0.5 truncate">
-                        {session.handle} · {session.role}
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        <Link
-                            href="/admin/output"
-                            className="inline-flex min-h-8 items-center gap-2 rounded-md border border-line bg-surface px-2 font-semibold text-ink hover:bg-panel"
+                <div className="mt-auto flex flex-col items-center gap-2 pb-2">
+                    <form action={logout}>
+                        <button
+                            type="submit"
+                            className="grid h-10 w-10 place-items-center rounded-md text-[10px] font-bold uppercase text-muted hover:bg-panel-soft hover:text-ink"
+                            aria-label="Logout"
+                            title="Logout"
                         >
-                            <MonitorPlay size={14} aria-hidden="true" />
-                            Open output
-                        </Link>
-                        <form action={logout}>
-                            <button className="inline-flex min-h-8 items-center rounded-md border border-line bg-surface px-2 font-semibold text-ink hover:bg-panel">
-                                Logout
-                            </button>
-                        </form>
-                    </div>
+                            Out
+                        </button>
+                    </form>
                 </div>
             </aside>
-            <main className="min-w-0 md:pl-64">
-                <header className="sticky top-0 z-30 border-b border-line bg-surface/95 px-4 py-3 backdrop-blur md:px-6">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="min-w-0">
-                            <h1 className="text-xl font-semibold tracking-normal md:text-2xl">
-                                {title}
-                            </h1>
-                            {description ? (
-                                <p className="mt-0.5 max-w-3xl truncate text-sm text-muted">
-                                    {description}
-                                </p>
-                            ) : null}
-                        </div>
-                        {actions ? (
-                            <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                {actions}
+
+            <main className="min-w-0 md:pl-14">
+                <header className="sticky top-0 z-30 border-b border-line bg-surface-elevated-2/95 backdrop-blur">
+                    <div className="flex h-12 items-center gap-3 px-4 md:px-6">
+                        <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h1 className="truncate text-base font-semibold md:text-lg">{title}</h1>
+                                <OnAirPill isLive={isLive} dayStatus={status.dayStatus} />
                             </div>
+                        </div>
+                        <PlayoutClock key={nowSeconds} timezone={timezone} initialSeconds={nowSeconds} />
+                        {actions ? (
+                            <div className="hidden flex-wrap items-center gap-2 sm:flex">{actions}</div>
                         ) : null}
                     </div>
+                    {description ? (
+                        <p className="hidden truncate px-4 pb-2 text-xs text-muted md:px-6 lg:block">
+                            {description}
+                        </p>
+                    ) : null}
+                    {subNav?.length ? (
+                        <div className="px-4 md:px-6">
+                            <ModeSubNav items={subNav} />
+                        </div>
+                    ) : null}
                     <AdminNav mobile />
                 </header>
+
                 {showBroadcastStatus ? <BroadcastStatusStrip status={status} /> : null}
                 <div className="min-w-0 p-4 md:p-6 xl:p-7">{children}</div>
             </main>
+
+            <aside className="sr-only" aria-hidden="true">
+                {session.displayName} · {session.handle}
+            </aside>
         </div>
     );
 }
@@ -121,8 +128,8 @@ function BroadcastStatusStrip({
               : 'text-warn';
 
     return (
-        <section className="border-b border-line bg-panel-soft px-4 py-1.5 md:px-6">
-            <div className="flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+        <section className="border-b border-line bg-panel-soft px-4 py-2 md:px-6">
+            <div className="flex min-h-7 flex-wrap items-center gap-x-5 gap-y-1 text-xs">
                 <StatusItem
                     label="Now"
                     value={
@@ -146,7 +153,7 @@ function BroadcastStatusStrip({
                     value={status.fallbackTitle ?? 'Missing'}
                     tone={status.fallbackTitle ? 'ok' : 'warn'}
                 />
-                <div className="ml-auto flex min-w-0 items-center gap-3 font-semibold uppercase text-muted">
+                <div className="ml-auto flex items-center gap-3 font-bold uppercase tracking-wide text-muted">
                     <span className={healthTone}>Health {status.health}</span>
                     <span>Day {status.dayStatus}</span>
                 </div>
@@ -169,7 +176,7 @@ function StatusItem({
     return (
         <div className="flex min-w-0 items-center gap-1.5">
             <p className="font-bold uppercase text-muted">{label}</p>
-            <p className={`max-w-[22rem] truncate font-semibold ${toneClass}`}>{value}</p>
+            <p className={`max-w-[20rem] truncate font-semibold ${toneClass}`}>{value}</p>
         </div>
     );
 }
