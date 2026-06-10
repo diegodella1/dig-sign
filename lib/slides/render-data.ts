@@ -71,7 +71,7 @@ function adaptSlideData(templateId: SlideTemplateId, raw: unknown): unknown {
     }
 
     if (isMarketOpenTemplate(templateId)) {
-        return { data: isObject(raw) ? raw : mockMarketOpenData(templateId) };
+        return { data: isObject(raw) ? raw : unavailableMarketOpenData(templateId) };
     }
 
     if (templateId === 'weather') {
@@ -163,13 +163,13 @@ function mockDebtData(): DebtData {
     };
 }
 
-function mockMarketOpenData(templateId: SlideTemplateId): UsMarketOpenData {
+function unavailableMarketOpenData(templateId: SlideTemplateId): UsMarketOpenData {
     const updatedAt = new Date().toISOString();
     const preset = marketPreset(templateId);
 
     return {
-        mode: 'demo',
-        phase: 'pre-market',
+        mode: 'unavailable',
+        phase: 'closed',
         marketName: preset.marketName,
         regionLabel: preset.regionLabel,
         previewLabel: preset.previewLabel,
@@ -178,12 +178,19 @@ function mockMarketOpenData(templateId: SlideTemplateId): UsMarketOpenData {
         marketTimezone: preset.timezone,
         updatedAt,
         cacheSeconds: 0,
-        stale: true,
-        source: 'Demo board',
-        instruments: preset.instruments.map(
-            ([id, label, symbol, proxy, price, change, changePct]) =>
-                marketIndex(id, label, symbol, proxy, price, change, changePct, updatedAt),
-        ),
+        source: 'Live market API unavailable',
+        instruments: preset.instruments.map(([id, label, symbol, proxy]) => ({
+            id,
+            label,
+            symbol,
+            proxySymbol: proxy,
+            price: null,
+            change: null,
+            changePercent: null,
+            source: 'Live market API unavailable',
+            points: [],
+            unavailable: true,
+        })),
     };
 }
 
@@ -259,33 +266,6 @@ function marketPreset(templateId: SlideTemplateId) {
             ['dow', 'Dow', 'YM', 'DIA', 46210, 94.1, 0.2],
             ['russell2000', 'Russell 2000', 'RTY', 'IWM', 2264.5, 8.7, 0.39],
         ] as const,
-    };
-}
-
-function marketIndex(
-    id: string,
-    label: string,
-    symbol: string,
-    proxySymbol: string,
-    price: number,
-    change: number,
-    changePercent: number,
-    updatedAt: string,
-): UsMarketOpenData['instruments'][number] {
-    return {
-        id,
-        label,
-        symbol,
-        proxySymbol,
-        price,
-        change,
-        changePercent,
-        source: 'mock',
-        points: [
-            { timestamp: updatedAt, price: price - change * 0.6 },
-            { timestamp: updatedAt, price: price - change * 0.25 },
-            { timestamp: updatedAt, price },
-        ],
     };
 }
 
