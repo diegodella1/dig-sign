@@ -14,11 +14,11 @@ type YouTubeVideoSlideProps = {
 
 export function YouTubeVideoSlide({ slide }: YouTubeVideoSlideProps) {
     const config = getYouTubeSlideConfig(slide);
-    const [revealed, setRevealed] = useState(false);
+    const [revealedSlideId, setRevealedSlideId] = useState<string | null>(null);
+    const revealed = revealedSlideId === slide.id;
 
     useEffect(() => {
-        setRevealed(false);
-        const revealTimer = setTimeout(() => setRevealed(true), START_REVEAL_MS);
+        const revealTimer = setTimeout(() => setRevealedSlideId(slide.id), START_REVEAL_MS);
 
         return () => clearTimeout(revealTimer);
     }, [slide.id]);

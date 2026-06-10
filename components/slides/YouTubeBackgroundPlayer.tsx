@@ -76,15 +76,18 @@ export function YouTubeBackgroundPlayer({ videoId, onFailed }: YouTubeBackground
     const playerRef = useRef<YouTubePlayerInstance | null>(null);
     const failedRef = useRef(false);
     const onFailedRef = useRef(onFailed);
-    const [revealed, setRevealed] = useState(false);
+    const [revealedVideoId, setRevealedVideoId] = useState<string | null>(null);
+    const revealed = revealedVideoId === videoId;
 
     useEffect(() => {
         onFailedRef.current = onFailed;
     }, [onFailed]);
 
     useEffect(() => {
-        setRevealed(false);
-        const revealTimer = setTimeout(() => setRevealed(true), BACKGROUND_START_REVEAL_MS);
+        const revealTimer = setTimeout(
+            () => setRevealedVideoId(videoId),
+            BACKGROUND_START_REVEAL_MS,
+        );
 
         return () => clearTimeout(revealTimer);
     }, [videoId]);
