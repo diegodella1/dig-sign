@@ -4,7 +4,7 @@ import { GET } from './route';
 
 import { getLiveSchedule } from '@/lib/data';
 import { getGlobalFallbackCarousel } from '@/lib/fallback-carousel';
-import { getLatestMusicPreference } from '@/lib/operator-preferences';
+import { resolveBackgroundMusic } from '@/lib/music-playlists';
 import type { MediaAsset, ProgramBlock, ScheduleBundle } from '@/lib/types';
 
 vi.mock('@/lib/data', () => ({
@@ -12,8 +12,10 @@ vi.mock('@/lib/data', () => ({
     getPlaybackScheduleForBlock: vi.fn(),
 }));
 
-vi.mock('@/lib/operator-preferences', () => ({
-    getLatestMusicPreference: vi.fn(),
+vi.mock('@/lib/music-playlists', () => ({
+    resolveBackgroundMusic: vi.fn(),
+    ensureMusicBootstrap: vi.fn(),
+    getMusicOutputSettings: vi.fn(),
 }));
 
 vi.mock('@/lib/fallback-carousel', async (importOriginal) => {
@@ -46,15 +48,27 @@ vi.mock('@/lib/services/vimeo', () => ({
     })),
 }));
 
+const defaultTracks = [
+    { id: 'music-1', title: 'Music bed', url: 'https://example.com/music.mp3' },
+];
+
+function musicPayload(shouldPlay: boolean) {
+    return {
+        enabled: shouldPlay,
+        volume: 42,
+        fade: 'short' as const,
+        playlistId: 'playlist-1',
+        tracks: defaultTracks,
+    };
+}
+
 describe('GET /api/output/channel/state background music', () => {
     beforeEach(() => {
         vi.resetAllMocks();
         vi.mocked(getGlobalFallbackCarousel).mockResolvedValue(null);
-        vi.mocked(getLatestMusicPreference).mockResolvedValue({
-            enabled: true,
-            volume: 42,
-            fade: 'short',
-        });
+        vi.mocked(resolveBackgroundMusic).mockImplementation(async ({ shouldPlay }) =>
+            musicPayload(shouldPlay),
+        );
     });
 
     it('enables music for slide blocks', async () => {
@@ -72,7 +86,7 @@ describe('GET /api/output/channel/state background music', () => {
         });
     });
 
-    it('renders youtube slides through the slide output iframe and disables music', async () => {
+    it('renders youtube slides through the slide output iframe with playlist music', async () => {
         vi.mocked(getLiveSchedule).mockResolvedValue(
             bundleWith({
                 blockType: 'slide',
@@ -102,7 +116,10 @@ describe('GET /api/output/channel/state background music', () => {
         expect(payload.kind).toBe('slide');
         expect(payload.slideId).toBe('slide-youtube-1');
         expect(payload.renderUrl).toContain('/output/slide/slide-youtube-1');
-        expect(payload.backgroundMusic).toBeNull();
+        expect(payload.backgroundMusic).toMatchObject({
+            enabled: true,
+            tracks: defaultTracks,
+        });
     });
 
     it('keeps the playlist but pauses it for video blocks', async () => {
@@ -345,10 +362,14 @@ describe('GET /api/output/channel/state background music', () => {
         expect(payload.kind).toBe('mp4');
         expect(payload.signature).toContain('fallback-carousel:promo-video');
         expect(payload.url).toBe('https://example.com/promo.mp4');
-        expect(payload.backgroundMusic).toBeNull();
+        expect(payload.backgroundMusic).toMatchObject({
+            enabled: false,
+            tracks: defaultTracks,
+        });
     });
 
     it('returns null music when no ready tracks exist', async () => {
+        vi.mocked(resolveBackgroundMusic).mockResolvedValue(null);
         vi.mocked(getLiveSchedule).mockResolvedValue(
             bundleWith({ blockType: 'slide', slideId: 'slide-1', includeMusic: false }),
         );

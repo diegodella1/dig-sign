@@ -54,6 +54,17 @@ export {
 export { setFallbackPolicy } from './mutations/fallback';
 
 export {
+    archiveMusicPlaylist,
+    assignFallbackPlaylist,
+    assignSchedulePlaylist,
+    createMusicPlaylist,
+    readMusicOutputConfig,
+    saveMusicOutputConfig,
+    saveMusicPlaylistItems,
+    updateMusicPlaylist,
+} from './mutations/music-playlists';
+
+export {
     clearOutputOverride,
     ensureVimeoAssetCached,
     goLiveWithReuters,

@@ -1,7 +1,10 @@
 import { appUrl } from '@/lib/helpers/app-url';
 import { getLiveSchedule, getPlaybackScheduleForBlock } from '@/lib/data';
 import { getGlobalFallbackCarousel, selectFallbackCarouselSlide } from '@/lib/fallback-carousel';
-import { getLatestMusicPreference } from '@/lib/operator-preferences';
+import {
+    resolveBackgroundMusic,
+    type BackgroundMusicPayload,
+} from '@/lib/music-playlists';
 import { getActiveOutputOverride } from '@/lib/output-overrides';
 import { recordedBugFromBlock } from '@/lib/recorded-bug';
 import { getLiveObjectConfig, youtubeLiveEmbedUrl } from '@/lib/live-object';
@@ -27,7 +30,7 @@ export type ChannelStateBase = {
 };
 
 type ActiveSchedule = ReturnType<typeof findActiveSchedule>;
-type BackgroundMusic = Awaited<ReturnType<typeof backgroundMusicForActive>>;
+type BackgroundMusic = BackgroundMusicPayload | null;
 
 export async function composeChannelState(inputs: ChannelStateInputs) {
     const { now, previewBlockId, requestedStartAt, mediaAccessToken } = inputs;
@@ -51,33 +54,33 @@ export async function composeChannelState(inputs: ChannelStateInputs) {
               hasRequestedStartAt && requestedStartAt !== null ? Math.max(0, requestedStartAt) : 0,
           )
         : findActiveSchedule(bundle, secondsOfDay);
-    const [override, music] = await Promise.all([
-        getActiveOutputOverride(bundle.day?.id),
-        backgroundMusicForActive(bundle, active, mediaAccessToken),
-    ]);
+    const override = await getActiveOutputOverride(bundle.day?.id);
     const base: ChannelStateBase = {
         serverSeconds: secondsOfDay,
         generatedAt: now.toISOString(),
     };
 
-    return resolveChannelState({ bundle, active, override, music, base, mediaAccessToken });
+    return resolveChannelState({ bundle, active, override, base, mediaAccessToken });
 }
 
 type ResolveChannelStateArgs = {
     bundle: ScheduleBundle;
     active: ActiveSchedule;
     override: OutputOverride | null;
-    music: BackgroundMusic;
     base: ChannelStateBase;
     mediaAccessToken: string;
 };
 
 async function resolveChannelState(args: ResolveChannelStateArgs) {
-    const { bundle, active, override, music, base, mediaAccessToken } = args;
+    const { bundle, active, override, base, mediaAccessToken } = args;
 
     if (bundle.day && override?.enabled) {
         if (override.sourceType === 'reuters' && override.streamUrl) {
-            return reutersOverrideState(override, base, music);
+            return reutersOverrideState(
+                override,
+                base,
+                await scheduleMusic(active, mediaAccessToken, false),
+            );
         }
 
         if (override.sourceType === 'scheduled_block' && override.blockId) {
@@ -87,7 +90,6 @@ async function resolveChannelState(args: ResolveChannelStateArgs) {
                 bundle,
                 active: forced,
                 override: null,
-                music,
                 base,
                 mediaAccessToken,
             });
@@ -98,7 +100,12 @@ async function resolveChannelState(args: ResolveChannelStateArgs) {
                 bundle.slideAssets.find((item) => item.id === override.slideId) ?? null;
 
             if (slide) {
-                return forcedSlideOverrideState(override, slide, base, music);
+                return forcedSlideOverrideState(
+                    override,
+                    slide,
+                    base,
+                    await scheduleMusic(active, mediaAccessToken, true),
+                );
             }
         }
 
@@ -107,25 +114,43 @@ async function resolveChannelState(args: ResolveChannelStateArgs) {
                 bundle.mediaAssets.find((item) => item.id === override.assetId) ?? null;
 
             if (asset) {
-                return forcedAssetOverrideState(override, asset, base, music, mediaAccessToken);
+                return forcedAssetOverrideState(
+                    override,
+                    asset,
+                    base,
+                    await scheduleMusic(active, mediaAccessToken, shouldPlayScheduleVisual(active)),
+                    mediaAccessToken,
+                );
             }
         }
     }
 
     if (!bundle.day || !active.block) {
-        return fallbackStateForBundle(bundle, 'no-active-block', base, mediaAccessToken, music);
+        return fallbackStateForBundle(bundle, 'no-active-block', base, mediaAccessToken);
     }
     const startOffsetSeconds = Math.max(0, Math.floor(active.elapsedInBlock));
     const reutersUrl = metadataText(active.block.metadata, 'reuters_stream_url');
     const liveConfig = getLiveObjectConfig(active.block);
 
     if (liveConfig) {
-        return liveBlockState(active.block, liveConfig, base, music);
+        return liveBlockState(
+            active.block,
+            liveConfig,
+            base,
+            await scheduleMusic(active, mediaAccessToken, false),
+        );
     }
 
     if (reutersUrl) {
-        return reutersBlockState(active.block, reutersUrl, base, music);
+        return reutersBlockState(
+            active.block,
+            reutersUrl,
+            base,
+            await scheduleMusic(active, mediaAccessToken, false),
+        );
     }
+
+    const music = await scheduleMusic(active, mediaAccessToken, shouldPlayScheduleVisual(active));
     const stateArgs = { active, base, music, mediaAccessToken, startOffsetSeconds };
 
     if (active.slide) {
@@ -140,13 +165,7 @@ async function resolveChannelState(args: ResolveChannelStateArgs) {
         }
     }
 
-    return fallbackStateForBundle(
-        bundle,
-        'unsupported-active-content',
-        base,
-        mediaAccessToken,
-        music,
-    );
+    return fallbackStateForBundle(bundle, 'unsupported-active-content', base, mediaAccessToken);
 }
 
 function computeSecondsOfDay(args: {
@@ -506,7 +525,6 @@ async function fallbackStateForBundle(
     reason: string,
     base: ChannelStateBase,
     mediaAccessToken = '',
-    backgroundMusic: BackgroundMusic = null,
 ) {
     const fallbackAsset = findFallbackLoopAsset(bundle);
 
@@ -518,19 +536,24 @@ async function fallbackStateForBundle(
         }
     }
 
+    const fallbackMusic = await resolveBackgroundMusic({
+        context: 'fallback',
+        shouldPlay: true,
+        mediaAccessToken,
+    });
     const carouselState = await fallbackCarouselState(
         bundle,
         reason,
         base,
         mediaAccessToken,
-        backgroundMusic,
+        fallbackMusic,
     );
 
     if (carouselState) {
         return carouselState;
     }
 
-    return fallbackState(reason, base, backgroundMusic);
+    return fallbackState(reason, base, fallbackMusic);
 }
 
 async function fallbackCarouselState(
@@ -557,6 +580,7 @@ async function fallbackCarouselState(
             reason,
             base,
             mediaAccessToken,
+            backgroundMusic,
         );
     }
 
@@ -596,8 +620,8 @@ function shouldRenderSlideInIframe(slide: SlideAsset) {
     return Boolean(slide.templateId) || isYouTubeSlide(slide);
 }
 
-function slideBackgroundMusic(slide: SlideAsset, music: BackgroundMusic) {
-    return isYouTubeSlide(slide) ? null : music;
+function slideBackgroundMusic(_slide: SlideAsset, music: BackgroundMusic) {
+    return music;
 }
 
 async function fallbackCarouselAssetState(
@@ -606,6 +630,7 @@ async function fallbackCarouselAssetState(
     reason: string,
     base: ChannelStateBase,
     mediaAccessToken = '',
+    music: BackgroundMusic = null,
 ) {
     const common = {
         ...base,
@@ -619,7 +644,7 @@ async function fallbackCarouselAssetState(
         muted: false,
         loop: false,
         ...videoPresentation(asset),
-        backgroundMusic: null,
+        backgroundMusic: suppressBackgroundMusic(music),
     };
 
     if (asset.sourceType === 'remote_mp4' && asset.url) {
@@ -774,41 +799,27 @@ function metadataText(metadata: Record<string, unknown> | null | undefined, key:
     return typeof value === 'string' ? value : '';
 }
 
-async function backgroundMusicForActive(
-    bundle: ScheduleBundle,
-    active: ActiveSchedule,
-    mediaAccessToken = '',
+async function scheduleMusic(
+    _active: ActiveSchedule,
+    mediaAccessToken: string,
+    shouldPlay: boolean,
 ) {
-    const shouldPlay =
+    return resolveBackgroundMusic({
+        context: 'schedule',
+        shouldPlay,
+        mediaAccessToken,
+    });
+}
+
+function shouldPlayScheduleVisual(active: ActiveSchedule) {
+    return (
         active.block?.blockType === 'image' ||
         active.block?.blockType === 'slide' ||
         active.block?.blockType === 'fallback' ||
         !active.block ||
         Boolean(active.slide) ||
-        active.asset?.mediaKind === 'image';
-    const preference = await getLatestMusicPreference();
-
-    if (!preference.enabled) {
-        return null;
-    }
-    const tracks = bundle.mediaAssets
-        .filter((asset) => asset.assetType === 'music' && asset.status === 'ready' && asset.url)
-        .map((asset) => ({
-            id: asset.id,
-            title: asset.title,
-            url: withMediaAccessToken(asset.url!, mediaAccessToken),
-        }));
-
-    if (!tracks.length) {
-        return null;
-    }
-
-    return {
-        enabled: shouldPlay,
-        volume: preference.volume,
-        fade: preference.fade,
-        tracks,
-    };
+        active.asset?.mediaKind === 'image'
+    );
 }
 
 function suppressBackgroundMusic(music: BackgroundMusic): BackgroundMusic {

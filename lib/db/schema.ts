@@ -402,6 +402,60 @@ export const operatorPreferences = sqliteTable(
 export type OperatorPreferenceRow = typeof operatorPreferences.$inferSelect;
 export type InsertOperatorPreferenceRow = typeof operatorPreferences.$inferInsert;
 
+// ─── music_playlists ─────────────────────────────────────────────────────────
+// status CHECK → enforced in app layer (draft | ready | archived).
+
+export const musicPlaylists = sqliteTable('music_playlists', {
+    id: text('id')
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    name: text('name').notNull(),
+    status: text('status').notNull().default('ready'),
+    createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+});
+
+export type MusicPlaylistRow = typeof musicPlaylists.$inferSelect;
+export type InsertMusicPlaylistRow = typeof musicPlaylists.$inferInsert;
+
+// ─── music_playlist_items ────────────────────────────────────────────────────
+
+export const musicPlaylistItems = sqliteTable(
+    'music_playlist_items',
+    {
+        id: text('id')
+            .primaryKey()
+            .$defaultFn(() => crypto.randomUUID()),
+        playlistId: text('playlist_id')
+            .notNull()
+            .references(() => musicPlaylists.id, { onDelete: 'cascade' }),
+        assetId: text('asset_id')
+            .notNull()
+            .references(() => mediaAssets.id, { onDelete: 'cascade' }),
+        sortOrder: integer('sort_order').notNull(),
+        createdAt: text('created_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+    },
+    (table) => ({
+        playlistAssetUnique: uniqueIndex('music_playlist_items_playlist_asset_unique').on(
+            table.playlistId,
+            table.assetId,
+        ),
+        playlistOrderIdx: index('music_playlist_items_playlist_order_idx').on(
+            table.playlistId,
+            table.sortOrder,
+        ),
+    }),
+);
+
+export type MusicPlaylistItemRow = typeof musicPlaylistItems.$inferSelect;
+export type InsertMusicPlaylistItemRow = typeof musicPlaylistItems.$inferInsert;
+
 // ─── output_overrides ────────────────────────────────────────────────────────
 // enabled boolean → integer mode:'boolean'.
 // source_type CHECK → enforced in app layer.

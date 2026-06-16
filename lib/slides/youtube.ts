@@ -68,7 +68,10 @@ export function youtubeSlideMetadata(input: {
     };
 }
 
-export function getYouTubeSlideConfig(slide: SlideAsset | null | undefined) {
+export function getYouTubeSlideConfig(
+    slide: SlideAsset | null | undefined,
+    options: { forceMuted?: boolean } = {},
+) {
     if (!isYouTubeSlide(slide)) {
         return null;
     }
@@ -84,7 +87,7 @@ export function getYouTubeSlideConfig(slide: SlideAsset | null | undefined) {
     return {
         videoId,
         zoom: normalizeZoom(metadata.youtubeZoom),
-        muted: normalizeBoolean(metadata.youtubeMuted, true),
+        muted: options.forceMuted === true ? true : normalizeBoolean(metadata.youtubeMuted, true),
         loop: normalizeBoolean(metadata.youtubeLoop, true),
         startSeconds: normalizePositiveInteger(metadata.youtubeStartSeconds, 0),
     } satisfies YouTubeSlideConfig;
@@ -160,7 +163,7 @@ export function youTubeBackgroundEmbedUrl(videoId: string) {
     return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
 }
 
-export function youTubeEmbedUrl(config: YouTubeSlideConfig) {
+export function youTubeEmbedUrl(config: YouTubeSlideConfig, options: { forceMuted?: boolean } = {}) {
     const params = new URLSearchParams({
         autoplay: '1',
         controls: '0',
@@ -170,7 +173,7 @@ export function youTubeEmbedUrl(config: YouTubeSlideConfig) {
         modestbranding: '1',
         playsinline: '1',
         rel: '0',
-        mute: config.muted ? '1' : '0',
+        mute: options.forceMuted === true || config.muted ? '1' : '0',
     });
 
     if (config.loop) {

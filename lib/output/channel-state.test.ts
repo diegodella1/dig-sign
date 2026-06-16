@@ -25,8 +25,20 @@ vi.mock('@/lib/output-overrides', () => ({
     getActiveOutputOverride: vi.fn(async () => null),
 }));
 
-vi.mock('@/lib/operator-preferences', () => ({
-    getLatestMusicPreference: vi.fn(async () => ({ enabled: false, volume: 1, fade: 0 })),
+vi.mock('@/lib/music-playlists', () => ({
+    resolveBackgroundMusic: vi.fn(async ({ context, shouldPlay }) => {
+        if (!shouldPlay) {
+            return null;
+        }
+
+        return {
+            enabled: true,
+            volume: 50,
+            fade: 'short',
+            playlistId: context === 'fallback' ? 'fallback-playlist' : 'schedule-playlist',
+            tracks: [{ id: 'music-1', title: 'Bed', url: 'https://example.com/music.mp3' }],
+        };
+    }),
 }));
 
 vi.mock('@/lib/settings', () => ({

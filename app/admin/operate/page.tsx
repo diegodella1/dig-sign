@@ -5,6 +5,7 @@ import { BroadcastLayout } from '@/components/broadcast/broadcast-layout';
 import { LiveAlertsPanel } from '@/components/broadcast/live-alerts-panel';
 import { LiveOnAirPanel } from '@/components/broadcast/live-on-air-panel';
 import { OperatePreShowBanner } from '@/components/broadcast/operate-pre-show-banner';
+import { OperationsPanelMusic } from '@/components/operations-panel/music';
 import { QuickActionsBar } from '@/components/broadcast/quick-actions-bar';
 import { RunbookProgress } from '@/components/broadcast/runbook-progress';
 import type { OutputMonitorPayload } from '@/components/broadcast/types';
@@ -291,6 +292,12 @@ export default async function OperatePage() {
                             emergencyLoopAction={emergencyLoop}
                         />
                         <div className="mt-4 space-y-4">
+                            <section className="rounded-md border border-line bg-surface-elevated-2 p-3">
+                                <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                                    Background music
+                                </h2>
+                                <OperationsPanelMusic />
+                            </section>
                             <RunbookProgress
                                 date={today}
                                 checkedCount={checkedCount}

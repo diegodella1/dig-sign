@@ -13,7 +13,7 @@ type YouTubeVideoSlideProps = {
 };
 
 export function YouTubeVideoSlide({ slide }: YouTubeVideoSlideProps) {
-    const config = getYouTubeSlideConfig(slide);
+    const config = getYouTubeSlideConfig(slide, { forceMuted: true });
     const [revealedSlideId, setRevealedSlideId] = useState<string | null>(null);
     const revealed = revealedSlideId === slide.id;
 
@@ -41,7 +41,7 @@ export function YouTubeVideoSlide({ slide }: YouTubeVideoSlideProps) {
                     'absolute inset-0 h-full w-full origin-center border-0 bg-black transition-[filter,transform] duration-[4500ms] ease-out',
                     revealed ? `${zoomClass} blur-0` : `${hiddenZoomClass} blur-xl`,
                 ].join(' ')}
-                src={youTubeEmbedUrl(config)}
+                src={youTubeEmbedUrl(config, { forceMuted: true })}
                 title={slide.title}
                 allow="autoplay; encrypted-media; picture-in-picture"
                 referrerPolicy="strict-origin-when-cross-origin"

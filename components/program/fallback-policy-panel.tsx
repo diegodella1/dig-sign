@@ -75,7 +75,7 @@ export function FallbackPolicyPanel({
                         checked={mode === 'plate_rotation'}
                         onChange={() => setMode('plate_rotation')}
                         title="Plate rotation"
-                        detail="Rotate ready plates and short promo videos with background music."
+                        detail="Rotate ready plates and short promo videos. The fallback playlist pauses during promo audio and resumes on plates."
                     />
                     <PolicyOption
                         checked={mode === 'emergency_only'}

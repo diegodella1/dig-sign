@@ -19,6 +19,7 @@ type BackgroundMusic = {
     enabled: boolean;
     volume: number;
     fade: 'none' | 'short';
+    playlistId?: string;
     tracks: Array<{ id: string; title: string; url: string }>;
 } | null;
 
@@ -130,6 +131,9 @@ export function BrowserOutputRenderer({ debug = false, startAt, previewBlockId, 
     const liveEndRef = useRef<string | null>(null);
     const deadSinceRef = useRef<number | null>(null);
     const deadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const trackIndexRef = useRef(0);
+    const playlistIdRef = useRef<string | null>(null);
+    const fadeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [armed, setArmed] = useState(false);
     const [state, setState] = useState<OutputState | null>(null);
     const [mediaState, setMediaState] = useState<MediaState>('idle');
@@ -367,28 +371,119 @@ export function BrowserOutputRenderer({ debug = false, startAt, previewBlockId, 
             return;
         }
 
+        const clearFade = () => {
+            if (fadeTimerRef.current) {
+                clearInterval(fadeTimerRef.current);
+                fadeTimerRef.current = null;
+            }
+        };
+
+        const applyInstantVolume = (volume: number) => {
+            clearFade();
+            music.volume = Math.max(0, Math.min(1, volume));
+        };
+
+        const fadeVolume = (from: number, to: number, durationMs: number, onDone?: () => void) => {
+            clearFade();
+            const steps = 12;
+            const stepMs = Math.max(16, Math.floor(durationMs / steps));
+            let step = 0;
+            fadeTimerRef.current = setInterval(() => {
+                step += 1;
+                const progress = Math.min(1, step / steps);
+                music.volume = Math.max(
+                    0,
+                    Math.min(1, from + (to - from) * progress),
+                );
+
+                if (progress >= 1) {
+                    clearFade();
+                    onDone?.();
+                }
+            }, stepMs);
+        };
+
+        const onTrackEnded = () => {
+            const bgm = state?.backgroundMusic;
+
+            if (!bgm?.tracks.length) {
+                return;
+            }
+
+            trackIndexRef.current = (trackIndexRef.current + 1) % bgm.tracks.length;
+            const nextTrack = bgm.tracks[trackIndexRef.current];
+
+            if (!nextTrack) {
+                return;
+            }
+
+            music.src = nextTrack.url;
+            music.loop = false;
+            void music.play().catch(() => undefined);
+        };
+
+        music.removeEventListener('ended', onTrackEnded);
+        music.addEventListener('ended', onTrackEnded);
+
         if (!state?.backgroundMusic?.tracks.length) {
+            applyInstantVolume(0);
             music.pause();
 
-            return;
+            return () => {
+                music.removeEventListener('ended', onTrackEnded);
+                clearFade();
+            };
         }
-        const track = state.backgroundMusic.tracks[0];
+
+        const bgm = state.backgroundMusic;
+        const nextPlaylistId = bgm.playlistId ?? bgm.tracks.map((track) => track.id).join(':');
+
+        if (playlistIdRef.current !== nextPlaylistId) {
+            playlistIdRef.current = nextPlaylistId;
+            trackIndexRef.current = 0;
+        }
+
+        const track = bgm.tracks[trackIndexRef.current % bgm.tracks.length];
 
         if (!track) {
-            return;
+            return () => {
+                music.removeEventListener('ended', onTrackEnded);
+                clearFade();
+            };
         }
 
-        if (music.src !== track.url) {
+        const targetVolume = Math.max(0, Math.min(1, bgm.volume / 100));
+        const currentTrackUrl = music.getAttribute('data-track-url');
+
+        if (currentTrackUrl !== track.url) {
             music.src = track.url;
+            music.setAttribute('data-track-url', track.url);
         }
-        music.volume = Math.max(0, Math.min(1, state.backgroundMusic.volume / 100));
-        music.loop = true;
+        music.loop = false;
 
-        if (armed && state.backgroundMusic.enabled) {
-            void music.play().catch(() => undefined);
+        if (armed && bgm.enabled) {
+            if (bgm.fade === 'short' && music.paused) {
+                music.volume = 0;
+                void music.play().catch(() => undefined);
+                fadeVolume(0, targetVolume, 400);
+            } else {
+                applyInstantVolume(targetVolume);
+
+                if (music.paused) {
+                    void music.play().catch(() => undefined);
+                }
+            }
+        } else if (bgm.fade === 'short' && !music.paused) {
+            fadeVolume(music.volume, 0, 400, () => music.pause());
         } else {
+            applyInstantVolume(targetVolume);
             music.pause();
         }
+
+        return () => {
+            music.removeEventListener('ended', onTrackEnded);
+            clearFade();
+        };
     }, [armed, state]);
 
     async function armOutput() {

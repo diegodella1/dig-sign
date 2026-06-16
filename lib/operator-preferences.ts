@@ -1,8 +1,8 @@
-import { and, desc, eq } from 'drizzle-orm';
-
-import { getCurrentOperatorSession } from './auth/auth';
-import { getDb } from './db/client';
-import { operatorPreferences } from './db/schema';
+import {
+    getMusicOutputSettings,
+    saveMusicOutputSettings,
+    type MusicOutputSettings,
+} from './music-playlists';
 
 export type MusicPreference = {
     enabled: boolean;
@@ -17,66 +17,33 @@ const DEFAULT_MUSIC_PREFERENCE: MusicPreference = {
 };
 
 export async function getMusicPreference(): Promise<MusicPreference> {
-    const operator = await getCurrentOperatorSession();
+    const settings = await getMusicOutputSettings();
 
-    if (!operator || operator.operatorId === 'bootstrap') {
-        return DEFAULT_MUSIC_PREFERENCE;
-    }
-
-    const db = await getDb();
-    const [row] = await db
-        .select({ value: operatorPreferences.value })
-        .from(operatorPreferences)
-        .where(
-            and(
-                eq(operatorPreferences.operatorId, operator.operatorId),
-                eq(operatorPreferences.key, 'music'),
-            ),
-        )
-        .limit(1);
-
-    return parseMusicPreference(row?.value);
+    return toMusicPreference(settings);
 }
 
 export async function getLatestMusicPreference(): Promise<MusicPreference> {
-    const db = await getDb();
-    const [row] = await db
-        .select({ value: operatorPreferences.value })
-        .from(operatorPreferences)
-        .where(eq(operatorPreferences.key, 'music'))
-        .orderBy(desc(operatorPreferences.updatedAt))
-        .limit(1);
-
-    return parseMusicPreference(row?.value);
+    return getMusicPreference();
 }
 
-export async function saveMusicPreference(input: Partial<MusicPreference>) {
-    const operator = await getCurrentOperatorSession();
+export async function saveMusicPreference(
+    input: Partial<MusicPreference>,
+): Promise<MusicPreference> {
+    const current = await getMusicOutputSettings();
+    const next = await saveMusicOutputSettings({
+        ...current,
+        ...parseMusicPreference(input),
+    });
 
-    if (!operator || operator.operatorId === 'bootstrap') {
-        return DEFAULT_MUSIC_PREFERENCE;
-    }
+    return toMusicPreference(next);
+}
 
-    const next = parseMusicPreference(input);
-    const db = await getDb();
-
-    await db
-        .insert(operatorPreferences)
-        .values({
-            operatorId: operator.operatorId,
-            key: 'music',
-            value: next,
-            updatedAt: new Date().toISOString(),
-        })
-        .onConflictDoUpdate({
-            target: [operatorPreferences.operatorId, operatorPreferences.key],
-            set: {
-                value: next,
-                updatedAt: new Date().toISOString(),
-            },
-        });
-
-    return next;
+function toMusicPreference(settings: MusicOutputSettings): MusicPreference {
+    return {
+        enabled: settings.enabled,
+        volume: settings.volume,
+        fade: settings.fade,
+    };
 }
 
 function parseMusicPreference(value: unknown): MusicPreference {
@@ -90,3 +57,5 @@ function parseMusicPreference(value: unknown): MusicPreference {
         fade: source.fade === 'none' ? 'none' : 'short',
     };
 }
+
+export { DEFAULT_MUSIC_PREFERENCE };

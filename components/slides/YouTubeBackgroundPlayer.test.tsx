@@ -38,7 +38,7 @@ describe('YouTubeBackgroundPlayer', () => {
         }
 
         window.YT = {
-            Player: MockPlayer as unknown as typeof window.YT.Player,
+            Player: MockPlayer as unknown as NonNullable<Window['YT']>['Player'],
             PlayerState: {
                 PLAYING: 1,
                 ENDED: 0,
@@ -74,7 +74,7 @@ describe('YouTubeBackgroundPlayer', () => {
         }
 
         window.YT = {
-            Player: MockPlayer as unknown as typeof window.YT.Player,
+            Player: MockPlayer as unknown as NonNullable<Window['YT']>['Player'],
             PlayerState: {
                 PLAYING: 1,
                 ENDED: 0,
@@ -110,7 +110,7 @@ describe('YouTubeBackgroundPlayer', () => {
         }
 
         window.YT = {
-            Player: MockPlayer as unknown as typeof window.YT.Player,
+            Player: MockPlayer as unknown as NonNullable<Window['YT']>['Player'],
             PlayerState: {
                 PLAYING: 1,
                 ENDED: 0,

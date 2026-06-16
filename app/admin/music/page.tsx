@@ -1,9 +1,17 @@
+import { revalidatePath } from 'next/cache';
+
 import { prepareSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { MusicBulkUpload } from '@/components/media/music-bulk-upload';
+import { MusicPlaylistsPanel } from '@/components/media/music-playlists-panel';
 import { EmptyState, FormHeader, MetricTile, Notice } from '@/components/ui';
 import { getAssets } from '@/lib/data';
-import { updateMediaAsset } from '@/lib/mutations';
+import { getMusicOutputSettings, listPlaylists } from '@/lib/music-playlists';
+import {
+    assignSchedulePlaylist,
+    createMusicPlaylist,
+    updateMediaAsset,
+} from '@/lib/mutations';
 
 import type { MediaAsset } from '@/lib/types';
 
@@ -15,7 +23,11 @@ export default async function MusicPage({
     searchParams: Promise<{ uploaded?: string }>;
 }) {
     const params = await searchParams;
-    const assets = await getAssets();
+    const [assets, playlists, outputSettings] = await Promise.all([
+        getAssets(),
+        listPlaylists(),
+        getMusicOutputSettings(),
+    ]);
     const tracks = assets
         .filter((asset) => asset.assetType === 'music')
         .sort((a, b) => playlistOrder(a) - playlistOrder(b) || a.title.localeCompare(b.title));
@@ -38,7 +50,7 @@ export default async function MusicPage({
             status: String(formData.get('status')),
             orientation: 'auto',
             playlistOrder: Number(formData.get('playlist_order') || 0) || undefined,
-            revalidatePaths: ['/output/live'],
+            revalidatePaths: ['/output/live', '/admin/music'],
         });
 
         if (!result.success) {
@@ -46,14 +58,46 @@ export default async function MusicPage({
         }
     }
 
+    async function createPlaylistAction(formData: FormData) {
+        'use server';
+        const result = await createMusicPlaylist({
+            name: String(formData.get('name') || ''),
+        });
+
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+
+        revalidatePath('/admin/music');
+        revalidatePath('/admin/program/fallback');
+    }
+
+    async function assignSchedulePlaylistAction(formData: FormData) {
+        'use server';
+        const playlistId = String(formData.get('playlist_id') || '');
+
+        if (!playlistId) {
+            throw new Error('Choose a playlist');
+        }
+
+        const result = await assignSchedulePlaylist(playlistId);
+
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+
+        revalidatePath('/admin/music');
+        revalidatePath('/output/live');
+    }
+
     return (
         <AdminShell
             title="Music"
-            description="Background playlist tracks that flow across slide, image and visual fallback blocks."
+            description="MP3 library and named playlists for schedule and fallback output."
             subNav={prepareSubNav}
         >
             {params.uploaded ? (
-                <Notice tone="ok">Track uploaded and added to the background playlist.</Notice>
+                <Notice tone="ok">Track uploaded. Add it to a playlist below.</Notice>
             ) : null}
             <section className="mb-5 grid gap-3 md:grid-cols-3">
                 <MetricTile
@@ -64,14 +108,14 @@ export default async function MusicPage({
                 <MetricTile
                     label="Ready"
                     value={String(readyTracks.length)}
-                    detail="Available to the output renderer"
+                    detail="Available for playlists"
                     tone={readyTracks.length ? 'ok' : 'warn'}
                 />
                 <MetricTile
-                    label="Runtime"
-                    value={`${Math.round(totalDuration / 60)}m`}
-                    detail="Known playlist duration"
-                    tone="info"
+                    label="Playlists"
+                    value={String(playlists.length)}
+                    detail="Named rotation sets"
+                    tone={playlists.length ? 'ok' : 'warn'}
                 />
             </section>
 
@@ -81,20 +125,41 @@ export default async function MusicPage({
                 <section className="surface-panel p-4">
                     <FormHeader
                         title="Playback rule"
-                        detail="Music plays during slide, image and visual fallback blocks. Video, ad, promo and live blocks pause it; visual blocks resume it."
+                        detail="Schedule playlist plays on slide, image and YouTube blocks. Video blocks pause it and visual blocks resume from the same position."
                     />
                     <div className="mt-4 grid gap-2 text-sm">
                         <p className="rounded-md bg-panel-soft px-3 py-2 text-muted">
-                            Video blocks lead with their own media and suppress the playlist.
+                            Output rotates through the selected playlist in order.
                         </p>
                         <p className="rounded-md bg-panel-soft px-3 py-2 text-muted">
-                            Tracks rotate automatically; one ready track loops.
+                            Fallback playlist is configured on Program → Fallback policy.
+                        </p>
+                        <p className="rounded-md bg-panel-soft px-3 py-2 text-muted">
+                            Known runtime: {Math.round(totalDuration / 60)}m across ready tracks.
                         </p>
                     </div>
                 </section>
             </section>
 
+            <div className="mb-5">
+                <MusicPlaylistsPanel
+                    tracks={tracks.map((track) => ({
+                        id: track.id,
+                        title: track.title,
+                        status: track.status,
+                        ready: track.status === 'ready' && Boolean(track.url),
+                    }))}
+                    initialPlaylists={playlists}
+                    initialSettings={outputSettings}
+                    createPlaylistAction={createPlaylistAction}
+                    assignSchedulePlaylistAction={assignSchedulePlaylistAction}
+                />
+            </div>
+
             <div className="surface-panel overflow-hidden">
+                <div className="border-b border-line px-4 py-3">
+                    <h2 className="text-lg font-semibold">Track library</h2>
+                </div>
                 {tracks.map((track) => (
                     <details
                         key={track.id}
@@ -121,7 +186,7 @@ export default async function MusicPage({
                                         : 'text-sm font-semibold text-warn'
                                 }
                             >
-                                {track.status === 'ready' && track.url ? 'In playlist' : 'Review'}
+                                {track.status === 'ready' && track.url ? 'Ready' : 'Review'}
                             </span>
                             <span className="rounded-md border border-line px-3 py-2 text-center text-sm font-semibold text-ink group-open:bg-panel-soft">
                                 Edit
@@ -133,7 +198,7 @@ export default async function MusicPage({
                 {tracks.length === 0 ? (
                     <div className="p-4">
                         <EmptyState title="No music tracks yet">
-                            Upload an MP3 to create the first background playlist track.
+                            Upload an MP3 to create the first track for your playlists.
                         </EmptyState>
                     </div>
                 ) : null}

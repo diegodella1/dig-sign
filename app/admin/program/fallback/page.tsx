@@ -1,8 +1,8 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { programSubNavForDate } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
+import { FallbackPlaylistSelector } from '@/components/program/fallback-playlist-selector';
 import { FallbackPolicyPanel } from '@/components/program/fallback-policy-panel';
 import { PlateRotationEditor } from '@/components/program/plate-rotation-editor';
 import { ButtonLink, Notice } from '@/components/ui';
@@ -10,8 +10,10 @@ import { getAssets, getSlides } from '@/lib/data';
 import { getGlobalFallbackCarousel } from '@/lib/fallback-carousel';
 import { listSilentVideoCandidates, resolveFallbackPolicyStatus } from '@/lib/fallback-policy';
 import { isoDateInTimezone, PLAYOUT_TIMEZONE } from '@/lib/helpers/time';
+import { getMusicOutputSettings, listPlaylists } from '@/lib/music-playlists';
 import {
     activateFallbackCarouselSet,
+    assignFallbackPlaylist,
     deleteFallbackCarouselSet,
     saveFallbackCarouselSet,
     setFallbackPolicy,
@@ -28,10 +30,12 @@ export default async function FallbackPolicyPage({
 }) {
     const params = await searchParams;
     const today = isoDateInTimezone(new Date(), PLAYOUT_TIMEZONE);
-    const [assets, slides, carousel] = await Promise.all([
+    const [assets, slides, carousel, playlists, outputSettings] = await Promise.all([
         getAssets(),
         getSlides(),
         getGlobalFallbackCarousel(),
+        listPlaylists(),
+        getMusicOutputSettings(),
     ]);
     const activeSlides = slides.filter((slide) => slide.status !== 'archived');
     const status = resolveFallbackPolicyStatus({
@@ -103,6 +107,23 @@ export default async function FallbackPolicyPage({
         redirect('/admin/program/fallback');
     }
 
+    async function saveFallbackPlaylistAction(formData: FormData) {
+        'use server';
+        const playlistId = String(formData.get('playlist_id') || '');
+
+        if (!playlistId) {
+            throw new Error('Choose a fallback playlist');
+        }
+
+        const result = await assignFallbackPlaylist(playlistId);
+
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+
+        redirect('/admin/program/fallback?saved=1');
+    }
+
     return (
         <AdminShell title="Fallback policy" subNav={programSubNavForDate(today)}>
             {params.saved ? <Notice tone="ok">Fallback policy saved.</Notice> : null}
@@ -131,13 +152,11 @@ export default async function FallbackPolicyPage({
                 />
             </div>
 
-            <p className="mt-4 text-sm text-muted">
-                Plate rotations use background music from{' '}
-                <Link href="/admin/music" className="font-semibold text-accent-positive underline">
-                    Music
-                </Link>
-                .
-            </p>
+            <FallbackPlaylistSelector
+                playlists={playlists.filter((playlist) => playlist.status !== 'archived')}
+                selectedPlaylistId={outputSettings.fallbackPlaylistId}
+                saveAction={saveFallbackPlaylistAction}
+            />
 
             <div className="mt-4 flex flex-wrap gap-2">
                 <ButtonLink href="/admin/program" variant="secondary">
