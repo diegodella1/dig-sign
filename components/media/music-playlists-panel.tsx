@@ -57,9 +57,6 @@ export function MusicPlaylistsPanel({
 
     useEffect(() => {
         if (!selectedId) {
-            setDetail(null);
-            setSelectedAssetIds([]);
-
             return;
         }
 
@@ -80,7 +77,9 @@ export function MusicPlaylistsPanel({
         return () => {
             cancelled = true;
         };
-    }, [selectedId, playlists]);
+    }, [selectedId]);
+
+    const activeDetail = detail?.id === selectedId ? detail : null;
 
     async function saveItems() {
         if (!selectedId) {
@@ -180,7 +179,14 @@ export function MusicPlaylistsPanel({
                         <button
                             key={playlist.id}
                             type="button"
-                            onClick={() => setSelectedId(playlist.id)}
+                            onClick={() => {
+                                if (selectedId !== playlist.id) {
+                                    setDetail(null);
+                                    setSelectedAssetIds([]);
+                                }
+
+                                setSelectedId(playlist.id);
+                            }}
                             className={[
                                 'w-full rounded-md border px-3 py-2 text-left text-sm',
                                 selectedId === playlist.id
@@ -200,23 +206,25 @@ export function MusicPlaylistsPanel({
                 </div>
 
                 <div className="space-y-4">
-                    {detail ? (
+                    {selectedId && !activeDetail ? (
+                        <p className="text-sm text-muted">Loading playlist…</p>
+                    ) : activeDetail ? (
                         <>
                             <form
                                 action={assignSchedulePlaylistAction}
                                 className="flex flex-wrap items-center gap-2 rounded-md bg-panel-soft p-3"
                             >
-                                <input type="hidden" name="playlist_id" value={detail.id} />
+                                <input type="hidden" name="playlist_id" value={activeDetail.id} />
                                 <label className="flex items-center gap-2 text-sm">
                                     <input
                                         type="radio"
                                         name="schedule_default"
-                                        checked={settings.schedulePlaylistId === detail.id}
+                                        checked={settings.schedulePlaylistId === activeDetail.id}
                                         readOnly
                                         onClick={() =>
                                             setSettings((current) => ({
                                                 ...current,
-                                                schedulePlaylistId: detail.id,
+                                                schedulePlaylistId: activeDetail.id,
                                             }))
                                         }
                                     />
