@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/auth';
 import { OUTPUT_COOKIE } from '@/lib/auth/output-auth';
 import { assertRateLimit, rateLimitErrorResponse } from '@/lib/auth/rate-limit';
+import { appUrl } from '@/lib/helpers/app-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,21 +20,26 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const returnTo = safeReturnTo(searchParams.get('return_to') ?? '/output/live');
         const debug = searchParams.get('debug') === 'true';
-        const target = new URL(returnTo, 'http://local');
-
-        if (debug) {
-            target.searchParams.set('debug', 'true');
-        }
-        const location = `${target.pathname}${target.search}${target.hash}`;
+        const targetPath = debug
+            ? `${returnTo}${returnTo.includes('?') ? '&' : '?'}debug=true`
+            : returnTo;
+        const location = appUrl(targetPath).toString();
 
         const response = new NextResponse(null, { status: 303, headers: { Location: location } });
 
         if (token) {
-            response.cookies.set(OUTPUT_COOKIE, token, {
+            const basePath =
+                new URL(
+                    process.env.APP_BASE_URL ||
+                        process.env.NEXT_PUBLIC_APP_BASE_URL ||
+                        'http://localhost:3000',
+                ).pathname.replace(/\/$/, '') || '/';
+
+            response.cookies.set(OUTPUT_COOKIE, token.trim(), {
                 httpOnly: true,
                 sameSite: 'lax',
                 secure: isSecureCookie(request),
-                path: '/',
+                path: basePath,
                 maxAge: 60 * 60 * 6,
             });
         }

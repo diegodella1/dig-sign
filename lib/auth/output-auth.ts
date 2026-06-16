@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 
+import { appUrl } from '../helpers/app-url';
 import { isProductionLikeRuntime } from './auth';
 
 export const OUTPUT_COOKIE = 'rpm_output_token';
@@ -13,7 +14,7 @@ export async function isOutputRequestAllowed(searchParams: { token?: string | un
     const cookieStore = await cookies();
     const actual = searchParams.token || cookieStore.get(OUTPUT_COOKIE)?.value || '';
 
-    return actual === expected;
+    return actual.trim() === expected.trim();
 }
 
 export function outputAccessDeniedReason() {
@@ -30,7 +31,7 @@ export function liveOutputHref(debug = false) {
             params.set('debug', 'true');
         }
 
-        return `/api/output/session?${params.toString()}`;
+        return appUrl(`/api/output/session?${params.toString()}`).toString();
     }
     const params = new URLSearchParams();
 
@@ -39,7 +40,7 @@ export function liveOutputHref(debug = false) {
     }
     const query = params.toString();
 
-    return `/output/live${query ? `?${query}` : ''}`;
+    return appUrl(`/output/live${query ? `?${query}` : ''}`).toString();
 }
 
 export function directLiveOutputHref(debug = false) {
@@ -54,7 +55,7 @@ export function directLiveOutputHref(debug = false) {
     }
     const query = params.toString();
 
-    return `/output/live${query ? `?${query}` : ''}`;
+    return appUrl(`/output/live${query ? `?${query}` : ''}`).toString();
 }
 
 export function shouldFailClosedForMissingOutputToken(env = process.env) {
