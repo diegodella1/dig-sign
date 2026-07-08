@@ -5,7 +5,11 @@ import { notFound } from 'next/navigation';
 import { programSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { FormHeader, Notice } from '@/components/ui';
-import { listContentPlaylists, listAssignmentsForScreen } from '@/lib/content-playlists';
+import {
+    isPlayableContentPlaylist,
+    listAssignmentsForScreen,
+    listContentPlaylists,
+} from '@/lib/content-playlists';
 import {
     assignPlaylistToScreen,
     removePlaylistAssignment,
@@ -40,7 +44,8 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
         listAssignmentsForScreen(screen.id),
         listLayoutPresets(),
     ]);
-    const compatiblePlaylists = playlists.filter(
+    const playablePlaylists = playlists.filter(isPlayableContentPlaylist);
+    const compatiblePlaylists = playablePlaylists.filter(
         (playlist) => playlist.orientation === screen.orientation,
     );
     const playlistById = new Map(playlists.map((playlist) => [playlist.id, playlist]));
@@ -153,12 +158,17 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
                             className="rounded-md border border-line bg-surface px-3 py-2"
                         >
                             <option value="">None</option>
-                            {playlists.map((playlist) => (
+                            {compatiblePlaylists.map((playlist) => (
                                 <option key={playlist.id} value={playlist.id}>
-                                    {playlist.name}
+                                    {playlist.name} ({playlist.itemCount} items)
                                 </option>
                             ))}
                         </select>
+                        {!compatiblePlaylists.length ? (
+                            <span className="text-xs text-muted">
+                                No approved {screen.orientation} playlists are available.
+                            </span>
+                        ) : null}
                     </label>
                     <label className="grid gap-1 text-sm md:col-span-2">
                         <span className="text-muted">Timezone</span>
@@ -212,7 +222,8 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
                         </select>
                         {!compatiblePlaylists.length ? (
                             <span className="text-xs text-muted">
-                                No {screen.orientation} playlists yet. Create one in Playlists.
+                                No approved {screen.orientation} playlists yet. Create and submit
+                                one in Playlists.
                             </span>
                         ) : null}
                     </label>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    isPlayableContentPlaylist,
     resolveActiveAssignment,
     selectPlaylistCarouselItem,
     type PlaylistAssignment,
@@ -62,6 +63,32 @@ describe('resolveActiveAssignment', () => {
                 'wed',
             ),
         ).toBeNull();
+    });
+});
+
+describe('isPlayableContentPlaylist', () => {
+    it('only allows approved ready playlists with items', () => {
+        expect(
+            isPlayableContentPlaylist({
+                status: 'ready',
+                approvalState: 'approved',
+                itemCount: 1,
+            }),
+        ).toBe(true);
+        expect(
+            isPlayableContentPlaylist({
+                status: 'ready',
+                approvalState: 'submitted',
+                itemCount: 1,
+            }),
+        ).toBe(false);
+        expect(
+            isPlayableContentPlaylist({
+                status: 'ready',
+                approvalState: 'approved',
+                itemCount: 0,
+            }),
+        ).toBe(false);
     });
 });
 

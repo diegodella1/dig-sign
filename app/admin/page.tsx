@@ -1,17 +1,20 @@
 import Link from 'next/link';
-import { MonitorPlay, PackageOpen, RadioTower, Settings } from 'lucide-react';
+import { ListChecks, MonitorPlay, Music, PackageOpen, RadioTower, Settings } from 'lucide-react';
 
 import { AdminShell } from '@/components/admin/admin-shell';
 import { ButtonLink, MetricTile, Notice } from '@/components/ui';
+import { requireTenantScope } from '@/lib/auth/tenancy';
 import { getAssetSummaries } from '@/lib/data';
 import { collectOperatorHealth } from '@/lib/health/health-checks';
 import { listContentPlaylists } from '@/lib/content-playlists';
 import { buildSignageMonitorPayload } from '@/lib/output/screen-monitor';
 import { listScreens } from '@/lib/screens';
+import { listVendors } from '@/lib/vendors';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
+    const scope = await requireTenantScope();
     const [assets, healthReport, screens, playlists, monitor] = await Promise.all([
         getAssetSummaries(),
         collectOperatorHealth(),
@@ -19,12 +22,90 @@ export default async function AdminDashboardPage() {
         listContentPlaylists(),
         buildSignageMonitorPayload(),
     ]);
+    const vendors = scope.kind === 'global' ? await listVendors() : [];
     const readyAssets = assets.filter((asset) => asset.status === 'ready').length;
     const needsFix = assets.length - readyAssets;
-    const readyPlaylists = playlists.filter((playlist) => playlist.status === 'ready').length;
+    const readyPlaylists = playlists.filter(
+        (playlist) => playlist.status === 'ready' && playlist.approvalState === 'approved',
+    ).length;
+    const submittedPlaylists = playlists.filter(
+        (playlist) => playlist.approvalState === 'submitted',
+    ).length;
     const issueScreens = monitor.screens.filter(
         (screen) => !screen.playlistId || screen.outputKind === 'fallback',
     ).length;
+
+    if (scope.kind === 'vendor') {
+        return (
+            <AdminShell
+                title="Vendor Workspace"
+                description="Your isolated media, playlists, music, and screens."
+                actions={<ButtonLink href="/admin/playlists">Build playlist</ButtonLink>}
+            >
+                <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <MetricTile
+                        label="My Screens"
+                        value={String(screens.length)}
+                        detail={issueScreens ? `${issueScreens} need attention` : 'All clear'}
+                        tone={issueScreens ? 'warn' : 'ok'}
+                    />
+                    <MetricTile
+                        label="My Playlists"
+                        value={String(playlists.length)}
+                        detail={
+                            submittedPlaylists
+                                ? `${submittedPlaylists} awaiting approval`
+                                : `${readyPlaylists} approved`
+                        }
+                        tone={submittedPlaylists ? 'warn' : 'info'}
+                    />
+                    <MetricTile
+                        label="My Media"
+                        value={`${readyAssets}/${assets.length}`}
+                        detail={needsFix ? `${needsFix} need review` : 'Library ready'}
+                        tone={needsFix ? 'warn' : 'ok'}
+                    />
+                    <MetricTile
+                        label="Live Status"
+                        value={issueScreens ? 'CHECK' : 'OK'}
+                        detail="Current player output"
+                        tone={issueScreens ? 'warn' : 'ok'}
+                    />
+                </section>
+
+                <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                    <ModeCard
+                        href="/admin/assets"
+                        icon={PackageOpen}
+                        title="My Assets"
+                        detail="Upload images, videos, and public URLs"
+                        tone="prepare"
+                    />
+                    <ModeCard
+                        href="/admin/playlists"
+                        icon={ListChecks}
+                        title="My Playlists"
+                        detail="Build horizontal and vertical loops"
+                        tone="program"
+                    />
+                    <ModeCard
+                        href="/admin/music"
+                        icon={Music}
+                        title="My Music"
+                        detail="Upload and choose your own audio"
+                        tone="operate"
+                    />
+                    <ModeCard
+                        href="/admin/screens"
+                        icon={MonitorPlay}
+                        title="My Screens"
+                        detail="Assign approved playlists to players"
+                        tone="neutral"
+                    />
+                </section>
+            </AdminShell>
+        );
+    }
 
     return (
         <AdminShell
@@ -52,10 +133,10 @@ export default async function AdminDashboardPage() {
                     tone={issueScreens ? 'warn' : 'ok'}
                 />
                 <MetricTile
-                    label="Playlists on Air"
-                    value={String(readyPlaylists)}
-                    detail="Ready content playlists"
-                    tone="info"
+                    label="Pending Approval"
+                    value={String(submittedPlaylists)}
+                    detail="Vendor playlists waiting"
+                    tone={submittedPlaylists ? 'warn' : 'ok'}
                 />
                 <MetricTile
                     label="Media Ready"
@@ -64,10 +145,10 @@ export default async function AdminDashboardPage() {
                     tone={needsFix ? 'warn' : 'ok'}
                 />
                 <MetricTile
-                    label="System Health"
-                    value={healthReport.status.toUpperCase()}
-                    detail="Operator readiness"
-                    tone={healthReport.status === 'ok' ? 'ok' : 'danger'}
+                    label="Vendors"
+                    value={String(vendors.length)}
+                    detail={`${readyPlaylists} approved playlists`}
+                    tone="info"
                 />
             </section>
 
@@ -87,10 +168,10 @@ export default async function AdminDashboardPage() {
                     tone="operate"
                 />
                 <ModeCard
-                    href="/admin/screens"
-                    icon={MonitorPlay}
-                    title="Signage"
-                    detail={`${readyPlaylists} ready playlist${readyPlaylists === 1 ? '' : 's'}`}
+                    href="/admin/playlists"
+                    icon={ListChecks}
+                    title="Approvals"
+                    detail={`${submittedPlaylists} pending · ${readyPlaylists} approved`}
                     tone="program"
                 />
                 <ModeCard

@@ -19,17 +19,15 @@ describe('root-domain routing', () => {
         }
     });
 
-    it('keeps manual and pending public outside admin login', () => {
+    it('keeps the manual public outside admin login', () => {
         const previous = process.env.ADMIN_BOOTSTRAP_TOKEN;
         process.env.ADMIN_BOOTSTRAP_TOKEN = 'required-admin-token';
 
-        for (const path of ['/manual', '/pending']) {
-            const request = new NextRequest(`https://rtvtime.diegodella.ar${path}`);
-            const response = middleware(request);
+        const request = new NextRequest('https://rtvtime.diegodella.ar/manual');
+        const response = middleware(request);
 
-            expect(response.status, path).toBe(200);
-            expect(response.headers.get('location'), path).toBeNull();
-        }
+        expect(response.status).toBe(200);
+        expect(response.headers.get('location')).toBeNull();
 
         if (previous === undefined) {
             delete process.env.ADMIN_BOOTSTRAP_TOKEN;

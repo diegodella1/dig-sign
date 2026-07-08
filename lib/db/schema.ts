@@ -292,7 +292,7 @@ export const musicPlaylists = sqliteTable('music_playlists', {
         .default('default')
         .references(() => vendors.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    status: text('status').notNull().default('ready'),
+    status: text('status').notNull().default('draft'),
     createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
@@ -420,6 +420,10 @@ export const contentPlaylists = sqliteTable('content_playlists', {
     name: text('name').notNull(),
     orientation: text('orientation').notNull().default('horizontal'),
     status: text('status').notNull().default('ready'),
+    approvalState: text('approval_state').notNull().default('draft'),
+    submittedAt: text('submitted_at'),
+    approvedAt: text('approved_at'),
+    rejectedAt: text('rejected_at'),
     createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),

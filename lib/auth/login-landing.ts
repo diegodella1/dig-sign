@@ -1,8 +1,8 @@
-/** Prefer Operate for generic post-login landing. */
+/** Prefer the role-aware dashboard for generic post-login landing. */
 export async function resolveAdminLoginLanding(returnTo: string): Promise<string> {
     if (returnTo !== '/admin' && returnTo !== '/admin/') {
         return returnTo;
     }
 
-    return '/admin/operate';
+    return '/admin';
 }

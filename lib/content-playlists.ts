@@ -19,6 +19,7 @@ import { isoDateInTimezone } from './helpers/time';
 import type { MediaAsset, SlideAsset } from './types';
 
 export type ContentPlaylistStatus = 'draft' | 'ready' | 'archived';
+export type ContentPlaylistApprovalState = 'draft' | 'submitted' | 'approved' | 'rejected';
 export type PlaylistOrientation = 'horizontal' | 'vertical';
 export type WeekdayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
@@ -28,6 +29,10 @@ export type ContentPlaylist = {
     name: string;
     orientation: PlaylistOrientation;
     status: ContentPlaylistStatus;
+    approvalState: ContentPlaylistApprovalState;
+    submittedAt: string | null;
+    approvedAt: string | null;
+    rejectedAt: string | null;
     itemCount: number;
     createdAt: string;
     updatedAt: string;
@@ -133,6 +138,7 @@ export async function createContentPlaylist(input: {
         name: input.name.trim(),
         orientation: normalizeOrientation(input.orientation),
         status: input.status ?? 'draft',
+        approvalState: 'draft',
         createdAt: now,
         updatedAt: now,
     });
@@ -143,6 +149,10 @@ export async function createContentPlaylist(input: {
         name: input.name.trim(),
         orientation: normalizeOrientation(input.orientation),
         status: input.status ?? 'draft',
+        approvalState: 'draft',
+        submittedAt: null,
+        approvedAt: null,
+        rejectedAt: null,
         itemCount: 0,
         createdAt: now,
         updatedAt: now,
@@ -174,6 +184,14 @@ export async function updateContentPlaylist(
         patch.orientation = normalizeOrientation(input.orientation);
     }
 
+    if (scope.kind === 'vendor') {
+        patch.status = 'draft';
+        patch.approvalState = 'draft';
+        patch.submittedAt = null;
+        patch.approvedAt = null;
+        patch.rejectedAt = null;
+    }
+
     await db
         .update(contentPlaylists)
         .set(patch)
@@ -194,10 +212,103 @@ export async function updateContentPlaylist(
         name: detail.name,
         orientation: detail.orientation,
         status: detail.status as ContentPlaylistStatus,
+        approvalState: detail.approvalState,
+        submittedAt: detail.submittedAt,
+        approvedAt: detail.approvedAt,
+        rejectedAt: detail.rejectedAt,
         itemCount: detail.items.length,
         createdAt: detail.createdAt,
         updatedAt: detail.updatedAt,
     };
+}
+
+export async function submitContentPlaylist(id: string): Promise<ContentPlaylist | null> {
+    const scope = await requireTenantScope();
+    const db = await getDb();
+    const now = new Date().toISOString();
+    const playlist = await getContentPlaylist(id);
+
+    if (!playlist) {
+        return null;
+    }
+
+    if (!playlist.items.length) {
+        throw new Error('Playlist needs at least one item before submission');
+    }
+
+    await db
+        .update(contentPlaylists)
+        .set({
+            status: 'draft',
+            approvalState: 'submitted',
+            submittedAt: now,
+            approvedAt: null,
+            rejectedAt: null,
+            updatedAt: now,
+        })
+        .where(
+            scope.kind === 'vendor'
+                ? and(eq(contentPlaylists.id, id), eq(contentPlaylists.vendorId, scope.vendorId))
+                : eq(contentPlaylists.id, id),
+        );
+
+    return contentPlaylistSummary(id);
+}
+
+export async function approveContentPlaylist(id: string): Promise<ContentPlaylist | null> {
+    const scope = await requireTenantScope();
+
+    if (scope.kind !== 'global') {
+        throw new Error('Only super admins can approve playlists');
+    }
+
+    const db = await getDb();
+    const now = new Date().toISOString();
+    const playlist = await getContentPlaylist(id);
+
+    if (!playlist) {
+        return null;
+    }
+
+    if (!playlist.items.length) {
+        throw new Error('Playlist needs at least one item before approval');
+    }
+
+    await db
+        .update(contentPlaylists)
+        .set({
+            status: 'ready',
+            approvalState: 'approved',
+            approvedAt: now,
+            rejectedAt: null,
+            updatedAt: now,
+        })
+        .where(eq(contentPlaylists.id, id));
+
+    return contentPlaylistSummary(id);
+}
+
+export async function rejectContentPlaylist(id: string): Promise<ContentPlaylist | null> {
+    const scope = await requireTenantScope();
+
+    if (scope.kind !== 'global') {
+        throw new Error('Only super admins can reject playlists');
+    }
+
+    const db = await getDb();
+    const now = new Date().toISOString();
+
+    await db
+        .update(contentPlaylists)
+        .set({
+            status: 'draft',
+            approvalState: 'rejected',
+            rejectedAt: now,
+            updatedAt: now,
+        })
+        .where(eq(contentPlaylists.id, id));
+
+    return contentPlaylistSummary(id);
 }
 
 export async function setContentPlaylistItems(
@@ -268,12 +379,23 @@ export async function setContentPlaylistItems(
 
     await db
         .update(contentPlaylists)
-        .set({ updatedAt: now })
+        .set(
+            scope.kind === 'vendor'
+                ? {
+                      status: 'draft',
+                      approvalState: 'draft',
+                      submittedAt: null,
+                      approvedAt: null,
+                      rejectedAt: null,
+                      updatedAt: now,
+                  }
+                : { updatedAt: now },
+        )
         .where(eq(contentPlaylists.id, playlistId));
 }
 
 export async function listAssignmentsForScreen(screenId: string): Promise<PlaylistAssignment[]> {
-    const scope = await requireTenantScope();
+    const scope = await tenantScopeOrGlobal();
     const db = await getDb();
     const [screen] = await db
         .select({ vendorId: screens.vendorId })
@@ -309,7 +431,12 @@ export async function createPlaylistAssignment(input: {
         .where(eq(screens.id, input.screenId))
         .limit(1);
     const [playlist] = await db
-        .select({ vendorId: contentPlaylists.vendorId, orientation: contentPlaylists.orientation })
+        .select({
+            vendorId: contentPlaylists.vendorId,
+            orientation: contentPlaylists.orientation,
+            status: contentPlaylists.status,
+            approvalState: contentPlaylists.approvalState,
+        })
         .from(contentPlaylists)
         .where(eq(contentPlaylists.id, input.playlistId))
         .limit(1);
@@ -320,6 +447,20 @@ export async function createPlaylistAssignment(input: {
 
     if (normalizeOrientation(screen.orientation) !== normalizeOrientation(playlist.orientation)) {
         throw new Error('Playlist orientation does not match screen orientation');
+    }
+
+    if (playlist.status !== 'ready' || playlist.approvalState !== 'approved') {
+        throw new Error('Playlist must be approved before assignment');
+    }
+
+    const playlistItems = await db
+        .select({ id: contentPlaylistItems.id })
+        .from(contentPlaylistItems)
+        .where(eq(contentPlaylistItems.playlistId, input.playlistId))
+        .limit(1);
+
+    if (!playlistItems.length) {
+        throw new Error('Playlist needs at least one item before assignment');
     }
 
     if (scope.kind === 'vendor' && playlist.vendorId !== scope.vendorId) {
@@ -356,9 +497,41 @@ export async function createPlaylistAssignment(input: {
 }
 
 export async function deletePlaylistAssignment(id: string): Promise<void> {
+    const scope = await requireTenantScope();
     const db = await getDb();
+    const [assignment] = await db
+        .select({ screenId: playlistAssignments.screenId })
+        .from(playlistAssignments)
+        .where(eq(playlistAssignments.id, id))
+        .limit(1);
+
+    if (!assignment) {
+        return;
+    }
+
+    if (scope.kind === 'vendor') {
+        const [screen] = await db
+            .select({ vendorId: screens.vendorId })
+            .from(screens)
+            .where(eq(screens.id, assignment.screenId))
+            .limit(1);
+
+        if (!screen || screen.vendorId !== scope.vendorId) {
+            throw new Error('Assignment not found');
+        }
+    }
 
     await db.delete(playlistAssignments).where(eq(playlistAssignments.id, id));
+}
+
+export function isPlayableContentPlaylist(
+    playlist: Pick<ContentPlaylist, 'status' | 'approvalState' | 'itemCount'>,
+) {
+    return (
+        playlist.status === 'ready' &&
+        playlist.approvalState === 'approved' &&
+        playlist.itemCount > 0
+    );
 }
 
 export function resolveActiveAssignment(
@@ -591,14 +764,49 @@ function mapPlaylist(row: ContentPlaylistRow, itemCount: number): ContentPlaylis
         name: row.name,
         orientation: normalizeOrientation(row.orientation),
         status: row.status as ContentPlaylistStatus,
+        approvalState: normalizeApprovalState(row.approvalState),
+        submittedAt: row.submittedAt ?? null,
+        approvedAt: row.approvedAt ?? null,
+        rejectedAt: row.rejectedAt ?? null,
         itemCount,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
     };
 }
 
+async function contentPlaylistSummary(id: string): Promise<ContentPlaylist | null> {
+    const detail = await getContentPlaylist(id);
+
+    if (!detail) {
+        return null;
+    }
+
+    return {
+        id: detail.id,
+        vendorId: detail.vendorId,
+        name: detail.name,
+        orientation: detail.orientation,
+        status: detail.status,
+        approvalState: detail.approvalState,
+        submittedAt: detail.submittedAt,
+        approvedAt: detail.approvedAt,
+        rejectedAt: detail.rejectedAt,
+        itemCount: detail.items.length,
+        createdAt: detail.createdAt,
+        updatedAt: detail.updatedAt,
+    };
+}
+
 function normalizeOrientation(value: string | null | undefined): PlaylistOrientation {
     return value === 'vertical' ? 'vertical' : 'horizontal';
+}
+
+function normalizeApprovalState(value: string | null | undefined): ContentPlaylistApprovalState {
+    if (value === 'submitted' || value === 'approved' || value === 'rejected') {
+        return value;
+    }
+
+    return 'draft';
 }
 
 function mapPlaylistItem(row: ContentPlaylistItemRow): ContentPlaylistItem {

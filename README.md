@@ -66,8 +66,6 @@ Dig-Sign replaces scattered signage prep with one operational flow:
 | `/output/live/[screenSlug]`   | Fullscreen browser player for OBS/vMix capture |
 | `/output/slide/[slideId]`     | Single-slide preview                           |
 | `/manual`                     | Public operator manual                         |
-| `/notion`                     | Status and operating guide                     |
-| `/pending`                    | Roadmap and backlog                            |
 | `/api/health`                 | Machine health summary                         |
 | `/api/output/channel/state`   | Player state (`?screen=` + optional `?token=`) |
 | `/api/media/assets/[assetId]` | Public media proxy for R2-stored uploads       |
@@ -215,16 +213,8 @@ Before trusting a screen in production:
 - OBS/vMix browser capture validated for video and audio.
 - Uploaded media URLs use the public app proxy, not `127.0.0.1`.
 
-## Roadmap
+## Current Priorities
 
-Near-term priorities:
-
-- remodel on-air plate visuals
-- improve operator alerts for stalled playback, silence, and missing assets
-- expand recurring playlist templates and multi-screen layouts
-
-See also:
-
-- `/pending`
-- `/notion`
-- `docs/production-readiness.md`
+- strengthen player alerts for stalled playback, missing assets and fallback states
+- expand reporting for vendor playback and screen uptime
+- keep the public manual as the single operator reference

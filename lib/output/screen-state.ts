@@ -3,6 +3,7 @@ import { getAssets, getSlides } from '@/lib/data';
 import {
     buildPlaylistCarouselCards,
     getContentPlaylist,
+    isPlayableContentPlaylist,
     resolvePlaylistForScreen,
     selectPlaylistCarouselItem,
 } from '@/lib/content-playlists';
@@ -57,7 +58,7 @@ export async function composeScreenState(inputs: ScreenStateInputs) {
 
     const playlist = await getContentPlaylist(resolved.playlistId);
 
-    if (!playlist || playlist.status !== 'ready' || !playlist.items.length) {
+    if (!playlist || !isPlayableContentPlaylist(playlist)) {
         return {
             ...fallbackState('empty-playlist', base),
             screenSlug: screen.slug,

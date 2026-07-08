@@ -1,260 +1,223 @@
 import {
+    BadgeCheck,
     BookOpen,
-    Clapperboard,
-    HeartPulse,
+    Building2,
+    ListChecks,
     MonitorPlay,
+    Music,
     PackageOpen,
     RadioTower,
     Shield,
 } from 'lucide-react';
 import Link from 'next/link';
 
-const workflowSteps = [
-    'Open Prepare and add uploads, public media URLs, graphics, slides, audio and weather plates.',
-    'Create screens for each physical display and assign a timezone.',
-    'Build content playlists with plates and media assets in the visual loop editor.',
-    'Assign playlists to screens by date range; set a fallback playlist per screen.',
-    'Resolve health issues (database, storage, output token) before opening hours.',
-    'Open Operate to monitor each screen: active playlist, current item and health.',
-    'Launch `/output/live/[screenSlug]` in OBS or vMix and capture the browser source.',
-    'During playback, watch the screen monitor for missing assets or fallback states.',
-];
-
-const sections = [
+const architecture = [
     {
-        title: 'Prepare',
-        icon: PackageOpen,
-        body: 'Unified intake for uploaded media, YouTube/Vimeo URLs, direct media URLs, music beds, weather cities and reusable graphics.',
-        href: '/admin/prepare',
+        title: 'Super admin',
+        body: 'Sees the whole network: vendors, screens, playlists, assets, music, health and audit.',
+        items: ['Creates vendors', 'Creates operators', 'Approves vendor playlists'],
     },
     {
-        title: 'Signage',
-        icon: MonitorPlay,
-        body: 'Configure screens, content playlists and day-based assignments. Output follows the playlist loop, not a timed rundown.',
+        title: 'Vendor workspace',
+        body: 'Each vendor works in an isolated inventory. Vendors do not share assets, playlists, screens or music.',
+        items: ['My assets', 'My playlists', 'My music', 'My screens'],
+    },
+    {
+        title: 'Output model',
+        body: 'A screen plays one approved content playlist by assignment, then falls back to an approved fallback playlist.',
+        items: ['Horizontal 16:9', 'Vertical 9:16', 'Player URL per screen'],
+    },
+];
+
+const workflow = [
+    'Super admin creates the vendor and assigns operator access.',
+    'Vendor uploads images/videos, adds YouTube URLs, or registers public image/video URLs.',
+    'Vendor uploads its own music and selects what it wants to play.',
+    'Vendor builds a horizontal or vertical playlist. These are separate targets.',
+    'Vendor submits the playlist for approval.',
+    'Super admin reviews, approves or rejects. Only approved playlists can go live.',
+    'Vendor or super admin assigns approved playlists to matching screens.',
+    'Operate monitors player state, fallback output, errors and audit activity.',
+];
+
+const contentRules = [
+    'Content playlists support YouTube URLs, uploaded image/video media, Vimeo public URLs, and public image/video URLs.',
+    'Vendor edits return the playlist to draft. A changed playlist must be submitted and approved again.',
+    'A playlist must have at least one item before submit, approval or screen assignment.',
+    'Vertical screens only accept vertical playlists. Horizontal screens only accept horizontal playlists.',
+    'Music is vendor-scoped. Each vendor uploads and plays its own audio independently.',
+    'Output only renders playlists with status ready and approval approved.',
+];
+
+const modules = [
+    {
+        title: 'Dashboard',
+        href: '/admin',
+        icon: Building2,
+        body: 'Role-aware landing. Vendors get their workspace; super admins get network metrics and pending approvals.',
+    },
+    {
+        title: 'Prepare',
+        href: '/admin/prepare',
+        icon: PackageOpen,
+        body: 'Entry point for uploads, public URLs, plates and content preparation.',
+    },
+    {
+        title: 'Playlists',
+        href: '/admin/playlists',
+        icon: ListChecks,
+        body: 'Build content loops, submit for approval, and review vendor submissions.',
+    },
+    {
+        title: 'Music',
+        href: '/admin/music',
+        icon: Music,
+        body: 'Vendor-scoped audio library and playback selection.',
+    },
+    {
+        title: 'Screens',
         href: '/admin/screens',
+        icon: MonitorPlay,
+        body: 'Create horizontal or vertical screens, configure fallback playlists and assignments.',
     },
     {
         title: 'Operate',
+        href: '/admin/operate',
         icon: RadioTower,
-        body: 'Screen monitor hub: health, audit trail and live output URLs for each display.',
-        href: '/admin/operate',
-    },
-    {
-        title: 'Preview',
-        icon: Clapperboard,
-        body: 'Open `/output/live/main` (or any screen slug) to verify playback before capture.',
-        href: '/output/live/main',
-    },
-    {
-        title: 'Health',
-        icon: HeartPulse,
-        body: 'Confirm environment, D1 schema, R2 storage and output capture token.',
-        href: '/admin/health',
+        body: 'Live monitor for player URLs, active playlists, fallback states, health and audit trail.',
     },
 ];
 
-const operatorHubs = [
-    {
-        name: 'Prepare',
-        href: '/admin/prepare',
-        promise: 'Create and review content before it reaches a playlist.',
-        items: ['Assets', 'URLs', 'Music', 'Plates'],
-    },
-    {
-        name: 'Signage',
-        href: '/admin/screens',
-        promise: 'Wire screens to playlists and define fallback loops.',
-        items: ['Screens', 'Playlists', 'Assignments', 'Fallback'],
-    },
-    {
-        name: 'Operate',
-        href: '/admin/operate',
-        promise: 'Monitor live output and recover from problems fast.',
-        items: ['Monitor', 'Health', 'Audit', 'Capture URLs'],
-    },
-];
-
-const limits = [
-    'Production app is live and usable with an operator present.',
-    'Browser output has been confirmed through web player, vMix and OBS.',
-    'Uploaded media plays through `/api/media/assets/:assetId`.',
-    'Playlists rotate by item duration; there is no hour-based program grid.',
-    'Weather plates can be created per city from the admin graphics surface.',
-    'Weather falls back to Open-Meteo when OpenWeather is not configured.',
-    'Browser audio requires one operator click after load or reload.',
-    'Each screen needs a fallback playlist for off-hours or empty assignments.',
-    'Secrets must stay in environment variables or encrypted settings.',
-];
-
-const recentUpdates = [
-    'Hour-based schedule, runbook and program-day model removed.',
-    'Screens + day-based playlist assignments are the output source.',
-    'Visual playlist editor replaces JSON loop configuration.',
-    'Operate page shows per-screen monitor instead of on-air rundown.',
-    'Legacy routes redirect: `/admin/program` → screens, `/admin/output` → operate.',
-    'Migration `0004_drop_schedule.sql` drops schedule-era D1 tables.',
+const checks = [
+    'Health page is ok before live operation.',
+    'Every screen has the intended orientation.',
+    'Every assigned playlist is approved and has playable items.',
+    'Fallback playlist exists for every production screen.',
+    'Music output matches the vendor and venue.',
+    'Player URL opens on the target device before handoff.',
 ];
 
 export default function ManualPage() {
     return (
-        <main className="min-h-screen bg-surface-elevated-1 text-white/90">
-            <div className="mx-auto max-w-5xl px-6 py-10">
-                <header className="border-b border-white/10 pb-8">
-                    <Link
-                        href="/"
-                        className="text-sm font-semibold text-accent-positive hover:underline"
-                    >
-                        Back to home
+        <main className="min-h-screen bg-surface-elevated-1 text-ink">
+            <div className="mx-auto max-w-6xl px-6 py-8 md:py-10">
+                <header className="border-2 border-line bg-surface p-6 shadow-[8px_8px_0_#1a1a1a] md:p-8">
+                    <Link href="/" className="btn-secondary">
+                        Back
                     </Link>
-                    <p className="eyebrow mt-6 text-accent-positive">Dig-Sign</p>
-                    <h1 className="mt-3 text-4xl font-semibold tracking-normal md:text-5xl">
-                        Operator Manual
+                    <p className="eyebrow mt-8 text-accent-live">DigSign Manual</p>
+                    <h1 className="mt-3 max-w-4xl font-display text-5xl font-bold uppercase leading-none md:text-7xl">
+                        Multi-Vendor Signage Operations
                     </h1>
-                    <p className="mt-4 max-w-3xl text-base leading-7 text-white/65">
-                        Dig-Sign is the control room for digital signage: prepare content, assign
-                        playlists to screens, monitor playback and capture browser output in OBS or
-                        vMix. This page is public; admin actions still require login.
+                    <p className="mt-5 max-w-3xl text-base font-medium leading-7 text-muted">
+                        This is the current operating model for DigSign: one super admin controls
+                        the network, vendors manage isolated content, and only approved playlists
+                        can reach production screens.
                     </p>
                 </header>
 
-                <section className="grid gap-3 border-b border-white/10 py-6 md:grid-cols-4">
-                    <ManualMetric label="Status" value="Production live" />
-                    <ManualMetric label="Workflow" value="Prepare → Signage → Operate" />
-                    <ManualMetric label="Output" value="Browser playout" />
-                    <ManualMetric label="Backend" value="Cloudflare D1 + R2" />
+                <section className="mt-6 grid gap-4 md:grid-cols-3">
+                    <ManualMetric label="Tenant Model" value="Vendor isolated" />
+                    <ManualMetric label="Approval Gate" value="Required" />
+                    <ManualMetric label="Screen Targets" value="16:9 + 9:16" />
                 </section>
 
-                <section className="border-b border-white/10 py-5">
-                    <div className="flex flex-wrap gap-2">
-                        <Link className="btn-secondary" href="/admin/prepare">
-                            Prepare
-                        </Link>
-                        <Link className="btn-secondary" href="/admin/screens">
-                            Signage
-                        </Link>
-                        <Link className="btn-secondary" href="/admin/operate">
-                            Operate
-                        </Link>
-                        <Link className="btn-secondary" href="/pending">
-                            Pending
-                        </Link>
-                        <Link className="btn-secondary" href="/notion">
-                            Status
-                        </Link>
-                    </div>
+                <section className="mt-8 grid gap-5 lg:grid-cols-3">
+                    {architecture.map((item) => (
+                        <article key={item.title} className="surface-card p-5">
+                            <Shield size={26} aria-hidden="true" />
+                            <h2 className="mt-4 font-display text-2xl font-bold uppercase">
+                                {item.title}
+                            </h2>
+                            <p className="mt-3 text-sm font-medium leading-6 text-muted">
+                                {item.body}
+                            </p>
+                            <ul className="mt-4 grid gap-2 text-sm font-semibold">
+                                {item.items.map((entry) => (
+                                    <li key={entry} className="border-l-4 border-line pl-3">
+                                        {entry}
+                                    </li>
+                                ))}
+                            </ul>
+                        </article>
+                    ))}
                 </section>
 
-                <section className="border-b border-white/10 py-8">
-                    <div className="flex items-center gap-3">
-                        <RadioTower size={22} className="text-accent-positive" aria-hidden="true" />
-                        <h2 className="text-2xl font-semibold">Operator Map</h2>
-                    </div>
-                    <div className="mt-5 grid gap-4 md:grid-cols-3">
-                        {operatorHubs.map((hub, index) => (
-                            <Link
-                                key={hub.name}
-                                href={hub.href}
-                                className="group flex min-h-[16rem] flex-col justify-between border border-white/10 bg-surface-elevated-2 p-5 transition hover:-translate-y-0.5 hover:border-accent-positive hover:bg-surface-selected-positive"
-                            >
-                                <span>
-                                    <span className="grid h-9 w-9 place-items-center rounded-md bg-accent-positive text-sm font-bold text-surface-elevated-1">
+                <section className="mt-10 grid gap-8 lg:grid-cols-[1fr_360px]">
+                    <div>
+                        <div className="flex items-center gap-3">
+                            <BookOpen size={24} aria-hidden="true" />
+                            <h2 className="font-display text-3xl font-bold uppercase">
+                                Operating Flow
+                            </h2>
+                        </div>
+                        <ol className="mt-5 grid gap-3">
+                            {workflow.map((step, index) => (
+                                <li
+                                    key={step}
+                                    className="flex gap-3 border-2 border-line bg-surface p-4 shadow-[3px_3px_0_#1a1a1a]"
+                                >
+                                    <span className="grid h-8 w-8 shrink-0 place-items-center border-2 border-line bg-surface-selected-positive font-headline text-sm font-bold">
                                         {index + 1}
                                     </span>
-                                    <span className="mt-4 block text-2xl font-semibold">
-                                        {hub.name}
+                                    <span className="text-sm font-medium leading-6 text-muted">
+                                        {step}
                                     </span>
-                                    <span className="mt-2 block text-sm leading-6 text-white/65">
-                                        {hub.promise}
-                                    </span>
-                                    <span className="mt-4 flex flex-wrap gap-2">
-                                        {hub.items.map((item) => (
-                                            <span
-                                                key={item}
-                                                className="rounded-md border border-white/10 bg-black/20 px-2 py-1 text-xs font-semibold text-white/60"
-                                            >
-                                                {item}
-                                            </span>
-                                        ))}
-                                    </span>
-                                </span>
-                                <span className="mt-5 text-sm font-semibold text-accent-positive group-hover:underline">
-                                    Open {hub.name}
-                                </span>
-                            </Link>
-                        ))}
+                                </li>
+                            ))}
+                        </ol>
                     </div>
+
+                    <aside className="border-2 border-line bg-surface-selected-positive p-5 shadow-[6px_6px_0_#1a1a1a]">
+                        <BadgeCheck size={28} aria-hidden="true" />
+                        <h2 className="mt-4 font-display text-2xl font-bold uppercase">
+                            Live Checklist
+                        </h2>
+                        <ul className="mt-4 grid gap-3">
+                            {checks.map((check) => (
+                                <li key={check} className="text-sm font-semibold leading-6">
+                                    {check}
+                                </li>
+                            ))}
+                        </ul>
+                    </aside>
                 </section>
 
-                <section className="border-b border-white/10 py-8">
-                    <h2 className="text-2xl font-semibold">Latest Updates</h2>
+                <section className="mt-10">
+                    <h2 className="font-display text-3xl font-bold uppercase">Content Rules</h2>
                     <div className="mt-5 grid gap-3 md:grid-cols-2">
-                        {recentUpdates.map((item) => (
-                            <div
-                                key={item}
-                                className="surface-panel p-4 text-sm leading-6 text-white/72"
-                            >
-                                {item}
+                        {contentRules.map((rule) => (
+                            <div key={rule} className="surface-card p-4 text-sm font-medium">
+                                {rule}
                             </div>
                         ))}
                     </div>
                 </section>
 
-                <section className="py-8">
-                    <div className="flex items-center gap-3">
-                        <BookOpen size={22} className="text-accent-positive" aria-hidden="true" />
-                        <h2 className="text-2xl font-semibold">Daily Workflow</h2>
-                    </div>
-                    <ol className="mt-5 grid gap-3 md:grid-cols-2">
-                        {workflowSteps.map((step, index) => (
-                            <li key={step} className="surface-panel flex gap-3 p-4">
-                                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-accent-positive text-sm font-bold text-surface-elevated-1">
-                                    {index + 1}
+                <section className="mt-10">
+                    <h2 className="font-display text-3xl font-bold uppercase">Admin Modules</h2>
+                    <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {modules.map((module) => (
+                            <Link
+                                key={module.href}
+                                href={module.href}
+                                className="surface-card group flex min-h-44 flex-col justify-between p-5 hover:-translate-x-1 hover:-translate-y-1 hover:bg-panel-soft hover:shadow-[6px_6px_0_#1a1a1a]"
+                            >
+                                <span>
+                                    <module.icon size={28} aria-hidden="true" />
+                                    <span className="mt-4 block font-display text-xl font-bold uppercase">
+                                        {module.title}
+                                    </span>
+                                    <span className="mt-2 block text-sm font-medium leading-6 text-muted">
+                                        {module.body}
+                                    </span>
                                 </span>
-                                <span className="text-sm leading-6 text-white/75">{step}</span>
-                            </li>
-                        ))}
-                    </ol>
-                </section>
-
-                <section className="py-8">
-                    <h2 className="text-2xl font-semibold">Core Surfaces</h2>
-                    <div className="mt-5 grid gap-4 md:grid-cols-2">
-                        {sections.map((section) => (
-                            <article key={section.title} className="surface-panel p-5">
-                                <div className="flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-3">
-                                        <section.icon
-                                            size={22}
-                                            className="text-accent-positive"
-                                            aria-hidden="true"
-                                        />
-                                        <h3 className="text-xl font-semibold">{section.title}</h3>
-                                    </div>
-                                    <Link
-                                        className="btn-secondary min-h-9 text-xs"
-                                        href={section.href}
-                                    >
-                                        Open
-                                    </Link>
-                                </div>
-                                <p className="mt-4 text-sm leading-6 text-white/70">
-                                    {section.body}
-                                </p>
-                            </article>
+                                <span className="mt-4 font-headline text-xs font-bold uppercase text-accent-live">
+                                    Open
+                                </span>
+                            </Link>
                         ))}
                     </div>
-                </section>
-
-                <section className="mt-8 rounded-lg border border-white/10 bg-surface-elevated-2 p-5">
-                    <div className="flex items-center gap-3">
-                        <Shield size={22} className="text-accent-positive" aria-hidden="true" />
-                        <h2 className="text-xl font-semibold">Current Limits</h2>
-                    </div>
-                    <ul className="mt-4 grid gap-2 text-sm leading-6 text-white/70">
-                        {limits.map((limit) => (
-                            <li key={limit}>{limit}</li>
-                        ))}
-                    </ul>
                 </section>
             </div>
         </main>
@@ -263,9 +226,9 @@ export default function ManualPage() {
 
 function ManualMetric({ label, value }: { label: string; value: string }) {
     return (
-        <div className="rounded-lg border border-white/10 bg-surface-elevated-2 p-4">
-            <p className="text-xs font-semibold uppercase text-white/45">{label}</p>
-            <p className="mt-2 text-lg font-semibold">{value}</p>
-        </div>
+        <section className="border-2 border-line bg-surface p-4 shadow-[4px_4px_0_#1a1a1a]">
+            <p className="eyebrow text-muted">{label}</p>
+            <p className="mt-2 font-display text-2xl font-bold uppercase">{value}</p>
+        </section>
     );
 }

@@ -1,12 +1,15 @@
 import { auditedMutation } from '../audit/audit';
 import {
+    approveContentPlaylist,
     createContentPlaylist,
     createPlaylistAssignment,
     deletePlaylistAssignment,
+    rejectContentPlaylist,
     setContentPlaylistItems,
+    submitContentPlaylist,
     updateContentPlaylist,
-    type PlaylistOrientation,
     type ContentPlaylistStatus,
+    type PlaylistOrientation,
     type WeekdayKey,
 } from '../content-playlists';
 import { err, extractError, ok, type Result } from '../result';
@@ -82,6 +85,75 @@ export async function saveSignagePlaylistItems(input: {
                 metadata: { itemCount: input.items.length },
             },
             async () => setContentPlaylistItems(input.playlistId, input.items),
+        );
+
+        return ok(undefined);
+    } catch (error) {
+        return err(extractError(error));
+    }
+}
+
+export async function submitSignagePlaylist(input: { id: string }): Promise<Result<void>> {
+    try {
+        await auditedMutation(
+            {
+                action: 'content_playlist.submitted',
+                entityType: 'content_playlists',
+                entityId: input.id,
+            },
+            async () => {
+                const submitted = await submitContentPlaylist(input.id);
+
+                if (!submitted) {
+                    throw new Error('Playlist not found');
+                }
+            },
+        );
+
+        return ok(undefined);
+    } catch (error) {
+        return err(extractError(error));
+    }
+}
+
+export async function approveSignagePlaylist(input: { id: string }): Promise<Result<void>> {
+    try {
+        await auditedMutation(
+            {
+                action: 'content_playlist.approved',
+                entityType: 'content_playlists',
+                entityId: input.id,
+            },
+            async () => {
+                const approved = await approveContentPlaylist(input.id);
+
+                if (!approved) {
+                    throw new Error('Playlist not found');
+                }
+            },
+        );
+
+        return ok(undefined);
+    } catch (error) {
+        return err(extractError(error));
+    }
+}
+
+export async function rejectSignagePlaylist(input: { id: string }): Promise<Result<void>> {
+    try {
+        await auditedMutation(
+            {
+                action: 'content_playlist.rejected',
+                entityType: 'content_playlists',
+                entityId: input.id,
+            },
+            async () => {
+                const rejected = await rejectContentPlaylist(input.id);
+
+                if (!rejected) {
+                    throw new Error('Playlist not found');
+                }
+            },
         );
 
         return ok(undefined);
