@@ -102,9 +102,14 @@ export default function ManualPage() {
         <main className="min-h-screen bg-surface-elevated-1 text-ink">
             <div className="mx-auto max-w-6xl px-6 py-8 md:py-10">
                 <header className="border-2 border-line bg-surface p-6 shadow-[8px_8px_0_#1a1a1a] md:p-8">
-                    <Link href="/" className="btn-secondary">
-                        Back
-                    </Link>
+                    <div className="flex flex-wrap gap-3">
+                        <Link href="/" className="btn-secondary">
+                            Back
+                        </Link>
+                        <Link href="/business" className="btn-secondary">
+                            Stack & Business
+                        </Link>
+                    </div>
                     <p className="eyebrow mt-8 text-accent-live">DigSign Manual</p>
                     <h1 className="mt-3 max-w-4xl font-display text-5xl font-bold uppercase leading-none md:text-7xl">
                         Multi-Vendor Signage Operations

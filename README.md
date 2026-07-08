@@ -66,6 +66,7 @@ Dig-Sign replaces scattered signage prep with one operational flow:
 | `/output/live/[screenSlug]`   | Fullscreen browser player for OBS/vMix capture |
 | `/output/slide/[slideId]`     | Single-slide preview                           |
 | `/manual`                     | Public operator manual                         |
+| `/business`                   | Stack, hardware and business model overview    |
 | `/api/health`                 | Machine health summary                         |
 | `/api/output/channel/state`   | Player state (`?screen=` + optional `?token=`) |
 | `/api/media/assets/[assetId]` | Public media proxy for R2-stored uploads       |

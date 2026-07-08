@@ -1,4 +1,12 @@
-import { Activity, BookOpen, MonitorPlay, PackageOpen, RadioTower, Settings } from 'lucide-react';
+import {
+    Activity,
+    BookOpen,
+    BriefcaseBusiness,
+    MonitorPlay,
+    PackageOpen,
+    RadioTower,
+    Settings,
+} from 'lucide-react';
 import Link from 'next/link';
 
 export default function HomePage() {
@@ -51,6 +59,14 @@ export default function HomePage() {
                         <Link className="btn-secondary" href="/manual">
                             <BookOpen size={16} className="mr-2 inline" aria-hidden="true" />
                             Manual
+                        </Link>
+                        <Link className="btn-secondary" href="/business">
+                            <BriefcaseBusiness
+                                size={16}
+                                className="mr-2 inline"
+                                aria-hidden="true"
+                            />
+                            Stack & Business
                         </Link>
                     </div>
                 </div>
