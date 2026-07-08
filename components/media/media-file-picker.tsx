@@ -92,7 +92,7 @@ export function MediaFilePicker({
         if (file.size > MAX_SMALL_MEDIA_BYTES) {
             event.target.value = '';
             reset(
-                `File is ${formatBytes(file.size)}. Browser uploads must be ${formatUploadLimit()} or less; use Vimeo or a remote URL for larger videos.`,
+                `File is ${formatBytes(file.size)}. Browser uploads must be ${formatUploadLimit()} or less; use a public media URL for larger videos.`,
             );
 
             return;

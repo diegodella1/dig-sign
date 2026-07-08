@@ -8,7 +8,6 @@ export const prepareSubNav: ModeSubNavItem[] = [
     { label: 'Overview', href: '/admin/prepare' },
     { label: 'Plates', href: '/admin/slides', match: ['/admin/slides'] },
     { label: 'Media', href: '/admin/assets', match: ['/admin/assets'] },
-    { label: 'Import', href: '/admin/vimeo', match: ['/admin/vimeo'] },
     { label: 'Music', href: '/admin/music', match: ['/admin/music'] },
 ];
 

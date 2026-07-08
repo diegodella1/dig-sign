@@ -224,7 +224,12 @@ function contentSecurityPolicy() {
     const imgSrc = ["'self'", 'data:', 'blob:', 'https:'];
     const mediaSrc = ["'self'", 'blob:', 'https:'];
     const connectSrc = ["'self'", 'https:', 'wss:'];
-    const frameSrc = ["'self'", 'https://www.youtube.com', 'https://www.youtube-nocookie.com'];
+    const frameSrc = [
+        "'self'",
+        'https://www.youtube.com',
+        'https://www.youtube-nocookie.com',
+        'https://player.vimeo.com',
+    ];
     const scriptSrc = [
         "'self'",
         "'unsafe-inline'",

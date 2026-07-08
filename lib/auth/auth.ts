@@ -9,13 +9,14 @@ import { getDb } from '../db/client';
 
 export { ADMIN_SESSION_COOKIE } from './auth-constants';
 
-export type OperatorRole = 'admin' | 'operator';
+export type OperatorRole = 'super_admin' | 'admin' | 'vendor_admin' | 'operator';
 
 export type OperatorSession = {
     operatorId: string;
     handle: string;
     displayName: string;
     role: OperatorRole;
+    vendorId: string | null;
     sessionId: string;
 };
 
@@ -104,6 +105,10 @@ export async function requireRole(roles: OperatorRole[]) {
         return session;
     }
 
+    if (session.role === 'super_admin' && roles.includes('admin')) {
+        return session;
+    }
+
     if (!roles.includes(session.role)) {
         throw new Error('Forbidden');
     }
@@ -137,6 +142,7 @@ export async function createOperatorSession(input: {
             handle: adminOperators.handle,
             displayName: adminOperators.displayName,
             role: adminOperators.role,
+            vendorId: adminOperators.vendorId,
             tokenHash: adminOperators.tokenHash,
             status: adminOperators.status,
         })
@@ -174,6 +180,7 @@ export async function createOperatorSession(input: {
             handle: operatorRow.handle,
             displayName: operatorRow.displayName,
             role: operatorRow.role as OperatorRole,
+            vendorId: operatorRow.vendorId,
             sessionId: inserted.id,
         },
     };
@@ -212,6 +219,7 @@ export async function getCurrentOperatorSession(): Promise<OperatorSession | nul
                 handle: adminOperators.handle,
                 displayName: adminOperators.displayName,
                 role: adminOperators.role,
+                vendorId: adminOperators.vendorId,
                 status: adminOperators.status,
             })
             .from(adminOperators)
@@ -227,6 +235,7 @@ export async function getCurrentOperatorSession(): Promise<OperatorSession | nul
             handle: operatorRow.handle,
             displayName: operatorRow.displayName,
             role: operatorRow.role as OperatorRole,
+            vendorId: operatorRow.vendorId,
             sessionId: sessionRow.id,
         };
     } catch {
@@ -237,7 +246,9 @@ export async function getCurrentOperatorSession(): Promise<OperatorSession | nul
 export async function currentAuditActor() {
     const session = await getCurrentOperatorSession();
 
-    return session ? `${session.handle}:${session.role}` : 'bootstrap-admin';
+    return session
+        ? `${session.handle}:${session.role}${session.vendorId ? `:${session.vendorId}` : ''}`
+        : 'bootstrap-admin';
 }
 
 export function hashSecret(value: string) {
@@ -261,7 +272,8 @@ function bootstrapSession(): OperatorSession {
         operatorId: 'bootstrap',
         handle: 'bootstrap',
         displayName: 'Bootstrap Admin',
-        role: 'admin',
+        role: 'super_admin',
+        vendorId: null,
         sessionId: 'bootstrap',
     };
 }

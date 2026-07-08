@@ -1,6 +1,7 @@
 import { cache } from 'react';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
+import { requireTenantScope, tenantScopeOrGlobal, tenantValue, tenantWhere } from './auth/tenancy';
 import { getDb } from './db/client';
 import {
     integrationSettings,
@@ -8,6 +9,7 @@ import {
     musicPlaylistItems,
     musicPlaylists,
     operatorPreferences,
+    vendors,
     type MediaAssetRow,
     type MusicPlaylistRow,
 } from './db/schema';
@@ -16,6 +18,7 @@ export type MusicPlaylistStatus = 'draft' | 'ready' | 'archived';
 
 export type MusicPlaylist = {
     id: string;
+    vendorId: string;
     name: string;
     status: MusicPlaylistStatus;
     itemCount: number;
@@ -51,25 +54,34 @@ export type BackgroundMusicPayload = {
 
 export const MUSIC_OUTPUT_PROVIDER = 'music_output';
 
-export const getMusicOutputSettings = cache(async (): Promise<MusicOutputSettings> => {
-    await ensureMusicBootstrap();
-    const db = await getDb();
-    const [row] = await db
-        .select({
-            publicConfig: integrationSettings.publicConfig,
-        })
-        .from(integrationSettings)
-        .where(eq(integrationSettings.provider, MUSIC_OUTPUT_PROVIDER))
-        .limit(1);
+export const getMusicOutputSettings = cache(
+    async (vendorId?: string): Promise<MusicOutputSettings> => {
+        await ensureMusicBootstrap();
+        const scope = vendorId ? null : await tenantScopeOrGlobal();
+        const provider = musicOutputProvider(
+            vendorId ?? (scope?.kind === 'vendor' ? scope.vendorId : 'default'),
+        );
+        const db = await getDb();
+        const [row] = await db
+            .select({
+                publicConfig: integrationSettings.publicConfig,
+            })
+            .from(integrationSettings)
+            .where(eq(integrationSettings.provider, provider))
+            .limit(1);
 
-    return parseMusicOutputSettings(row?.publicConfig);
-});
+        return parseMusicOutputSettings(row?.publicConfig);
+    },
+);
 
 export async function saveMusicOutputSettings(
     input: Partial<MusicOutputSettings>,
 ): Promise<MusicOutputSettings> {
     await ensureMusicBootstrap();
-    const current = await getMusicOutputSettings();
+    const scope = await requireTenantScope();
+    const vendorId = tenantValue(scope);
+    const provider = musicOutputProvider(vendorId);
+    const current = await getMusicOutputSettings(vendorId);
     const next = parseMusicOutputSettings({ ...current, ...input });
     const db = await getDb();
     const now = new Date().toISOString();
@@ -77,7 +89,7 @@ export async function saveMusicOutputSettings(
     await db
         .insert(integrationSettings)
         .values({
-            provider: MUSIC_OUTPUT_PROVIDER,
+            provider,
             publicConfig: next,
             status: 'ready',
             updatedAt: now,
@@ -96,8 +108,13 @@ export async function saveMusicOutputSettings(
 
 export async function listPlaylists(): Promise<MusicPlaylist[]> {
     await ensureMusicBootstrap();
+    const scope = await tenantScopeOrGlobal();
     const db = await getDb();
-    const rows = await db.select().from(musicPlaylists).orderBy(asc(musicPlaylists.name));
+    const rows = await db
+        .select()
+        .from(musicPlaylists)
+        .where(tenantWhere(musicPlaylists.vendorId, scope))
+        .orderBy(asc(musicPlaylists.name));
     const counts = await playlistItemCounts(rows.map((row) => row.id));
 
     return rows.map((row) => mapPlaylist(row, counts.get(row.id) ?? 0));
@@ -105,6 +122,7 @@ export async function listPlaylists(): Promise<MusicPlaylist[]> {
 
 export async function getPlaylist(playlistId: string): Promise<MusicPlaylistDetail | null> {
     await ensureMusicBootstrap();
+    const scope = await tenantScopeOrGlobal();
     const db = await getDb();
     const [row] = await db
         .select()
@@ -112,7 +130,7 @@ export async function getPlaylist(playlistId: string): Promise<MusicPlaylistDeta
         .where(eq(musicPlaylists.id, playlistId))
         .limit(1);
 
-    if (!row) {
+    if (!row || (scope?.kind === 'vendor' && row.vendorId !== scope.vendorId)) {
         return null;
     }
 
@@ -132,12 +150,14 @@ export async function createPlaylist(input: {
     name: string;
     status?: MusicPlaylistStatus;
 }): Promise<MusicPlaylist> {
+    const scope = await requireTenantScope();
     const db = await getDb();
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
 
     await db.insert(musicPlaylists).values({
         id,
+        vendorId: tenantValue(scope),
         name: input.name.trim(),
         status: input.status ?? 'ready',
         createdAt: now,
@@ -147,6 +167,7 @@ export async function createPlaylist(input: {
     return mapPlaylist(
         {
             id,
+            vendorId: tenantValue(scope),
             name: input.name.trim(),
             status: input.status ?? 'ready',
             createdAt: now,
@@ -160,11 +181,19 @@ export async function updatePlaylist(
     playlistId: string,
     input: { name?: string; status?: MusicPlaylistStatus },
 ): Promise<MusicPlaylist | null> {
+    const scope = await requireTenantScope();
     const db = await getDb();
     const [existing] = await db
         .select()
         .from(musicPlaylists)
-        .where(eq(musicPlaylists.id, playlistId))
+        .where(
+            scope.kind === 'vendor'
+                ? and(
+                      eq(musicPlaylists.id, playlistId),
+                      eq(musicPlaylists.vendorId, scope.vendorId),
+                  )
+                : eq(musicPlaylists.id, playlistId),
+        )
         .limit(1);
 
     if (!existing) {
@@ -178,7 +207,17 @@ export async function updatePlaylist(
         updatedAt: now,
     };
 
-    await db.update(musicPlaylists).set(next).where(eq(musicPlaylists.id, playlistId));
+    await db
+        .update(musicPlaylists)
+        .set(next)
+        .where(
+            scope.kind === 'vendor'
+                ? and(
+                      eq(musicPlaylists.id, playlistId),
+                      eq(musicPlaylists.vendorId, scope.vendorId),
+                  )
+                : eq(musicPlaylists.id, playlistId),
+        );
     const counts = await playlistItemCounts([playlistId]);
 
     return mapPlaylist({ ...existing, ...next }, counts.get(playlistId) ?? 0);
@@ -191,11 +230,19 @@ export async function archivePlaylist(playlistId: string): Promise<boolean> {
 }
 
 export async function setPlaylistItems(playlistId: string, assetIds: string[]): Promise<boolean> {
+    const scope = await requireTenantScope();
     const db = await getDb();
     const [playlist] = await db
-        .select({ id: musicPlaylists.id })
+        .select({ id: musicPlaylists.id, vendorId: musicPlaylists.vendorId })
         .from(musicPlaylists)
-        .where(eq(musicPlaylists.id, playlistId))
+        .where(
+            scope.kind === 'vendor'
+                ? and(
+                      eq(musicPlaylists.id, playlistId),
+                      eq(musicPlaylists.vendorId, scope.vendorId),
+                  )
+                : eq(musicPlaylists.id, playlistId),
+        )
         .limit(1);
 
     if (!playlist) {
@@ -212,6 +259,7 @@ export async function setPlaylistItems(playlistId: string, assetIds: string[]): 
                 and(
                     inArray(mediaAssets.id, uniqueAssetIds),
                     eq(mediaAssets.assetType, 'music'),
+                    eq(mediaAssets.vendorId, playlist.vendorId),
                 ),
             );
 
@@ -275,9 +323,10 @@ export async function resolvePlaylistTracks(
 export async function resolveBackgroundMusic(args: {
     context: 'schedule' | 'fallback';
     shouldPlay: boolean;
+    vendorId?: string;
     mediaAccessToken?: string;
 }): Promise<BackgroundMusicPayload | null> {
-    const settings = await getMusicOutputSettings();
+    const settings = await getMusicOutputSettings(args.vendorId);
 
     if (!settings.enabled) {
         return null;
@@ -302,11 +351,19 @@ export async function resolveBackgroundMusic(args: {
 
 export async function ensureMusicBootstrap() {
     const db = await getDb();
-    const [existingPlaylist] = await db.select({ id: musicPlaylists.id }).from(musicPlaylists).limit(1);
+    const [existingPlaylist] = await db
+        .select({ id: musicPlaylists.id })
+        .from(musicPlaylists)
+        .limit(1);
 
     if (existingPlaylist) {
         return;
     }
+
+    await db
+        .insert(vendors)
+        .values({ id: 'default', name: 'Default Vendor', slug: 'default', status: 'active' })
+        .onConflictDoNothing();
 
     const musicRows = await db
         .select()
@@ -323,6 +380,7 @@ export async function ensureMusicBootstrap() {
 
     await db.insert(musicPlaylists).values({
         id: playlistId,
+        vendorId: 'default',
         name: 'Default',
         status: 'ready',
         createdAt: now,
@@ -360,7 +418,7 @@ export async function ensureMusicBootstrap() {
     await db
         .insert(integrationSettings)
         .values({
-            provider: MUSIC_OUTPUT_PROVIDER,
+            provider: musicOutputProvider('default'),
             publicConfig: outputSettings,
             status: 'ready',
             updatedAt: now,
@@ -375,9 +433,14 @@ export async function ensureMusicBootstrap() {
         });
 }
 
+function musicOutputProvider(vendorId: string) {
+    return `${MUSIC_OUTPUT_PROVIDER}:${vendorId || 'default'}`;
+}
+
 function mapPlaylist(row: MusicPlaylistRow, itemCount: number): MusicPlaylist {
     return {
         id: row.id,
+        vendorId: row.vendorId,
         name: row.name,
         status: row.status as MusicPlaylistStatus,
         itemCount,

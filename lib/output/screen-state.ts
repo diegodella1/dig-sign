@@ -8,9 +8,8 @@ import {
 } from '@/lib/content-playlists';
 import { getScreenBySlug } from '@/lib/screens';
 import { fallbackState, type ChannelStateBase } from '@/lib/output/fallback-state';
-import { getVimeoToken } from '@/lib/settings';
 import { secondsSinceMidnightInTimezone } from '@/lib/helpers/time';
-import { getVimeoPlayback } from '@/lib/services/vimeo';
+import { resolveEmbedMedia } from '@/lib/helpers/embed-url';
 import { isYouTubeSlide } from '@/lib/slides/youtube';
 
 import type { MediaAsset, SlideAsset } from '@/lib/types';
@@ -204,20 +203,18 @@ async function playlistAssetState(
         };
     }
 
-    if (asset.sourceType === 'vimeo' && asset.vimeoId) {
-        const vimeoToken = await getVimeoToken();
+    if (asset.sourceType === 'embed' && asset.url) {
+        const embed = resolveEmbedMedia(asset.url);
 
-        if (!vimeoToken) {
+        if (!embed) {
             return null;
         }
 
-        const playback = await getVimeoPlayback(vimeoToken, asset.vimeoId);
-
         return {
             ...shared,
-            kind: 'vimeo' as const,
-            title: playback.title || asset.title,
-            hlsUrl: playback.hlsUrl,
+            kind: 'embed' as const,
+            provider: embed.provider,
+            embedUrl: embed.embedUrl,
         };
     }
 

@@ -15,11 +15,6 @@ vi.mock('@/lib/storage/r2', () => ({
     getMediaBucket: vi.fn(async () => ({ list: mockList })),
 }));
 
-vi.mock('@/lib/settings', () => ({
-    getVimeoSettings: vi.fn(async () => ({ status: 'ready', hasSecret: true })),
-    getVimeoToken: vi.fn(async () => 'vimeo-token'),
-}));
-
 vi.mock('@/lib/screens', () => ({
     listScreens: vi.fn(async () => [
         {
@@ -116,7 +111,7 @@ describe('GET /api/health', () => {
         expect(payload.checks.env.message).toBe('Check failed');
     });
 
-    it('reports degraded schema when Vimeo readiness columns cause an error', async () => {
+    it('reports degraded schema when readiness columns cause an error', async () => {
         // Simulate a schema-drift error only for schema-check selects.
         // checkSupabase selects only { id }, checkSchema selects { id, playbackReadinessStatus, ... }.
         // We detect schema-check queries by the presence of a key beyond just "id" in the fields arg.

@@ -1,14 +1,21 @@
 import type { Metadata } from 'next';
-import { DM_Sans } from 'next/font/google';
+import { Inter, Space_Grotesk } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
 
-const dmSans = DM_Sans({
+const inter = Inter({
     subsets: ['latin'],
-    weight: ['400', '500', '600', '700', '800'],
+    weight: ['400', '500', '600', '700'],
     display: 'swap',
-    variable: '--font-dm-sans',
+    variable: '--font-inter',
+});
+
+const spaceGrotesk = Space_Grotesk({
+    subsets: ['latin'],
+    weight: ['500', '600', '700'],
+    display: 'swap',
+    variable: '--font-space-grotesk',
 });
 
 export const metadata: Metadata = {
@@ -21,7 +28,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     const messages = await getMessages();
 
     return (
-        <html lang={locale} className={dmSans.variable}>
+        <html lang={locale} className={`${inter.variable} ${spaceGrotesk.variable}`}>
             <body>
                 <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
             </body>

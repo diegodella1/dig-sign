@@ -1,4 +1,4 @@
-import { currentAuditActor } from '../auth/auth';
+import { currentAuditActor, getCurrentOperatorSession } from '../auth/auth';
 import { getDb } from '../db/client';
 import { auditLog } from '../db/schema';
 
@@ -32,6 +32,7 @@ export type AuditEvent = {
 
 export async function recordAuditEvent(input: AuditEventInput) {
     const actor = input.actor ?? (await currentAuditActor());
+    const session = await getCurrentOperatorSession();
     const metadata = {
         ...(input.metadata ?? {}),
         result: input.result ?? 'success',
@@ -43,6 +44,7 @@ export async function recordAuditEvent(input: AuditEventInput) {
         action: input.action,
         entityType: input.entityType,
         entityId: input.entityId ?? null,
+        vendorId: session?.vendorId ?? null,
         metadata,
         createdAt: new Date().toISOString(),
     });

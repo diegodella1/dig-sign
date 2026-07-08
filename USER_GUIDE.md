@@ -16,12 +16,12 @@ Use the configured admin bootstrap token or a named operator handle/token.
 
 The console uses four modes:
 
-| Mode | Route | Purpose |
-|------|-------|---------|
-| **Operate** | `/admin/operate` | Screen monitor, health, capture URLs |
-| **Prepare** | `/admin/prepare` | Plates, media, music, Vimeo import |
-| **Signage** | `/admin/screens` | Screens, playlists, day assignments |
-| **Admin** | `/admin/settings` | Settings, health, audit |
+| Mode        | Route             | Purpose                              |
+| ----------- | ----------------- | ------------------------------------ |
+| **Operate** | `/admin/operate`  | Screen monitor, health, capture URLs |
+| **Prepare** | `/admin/prepare`  | Plates, media, public URLs, music    |
+| **Signage** | `/admin/screens`  | Screens, playlists, day assignments  |
+| **Admin**   | `/admin/settings` | Settings, health, audit              |
 
 Start at **Operate** during playback hours. Use the capture URL from Operate on the OBS/vMix machine only.
 
@@ -34,9 +34,8 @@ Legacy bookmarks still work via redirects (`/admin/program` → screens, `/admin
 Start at `/admin/prepare`.
 
 - **Plates** (`/admin/slides`) — weather cities, YouTube embeds, template graphics.
-- **Media** (`/admin/assets`) — upload and verify playable files (video, image, audio).
+- **Media** (`/admin/assets`) — upload files or add YouTube, Vimeo, direct video and public image URLs.
 - **Music** (`/admin/music`) — background music playlists for visual items in output.
-- **Import** (`/admin/vimeo`) — sync Vimeo catalog into the media library.
 
 Only mark assets **ready** after playback is verified. Draft or failed assets should not go into playlists.
 
@@ -67,7 +66,6 @@ Open `/admin/health` and fix any failing checks:
 - Environment variables configured
 - D1 database reachable
 - R2 storage reachable
-- Vimeo token valid (if using Vimeo)
 - Output capture token set (production)
 - At least one screen configured
 
@@ -102,7 +100,7 @@ Repeat for each physical display (different screen slug per machine).
 Supported item types:
 
 - **Slides/plates** — weather, YouTube, HTML templates
-- **Video** — Vimeo, HLS, MP4 via media library
+- **Video** — YouTube/Vimeo URLs, HLS, MP4 via media library
 - **Images** — static images with configurable duration
 - **Background music** — optional bed on visual items when music output is configured
 
@@ -141,29 +139,28 @@ Public `/api/health` shows pass/degraded/fail summaries only. Full detail is on 
 
 ## Useful Pages
 
-| Page | URL |
-|------|-----|
-| Public manual | `/manual` |
-| Backlog | `/pending` |
-| Prepare hub | `/admin/prepare` |
-| Plates | `/admin/slides` |
-| Media library | `/admin/assets` |
-| Vimeo import | `/admin/vimeo` |
-| Music | `/admin/music` |
-| Screens | `/admin/screens` |
-| Playlists | `/admin/playlists` |
-| Operate / monitor | `/admin/operate` |
-| Health | `/admin/health` |
-| Audit | `/admin/audit` |
+| Page                 | URL                 |
+| -------------------- | ------------------- |
+| Public manual        | `/manual`           |
+| Backlog              | `/pending`          |
+| Prepare hub          | `/admin/prepare`    |
+| Plates               | `/admin/slides`     |
+| Media library        | `/admin/assets`     |
+| Music                | `/admin/music`      |
+| Screens              | `/admin/screens`    |
+| Playlists            | `/admin/playlists`  |
+| Operate / monitor    | `/admin/operate`    |
+| Health               | `/admin/health`     |
+| Audit                | `/admin/audit`      |
 | Player (main screen) | `/output/live/main` |
-| Health API | `/api/health` |
+| Health API           | `/api/health`       |
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---------|--------------|-----|
-| Fallback slate / empty loop | No assignment for today, empty playlist, or missing assets | Check screen assignment and fallback playlist items |
-| 401 on output URL | Missing or wrong `OUTPUT_CAPTURE_TOKEN` | Set token in env; append `?token=` to URL |
-| Audio silent | Browser autoplay policy | Click **Start Output** on the player page |
-| Screen not in monitor | Screen status not `active` | Edit screen on `/admin/screens/[slug]` |
-| Health migration fail | D1 not migrated through `0004` | Run `wrangler d1 migrations apply dig-sign-db --remote` |
+| Symptom                     | Likely cause                                               | Fix                                                     |
+| --------------------------- | ---------------------------------------------------------- | ------------------------------------------------------- |
+| Fallback slate / empty loop | No assignment for today, empty playlist, or missing assets | Check screen assignment and fallback playlist items     |
+| 401 on output URL           | Missing or wrong `OUTPUT_CAPTURE_TOKEN`                    | Set token in env; append `?token=` to URL               |
+| Audio silent                | Browser autoplay policy                                    | Click **Start Output** on the player page               |
+| Screen not in monitor       | Screen status not `active`                                 | Edit screen on `/admin/screens/[slug]`                  |
+| Health migration fail       | D1 not migrated through `0004`                             | Run `wrangler d1 migrations apply dig-sign-db --remote` |

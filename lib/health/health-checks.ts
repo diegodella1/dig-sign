@@ -1,5 +1,4 @@
 import { listScreens } from '../screens';
-import { getVimeoSettings, getVimeoToken } from '../settings';
 import {
     isSmokeStatusOk,
     isSmokeStatusStale,
@@ -16,35 +15,15 @@ import {
     slideAssets,
 } from '../db/schema';
 
-type VimeoSettings = Awaited<ReturnType<typeof getVimeoSettings>>;
-type VimeoToken = Awaited<ReturnType<typeof getVimeoToken>>;
-type SettingsResult<T> = { ok: true; value: T } | { ok: false; error: unknown };
-
 export type CollectOperatorHealthOptions = {
     /** @deprecated Schedule-era preload. Ignored. */
     preloadedLiveSchedule?: unknown;
 };
 
-async function safeSettings<T>(loader: () => Promise<T>): Promise<SettingsResult<T>> {
-    try {
-        return { ok: true, value: await loader() };
-    } catch (error) {
-        return { ok: false, error };
-    }
-}
-
 export type OperatorHealthStatus = 'ok' | 'degraded' | 'fail';
 
 export type OperatorHealthCheck = {
-    id:
-        | 'env'
-        | 'supabase'
-        | 'schema'
-        | 'storage'
-        | 'vimeo'
-        | 'output'
-        | 'migrations'
-        | 'smoke';
+    id: 'env' | 'supabase' | 'schema' | 'storage' | 'output' | 'migrations' | 'smoke';
     label: string;
     ok: boolean;
     status: OperatorHealthStatus;
@@ -79,25 +58,17 @@ export function sanitizeOperatorHealthReport(report: OperatorHealthReport): Oper
 }
 
 export async function collectOperatorHealth(): Promise<OperatorHealthReport> {
-    const [vimeoSettings, vimeoToken] = await Promise.all([
-        safeSettings(getVimeoSettings),
-        safeSettings(getVimeoToken),
-    ]);
-    const [supabase, schema, storage, vimeo, output, migrations, smoke] = await Promise.all([
-        checkSupabase(),
-        checkSchema(),
-        checkStorage(),
-        checkVimeo(vimeoSettings, vimeoToken),
-        checkOutput(),
-        checkMigrations(),
-        checkSmoke(),
-    ]);
+    const supabase = await checkSupabase();
+    const schema = await checkSchema();
+    const storage = await checkStorage();
+    const output = await checkOutput();
+    const migrations = await checkMigrations();
+    const smoke = await checkSmoke();
     const checks = {
         env: checkEnv(),
         supabase,
         schema,
         storage,
-        vimeo,
         output,
         migrations,
         smoke,
@@ -187,35 +158,6 @@ async function checkStorage(): Promise<OperatorHealthCheck> {
     } catch (error) {
         return fail('storage', 'Storage', `Storage check failed: ${errorMessage(error)}`);
     }
-}
-
-async function checkVimeo(
-    settingsResult: SettingsResult<VimeoSettings>,
-    tokenResult: SettingsResult<VimeoToken>,
-): Promise<OperatorHealthCheck> {
-    if (!settingsResult.ok) {
-        return degraded(
-            'vimeo',
-            'Vimeo',
-            `Vimeo check failed: ${errorMessage(settingsResult.error)}`,
-        );
-    }
-
-    if (!tokenResult.ok) {
-        return degraded('vimeo', 'Vimeo', `Vimeo check failed: ${errorMessage(tokenResult.error)}`);
-    }
-    const settings = settingsResult.value;
-    const token = tokenResult.value;
-
-    if (!token) {
-        return degraded('vimeo', 'Vimeo', 'Vimeo token not configured', '/admin/settings');
-    }
-
-    if (settings?.status === 'failed' || settings?.status === 'invalid') {
-        return degraded('vimeo', 'Vimeo', settings.lastError ?? `Status: ${settings.status}`);
-    }
-
-    return pass('vimeo', 'Vimeo', settings?.lastError ?? 'Vimeo token configured');
 }
 
 async function checkOutput(): Promise<OperatorHealthCheck> {

@@ -1,4 +1,4 @@
-import { isPlayablePlaylistAsset } from '@/lib/content-playlists';
+import { isPlayablePlaylistAsset } from '@/lib/content-playlist-helpers';
 import type { MediaAsset, SlideAsset } from '@/lib/types';
 
 export type LoopEditorCard = {
@@ -25,9 +25,7 @@ export function itemLabelForCard(
     slideById: Map<string, SlideAsset>,
     assetById: Map<string, MediaAsset>,
 ) {
-    return card.kind === 'asset'
-        ? assetById.get(card.id)?.title
-        : slideById.get(card.id)?.title;
+    return card.kind === 'asset' ? assetById.get(card.id)?.title : slideById.get(card.id)?.title;
 }
 
 export function countLoopCards(cards: LoopEditorCard[], kind: LoopEditorCard['kind'], id: string) {
@@ -55,7 +53,9 @@ export function cardsFromPlaylistItems(
                 id: item.assetId,
                 assetId: item.assetId,
                 durationSeconds:
-                    item.durationSeconds ?? asset.durationSeconds ?? (asset.mediaKind === 'image' ? 15 : 30),
+                    item.durationSeconds ??
+                    asset.durationSeconds ??
+                    (asset.mediaKind === 'image' ? 15 : 30),
             });
             continue;
         }

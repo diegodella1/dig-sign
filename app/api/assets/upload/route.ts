@@ -65,7 +65,7 @@ export async function POST(request: Request) {
             return NextResponse.json(
                 {
                     ok: false,
-                    error: 'Upload request could not be read. Keep browser uploads under 95 MB, or use Vimeo/remote URL for larger videos.',
+                    error: 'Upload request could not be read. Keep browser uploads under 95 MB, or use a public media URL for larger videos.',
                 },
                 { status: 413 },
             );

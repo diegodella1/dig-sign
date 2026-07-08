@@ -34,14 +34,8 @@ export default async function AssetsPage({
         kind?: string;
         q?: string;
         sort?: string;
-        show_name?: string;
-        month?: string;
-        year?: string;
         page?: string;
         lifecycle?: string;
-        imported?: string;
-        playback?: string;
-        count?: string;
     }>;
 }) {
     const params = await searchParams;
@@ -78,10 +72,6 @@ export default async function AssetsPage({
                 return false;
             }
 
-            if (params.kind === 'vimeo' && asset.sourceType !== 'vimeo') {
-                return false;
-            }
-
             if (params.kind === 'videos' && asset.mediaKind !== 'video') {
                 return false;
             }
@@ -96,7 +86,7 @@ export default async function AssetsPage({
 
             if (
                 params.kind &&
-                !['all', 'vimeo', 'videos', 'images', 'image', 'audio'].includes(params.kind) &&
+                !['all', 'videos', 'images', 'image', 'audio'].includes(params.kind) &&
                 asset.assetType !== params.kind
             ) {
                 return false;
@@ -118,7 +108,6 @@ export default async function AssetsPage({
                     asset.sourceType,
                     asset.mediaKind,
                     asset.assetType,
-                    getMetadataText(asset, 'vimeo_show_name'),
                 ]
                     .filter(Boolean)
                     .join(' ')
@@ -126,33 +115,6 @@ export default async function AssetsPage({
                     .includes(query)
             ) {
                 return false;
-            }
-
-            if (params.show_name && asset.sourceType === 'vimeo') {
-                const showName = getMetadataText(asset, 'vimeo_show_name').toLowerCase();
-
-                if (!showName.includes(params.show_name.toLowerCase())) {
-                    return false;
-                }
-            }
-
-            if ((params.month || params.year) && asset.sourceType === 'vimeo') {
-                const date = parseDate(getMetadataText(asset, 'vimeo_created_time'));
-
-                if (!date) {
-                    return false;
-                }
-
-                if (params.year && String(date.getUTCFullYear()) !== params.year) {
-                    return false;
-                }
-
-                if (
-                    params.month &&
-                    String(date.getUTCMonth() + 1).padStart(2, '0') !== params.month
-                ) {
-                    return false;
-                }
             }
 
             return true;
@@ -173,11 +135,12 @@ export default async function AssetsPage({
     async function addAsset(formData: FormData) {
         'use server';
         const durationSeconds = Number(formData.get('duration_seconds') || 0) || undefined;
+        const sourceType = String(formData.get('source_type'));
         const result = await createMediaAsset({
             title: String(formData.get('title')),
-            sourceType: String(formData.get('source_type')),
-            mediaKind: String(formData.get('media_kind')),
-            assetType: String(formData.get('asset_type')),
+            sourceType,
+            mediaKind: sourceType === 'embed' ? 'video' : String(formData.get('media_kind')),
+            assetType: sourceType === 'embed' ? 'video' : String(formData.get('asset_type')),
             url: String(formData.get('url') || ''),
             ...(durationSeconds !== undefined ? { durationSeconds } : {}),
         });
@@ -226,28 +189,13 @@ export default async function AssetsPage({
             description="Upload and verify playable video, image and audio files."
             subNav={prepareSubNav}
             actions={
-                <>
-                    <ButtonLink href="/admin/playlists" variant="secondary">
-                        Fallback policy
-                    </ButtonLink>
-                    <a className="btn-primary" href="/admin/vimeo">
-                        Import Vimeo
-                    </a>
-                </>
+                <ButtonLink href="/admin/playlists" variant="secondary">
+                    Fallback policy
+                </ButtonLink>
             }
         >
             {params.uploaded ? (
                 <Notice tone="ok">Media uploaded and saved as an asset.</Notice>
-            ) : null}
-            {params.imported ? (
-                <Notice tone={params.playback === 'failed' ? 'warn' : 'ok'} title="Vimeo imported">
-                    {params.count ?? '1'} episode added to the library.
-                    {params.playback === 'ready'
-                        ? ' Playback verified: it can be scheduled.'
-                        : params.playback === 'failed'
-                          ? ' Check playback before scheduling.'
-                          : null}
-                </Notice>
             ) : null}
             <LibraryConsoleBar
                 total={libraryItems.length}
@@ -273,83 +221,79 @@ export default async function AssetsPage({
                         <MediaUploadForm
                             action="/api/assets/upload"
                             title="Upload media"
-                            detail="MP4/WebM videos up to 5 minutes, images or MP3 files up to 95 MB. Use Import for Vimeo episodes."
+                            detail="MP4/WebM videos up to 5 minutes, images or MP3 files up to 95 MB."
                             returnTo="/admin/assets?uploaded=1"
                             includeAudio
                             compact
                         />
-                        <div className="mt-4">
-                            <ButtonLink href="/admin/vimeo" variant="secondary">
-                                Import from Vimeo
-                            </ButtonLink>
-                        </div>
                     </section>
 
                     <section className="rounded-md border border-line bg-surface p-4">
-                        <details>
-                            <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
-                                <LinkIcon size={16} aria-hidden="true" />
-                                Advanced: add direct URL
-                            </summary>
-                            <form
-                                action={addAsset}
-                                className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_130px]"
+                        <div className="mb-4 flex items-start gap-3">
+                            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-panel-soft text-muted">
+                                <LinkIcon size={18} aria-hidden="true" />
+                            </span>
+                            <FormHeader
+                                title="Add URL"
+                                detail="Use YouTube, Vimeo, direct MP4/WebM/HLS, or public image URLs."
+                            />
+                        </div>
+                        <form action={addAsset} className="grid gap-3 lg:grid-cols-[1fr_1fr_130px]">
+                            <Field label="Title">
+                                <input
+                                    name="title"
+                                    required
+                                    placeholder="Title"
+                                    className="border border-line px-3 py-2 text-sm font-normal text-ink"
+                                />
+                            </Field>
+                            <Field label="URL">
+                                <input
+                                    name="url"
+                                    required
+                                    placeholder="Image/video URL"
+                                    className="border border-line px-3 py-2 text-sm font-normal text-ink"
+                                />
+                            </Field>
+                            <Field label="Seconds">
+                                <input
+                                    name="duration_seconds"
+                                    type="number"
+                                    min="1"
+                                    placeholder="Sec"
+                                    className="border border-line px-3 py-2 text-sm font-normal text-ink"
+                                />
+                            </Field>
+                            <select
+                                name="source_type"
+                                className="border border-line px-3 py-2 text-sm"
                             >
-                                <Field label="Title">
-                                    <input
-                                        name="title"
-                                        required
-                                        placeholder="Title"
-                                        className="border border-line px-3 py-2 text-sm font-normal text-ink"
-                                    />
-                                </Field>
-                                <Field label="URL">
-                                    <input
-                                        name="url"
-                                        placeholder="Image/video URL"
-                                        className="border border-line px-3 py-2 text-sm font-normal text-ink"
-                                    />
-                                </Field>
-                                <Field label="Seconds">
-                                    <input
-                                        name="duration_seconds"
-                                        type="number"
-                                        min="1"
-                                        placeholder="Sec"
-                                        className="border border-line px-3 py-2 text-sm font-normal text-ink"
-                                    />
-                                </Field>
-                                <select
-                                    name="source_type"
-                                    className="border border-line px-3 py-2 text-sm"
-                                >
-                                    <option value="remote_image">Remote image</option>
-                                    <option value="remote_mp4">Remote MP4</option>
-                                    <option value="hls">HLS</option>
-                                    <option value="rtmp">RTMP</option>
-                                </select>
-                                <select
-                                    name="media_kind"
-                                    className="border border-line px-3 py-2 text-sm"
-                                >
-                                    <option value="image">Image</option>
-                                    <option value="video">Video</option>
-                                    <option value="graphic">Graphic</option>
-                                </select>
-                                <select
-                                    name="asset_type"
-                                    className="border border-line px-3 py-2 text-sm"
-                                >
-                                    <option value="image">Image</option>
-                                    <option value="video">Video</option>
-                                    <option value="ad">Ad</option>
-                                    <option value="promo">Promo</option>
-                                    <option value="fallback">Fallback</option>
-                                    <option value="music">Music</option>
-                                </select>
-                                <button className="btn-secondary lg:col-span-3">Save URL</button>
-                            </form>
-                        </details>
+                                <option value="embed">YouTube/Vimeo URL</option>
+                                <option value="remote_image">Remote image</option>
+                                <option value="remote_mp4">Direct video file</option>
+                                <option value="hls">HLS</option>
+                            </select>
+                            <select
+                                name="media_kind"
+                                className="border border-line px-3 py-2 text-sm"
+                            >
+                                <option value="video">Video</option>
+                                <option value="image">Image</option>
+                                <option value="graphic">Graphic</option>
+                            </select>
+                            <select
+                                name="asset_type"
+                                className="border border-line px-3 py-2 text-sm"
+                            >
+                                <option value="video">Video</option>
+                                <option value="image">Image</option>
+                                <option value="ad">Ad</option>
+                                <option value="promo">Promo</option>
+                                <option value="fallback">Fallback</option>
+                                <option value="music">Music</option>
+                            </select>
+                            <button className="btn-secondary lg:col-span-3">Save URL</button>
+                        </form>
                     </section>
                 </div>
             </details>
@@ -376,20 +320,12 @@ export default async function AssetsPage({
                         Advanced filters
                     </summary>
                     <form
-                        className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1fr_150px_110px_110px_140px_110px]"
+                        className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[150px_140px_110px]"
                         action="/admin/assets"
                     >
                         <input type="hidden" name="status" value={params.status ?? ''} />
                         <input type="hidden" name="kind" value={params.kind ?? ''} />
                         <input type="hidden" name="q" value={params.q ?? ''} />
-                        <Field label="Vimeo show">
-                            <input
-                                name="show_name"
-                                defaultValue={params.show_name ?? ''}
-                                placeholder="Show name"
-                                className="border border-line px-3 py-2 text-sm font-normal text-ink"
-                            />
-                        </Field>
                         <Field label="Lifecycle">
                             <select
                                 name="lifecycle"
@@ -404,32 +340,6 @@ export default async function AssetsPage({
                                 <option value="expired">Expired</option>
                                 <option value="scheduled_in_use">Scheduled in use</option>
                             </select>
-                        </Field>
-                        <Field label="Month">
-                            <select
-                                name="month"
-                                defaultValue={params.month ?? ''}
-                                className="border border-line px-3 py-2 text-sm font-normal text-ink"
-                            >
-                                <option value="">Any</option>
-                                {Array.from({ length: 12 }, (_, index) =>
-                                    String(index + 1).padStart(2, '0'),
-                                ).map((month) => (
-                                    <option key={month} value={month}>
-                                        {month}
-                                    </option>
-                                ))}
-                            </select>
-                        </Field>
-                        <Field label="Year">
-                            <input
-                                name="year"
-                                defaultValue={params.year ?? ''}
-                                placeholder="2026"
-                                inputMode="numeric"
-                                pattern="[0-9]{4}"
-                                className="border border-line px-3 py-2 text-sm font-normal text-ink"
-                            />
                         </Field>
                         <Field label="Sort">
                             <select
@@ -688,7 +598,7 @@ function paginationWindow(currentPage: number, totalPages: number) {
 function assetPageHref(params: Record<string, string | undefined>, page: number) {
     const query = new URLSearchParams();
 
-    for (const key of ['status', 'kind', 'q', 'sort', 'show_name', 'month', 'year', 'lifecycle']) {
+    for (const key of ['status', 'kind', 'q', 'sort', 'lifecycle']) {
         const value = params[key];
 
         if (value) {
@@ -732,7 +642,9 @@ function LibraryItemRow({
                             {assetTypeLabel(item.asset.assetType)}
                         </ClearStateBadge>
                         <ClearStateBadge tone={item.asset.status === 'ready' ? 'ok' : 'warn'}>
-                            {item.asset.status === 'ready' ? 'Playlist ready' : `Status ${item.asset.status}`}
+                            {item.asset.status === 'ready'
+                                ? 'Playlist ready'
+                                : `Status ${item.asset.status}`}
                         </ClearStateBadge>
                         {isFallbackLoop ? (
                             <ClearStateBadge tone="ok">Silent gap fill</ClearStateBadge>
@@ -854,11 +766,10 @@ function AssetEditForm({
                 defaultValue={asset.sourceType}
                 className="border border-line px-3 py-2 text-sm"
             >
+                <option value="embed">YouTube/Vimeo URL</option>
                 <option value="remote_image">Remote image</option>
-                <option value="remote_mp4">Remote MP4</option>
+                <option value="remote_mp4">Direct video file</option>
                 <option value="hls">HLS</option>
-                <option value="rtmp">RTMP</option>
-                <option value="vimeo">Vimeo</option>
                 <option value="supabase_image">Supabase image</option>
                 <option value="supabase_audio">Supabase audio</option>
             </select>
@@ -961,9 +872,9 @@ function assetNeedsAttention(asset: MediaAsset) {
 
     if (
         (asset.sourceType === 'remote_image' ||
+            asset.sourceType === 'embed' ||
             asset.sourceType === 'remote_mp4' ||
             asset.sourceType === 'hls' ||
-            asset.sourceType === 'rtmp' ||
             asset.sourceType === 'supabase_audio') &&
         !asset.url
     ) {
@@ -1037,9 +948,9 @@ function assetAttentionReason(asset: MediaAsset) {
 
     if (
         (asset.sourceType === 'remote_image' ||
+            asset.sourceType === 'embed' ||
             asset.sourceType === 'remote_mp4' ||
             asset.sourceType === 'hls' ||
-            asset.sourceType === 'rtmp' ||
             asset.sourceType === 'supabase_audio') &&
         !asset.url
     ) {
@@ -1115,17 +1026,9 @@ function LibraryPreview({ item }: { item: LibraryItem }) {
     );
 }
 
-
 function fileDetailLine(asset: MediaAsset) {
     const metadata = asset.metadata ?? {};
     const parts = [
-        metadata.vimeo_show_name ? `show ${metadata.vimeo_show_name}` : null,
-        metadata.vimeo_created_time
-            ? `vimeo date ${formatDate(String(metadata.vimeo_created_time))}`
-            : null,
-        metadata.vimeo_last_synced_at
-            ? `synced ${formatDate(String(metadata.vimeo_last_synced_at))}`
-            : null,
         metadata.original_file_name ? `file ${metadata.original_file_name}` : null,
         metadata.mime_type ? `mime ${metadata.mime_type}` : null,
         typeof metadata.size === 'number' ? `size ${formatBytes(metadata.size)}` : null,
@@ -1138,12 +1041,6 @@ function fileDetailLine(asset: MediaAsset) {
     ].filter(Boolean);
 
     return parts.length ? parts.join(' · ') : 'No uploaded file metadata yet.';
-}
-
-function getMetadataText(asset: MediaAsset, key: string) {
-    const value = asset.metadata?.[key];
-
-    return typeof value === 'string' ? value : '';
 }
 
 function fallbackLoopEnabled(asset: MediaAsset) {
@@ -1176,30 +1073,6 @@ function assetTypeLabel(value: MediaAsset['assetType']) {
     }
 
     return 'Image';
-}
-
-function parseDate(value: string) {
-    if (!value) {
-        return null;
-    }
-    const date = new Date(value);
-
-    return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatDate(value: string) {
-    const date = parseDate(value);
-
-    if (!date) {
-        return value;
-    }
-
-    return new Intl.DateTimeFormat('en', {
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit',
-        timeZone: 'UTC',
-    }).format(date);
 }
 
 function formatBytes(bytes: number) {

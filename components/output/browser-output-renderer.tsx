@@ -36,7 +36,7 @@ type LiveLowerThird = {
 
 type OutputState =
     | {
-          kind: 'vimeo' | 'hls' | 'mp4';
+          kind: 'hls' | 'mp4';
           signature: string;
           blockId?: string | null;
           assetId?: string;
@@ -57,6 +57,22 @@ type OutputState =
           liveSourceType?: 'hls';
           liveStatus?: string;
           lowerThird?: LiveLowerThird;
+          backgroundMusic: BackgroundMusic;
+      }
+    | {
+          kind: 'embed';
+          signature: string;
+          blockId?: string | null;
+          assetId?: string;
+          title: string;
+          provider: 'youtube' | 'vimeo';
+          embedUrl: string;
+          startOffsetSeconds: number;
+          durationSeconds: number | null;
+          serverSeconds: number;
+          generatedAt: string;
+          presentation?: 'fit' | 'vertical_blur';
+          background?: 'black' | 'blur';
           backgroundMusic: BackgroundMusic;
       }
     | {
@@ -123,12 +139,7 @@ type Props = {
     screen?: string;
 };
 
-export function BrowserOutputRenderer({
-    debug = false,
-    startAt,
-    token,
-    screen = 'main',
-}: Props) {
+export function BrowserOutputRenderer({ debug = false, startAt, token, screen = 'main' }: Props) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const musicRef = useRef<HTMLAudioElement>(null);
     const hlsRef = useRef<Hls | null>(null);
@@ -394,10 +405,7 @@ export function BrowserOutputRenderer({
             fadeTimerRef.current = setInterval(() => {
                 step += 1;
                 const progress = Math.min(1, step / steps);
-                music.volume = Math.max(
-                    0,
-                    Math.min(1, from + (to - from) * progress),
-                );
+                music.volume = Math.max(0, Math.min(1, from + (to - from) * progress));
 
                 if (progress >= 1) {
                     clearFade();
@@ -740,6 +748,10 @@ function VisualState({ state, mediaState }: { state: OutputState | null; mediaSt
         return <YouTubeLivePlayer key={state.signature} state={state} />;
     }
 
+    if (state.kind === 'embed') {
+        return <EmbedPlayer key={state.signature} state={state} />;
+    }
+
     if (mediaState === 'syncing') {
         return null;
     }
@@ -749,6 +761,20 @@ function VisualState({ state, mediaState }: { state: OutputState | null; mediaSt
     }
 
     return null;
+}
+
+function EmbedPlayer({ state }: { state: Extract<OutputState, { kind: 'embed' }> }) {
+    return (
+        <div className="absolute inset-0 overflow-hidden bg-black">
+            <iframe
+                title={state.title}
+                src={state.embedUrl}
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                referrerPolicy="strict-origin-when-cross-origin"
+                className="absolute inset-0 h-full w-full border-0 bg-black"
+            />
+        </div>
+    );
 }
 
 function YouTubeLivePlayer({ state }: { state: Extract<OutputState, { kind: 'youtube_live' }> }) {
@@ -828,10 +854,8 @@ function TextSlide({ title, content }: { title: string; content: string }) {
     );
 }
 
-function isVideoState(
-    state: OutputState,
-): state is Extract<OutputState, { kind: 'vimeo' | 'hls' | 'mp4' }> {
-    return state.kind === 'vimeo' || state.kind === 'hls' || state.kind === 'mp4';
+function isVideoState(state: OutputState): state is Extract<OutputState, { kind: 'hls' | 'mp4' }> {
+    return state.kind === 'hls' || state.kind === 'mp4';
 }
 
 function isLiveState(
@@ -840,11 +864,11 @@ function isLiveState(
     return state.kind === 'youtube_live' || (state.kind === 'hls' && state.live === true);
 }
 
-function isHlsSource(state: Extract<OutputState, { kind: 'vimeo' | 'hls' | 'mp4' }>) {
-    return state.kind === 'vimeo' || state.kind === 'hls' || videoSource(state).includes('.m3u8');
+function isHlsSource(state: Extract<OutputState, { kind: 'hls' | 'mp4' }>) {
+    return state.kind === 'hls' || videoSource(state).includes('.m3u8');
 }
 
-function videoSource(state: Extract<OutputState, { kind: 'vimeo' | 'hls' | 'mp4' }>) {
+function videoSource(state: Extract<OutputState, { kind: 'hls' | 'mp4' }>) {
     return state.hlsUrl ?? state.url ?? '';
 }
 
@@ -898,7 +922,7 @@ function videoClassName(state: OutputState | null) {
 
 function shouldRenderBlurBackground(
     state: OutputState | null,
-): state is Extract<OutputState, { kind: 'vimeo' | 'hls' | 'mp4' }> {
+): state is Extract<OutputState, { kind: 'hls' | 'mp4' }> {
     return Boolean(
         state && isVideoState(state) && state.background === 'blur' && videoSource(state),
     );

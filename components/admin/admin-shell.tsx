@@ -1,4 +1,4 @@
-import { Monitor } from 'lucide-react';
+import { Bell, HelpCircle, LogOut, Search, Settings2, UserCircle } from 'lucide-react';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -40,42 +40,96 @@ export async function AdminShell({
 
     return (
         <div className="min-h-screen bg-surface-elevated-1 text-ink">
-            <aside className="fixed inset-y-0 left-0 z-40 hidden w-14 border-r border-line bg-surface md:flex md:flex-col md:items-center md:py-4">
+            <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r-2 border-line bg-surface md:flex md:flex-col md:py-8">
                 <Link
-                    href="/admin/screens"
-                    className="grid h-10 w-10 place-items-center rounded-md bg-ink text-surface hover:opacity-90"
-                    aria-label="Dig-Sign screens hub"
-                    title="Screens"
+                    href="/admin"
+                    className="mx-6 mb-8 block"
+                    aria-label="DigSign dashboard"
+                    title="Dashboard"
                 >
-                    <Monitor size={18} aria-hidden="true" />
+                    <span className="block font-display text-3xl font-bold leading-none text-ink">
+                        DigSign
+                    </span>
+                    <span className="mt-1 block font-headline text-xs font-bold uppercase tracking-[0.08em] text-muted">
+                        Command Center
+                    </span>
                 </Link>
-                <AdminNav />
-                <div className="mt-auto flex flex-col items-center gap-2 pb-2">
+                <div className="flex flex-1 flex-col px-4">
+                    <AdminNav />
+                </div>
+                <div className="mx-4 mt-auto border-t-2 border-line pt-4">
+                    <Link
+                        href="/manual"
+                        className="mb-2 flex min-h-11 items-center gap-3 border-2 border-transparent px-4 font-headline text-sm font-bold uppercase text-muted hover:border-line hover:bg-panel-soft hover:text-ink hover:shadow-[3px_3px_0_#1a1a1a]"
+                    >
+                        <HelpCircle size={19} aria-hidden="true" />
+                        Support
+                    </Link>
                     <form action={logout}>
                         <button
                             type="submit"
-                            className="grid h-10 w-10 place-items-center rounded-md text-[10px] font-bold uppercase text-muted hover:bg-panel-soft hover:text-ink"
+                            className="flex min-h-11 w-full items-center gap-3 border-2 border-transparent px-4 font-headline text-sm font-bold uppercase text-muted hover:border-line hover:bg-danger-soft hover:text-danger-strong hover:shadow-[3px_3px_0_#1a1a1a]"
                             aria-label="Logout"
                             title="Logout"
                         >
-                            Out
+                            <LogOut size={19} aria-hidden="true" />
+                            Logout
                         </button>
                     </form>
                 </div>
             </aside>
 
-            <main className="min-w-0 md:pl-14">
-                <header className="sticky top-0 z-30 border-b border-line bg-surface-elevated-2/95 backdrop-blur">
-                    <div className="flex h-12 items-center gap-3 px-4 md:px-6">
+            <main className="min-w-0 md:pl-64">
+                <header className="sticky top-0 z-30 border-b-2 border-line bg-surface">
+                    <div className="flex min-h-16 items-center gap-3 px-4 md:px-6">
                         <div className="min-w-0 flex-1">
-                            <h1 className="truncate text-base font-semibold md:text-lg">{title}</h1>
+                            <h1 className="truncate font-display text-xl font-bold uppercase md:text-2xl">
+                                {title}
+                            </h1>
                         </div>
+                        <label className="relative hidden w-72 lg:block">
+                            <Search
+                                size={16}
+                                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+                                aria-hidden="true"
+                            />
+                            <span className="sr-only">Search</span>
+                            <input
+                                className="h-10 border-2 border-line bg-panel pl-9 pr-3 font-body text-sm text-ink shadow-[2px_2px_0_#1a1a1a]"
+                                placeholder="Search resources..."
+                                type="search"
+                            />
+                        </label>
                         {actions ? (
-                            <div className="hidden flex-wrap items-center gap-2 sm:flex">{actions}</div>
+                            <div className="hidden flex-wrap items-center gap-2 sm:flex">
+                                {actions}
+                            </div>
                         ) : null}
+                        <div className="hidden items-center gap-2 md:flex">
+                            <button
+                                type="button"
+                                className="grid h-10 w-10 place-items-center border-2 border-transparent text-ink hover:border-line hover:bg-panel-soft"
+                                aria-label="Notifications"
+                            >
+                                <Bell size={19} aria-hidden="true" />
+                            </button>
+                            <Link
+                                href="/admin/settings"
+                                className="grid h-10 w-10 place-items-center border-2 border-transparent text-ink hover:border-line hover:bg-panel-soft"
+                                aria-label="Settings"
+                            >
+                                <Settings2 size={19} aria-hidden="true" />
+                            </Link>
+                            <span
+                                className="grid h-10 w-10 place-items-center border-2 border-line bg-panel text-ink"
+                                title={`${session.displayName} (${session.handle})`}
+                            >
+                                <UserCircle size={22} aria-hidden="true" />
+                            </span>
+                        </div>
                     </div>
                     {description ? (
-                        <p className="hidden truncate px-4 pb-2 text-xs text-muted md:px-6 lg:block">
+                        <p className="hidden truncate px-4 pb-3 text-sm font-medium text-muted md:px-6 lg:block">
                             {description}
                         </p>
                     ) : null}

@@ -3,6 +3,7 @@ import { cache } from 'react';
 import { and, desc, eq } from 'drizzle-orm';
 
 import { mapAuditEvent, type AuditEvent } from './audit/audit';
+import { tenantScopeOrGlobal, tenantWhere } from './auth/tenancy';
 import { getDb } from './db/client';
 import {
     auditLog,
@@ -42,8 +43,13 @@ function isProductionLikeRuntime() {
 
 export const getAssets = cache(async (): Promise<MediaAsset[]> => {
     try {
+        const scope = await tenantScopeOrGlobal();
         const db = await getDb();
-        const rows = await db.select().from(mediaAssets).orderBy(desc(mediaAssets.updatedAt));
+        const rows = await db
+            .select()
+            .from(mediaAssets)
+            .where(tenantWhere(mediaAssets.vendorId, scope))
+            .orderBy(desc(mediaAssets.updatedAt));
 
         return rows.map((row) => mapMediaAsset(row));
     } catch (error) {
@@ -53,15 +59,24 @@ export const getAssets = cache(async (): Promise<MediaAsset[]> => {
 
 export type MediaAssetSummary = Pick<
     MediaAsset,
-    'id' | 'title' | 'status' | 'assetType' | 'mediaKind' | 'durationSeconds' | 'createdAt'
+    | 'id'
+    | 'vendorId'
+    | 'title'
+    | 'status'
+    | 'assetType'
+    | 'mediaKind'
+    | 'durationSeconds'
+    | 'createdAt'
 >;
 
 export const getAssetSummaries = cache(async (): Promise<MediaAssetSummary[]> => {
     try {
+        const scope = await tenantScopeOrGlobal();
         const db = await getDb();
         const rows = await db
             .select({
                 id: mediaAssets.id,
+                vendorId: mediaAssets.vendorId,
                 title: mediaAssets.title,
                 status: mediaAssets.status,
                 assetType: mediaAssets.assetType,
@@ -70,6 +85,7 @@ export const getAssetSummaries = cache(async (): Promise<MediaAssetSummary[]> =>
                 createdAt: mediaAssets.createdAt,
             })
             .from(mediaAssets)
+            .where(tenantWhere(mediaAssets.vendorId, scope))
             .orderBy(desc(mediaAssets.updatedAt));
 
         return rows.map(mapMediaAssetSummary);
@@ -91,8 +107,13 @@ export const getAssetSummaries = cache(async (): Promise<MediaAssetSummary[]> =>
 
 export const getMediaAssetById = cache(async (id: string): Promise<MediaAsset | null> => {
     try {
+        const scope = await tenantScopeOrGlobal();
         const db = await getDb();
-        const rows = await db.select().from(mediaAssets).where(eq(mediaAssets.id, id)).limit(1);
+        const rows = await db
+            .select()
+            .from(mediaAssets)
+            .where(and(eq(mediaAssets.id, id), tenantWhere(mediaAssets.vendorId, scope)))
+            .limit(1);
         const row = rows[0] ?? null;
 
         return row ? mapMediaAsset(row) : null;
@@ -103,31 +124,15 @@ export const getMediaAssetById = cache(async (id: string): Promise<MediaAsset | 
     }
 });
 
-export const getMediaAssetByVimeoUri = cache(
-    async (vimeoUri: string): Promise<MediaAsset | null> => {
-        try {
-            const db = await getDb();
-            const rows = await db
-                .select()
-                .from(mediaAssets)
-                .where(eq(mediaAssets.vimeoUri, vimeoUri))
-                .limit(1);
-            const row = rows[0] ?? null;
-
-            return row ? mapMediaAsset(row) : null;
-        } catch (error) {
-            const fallback =
-                mockMediaAssets.find((asset) => asset.vimeoUri === vimeoUri) ?? null;
-
-            return handleDataFailure(error, fallback);
-        }
-    },
-);
-
 export const getSlides = cache(async (): Promise<SlideAsset[]> => {
     try {
+        const scope = await tenantScopeOrGlobal();
         const db = await getDb();
-        const rows = await db.select().from(slideAssets).orderBy(desc(slideAssets.updatedAt));
+        const rows = await db
+            .select()
+            .from(slideAssets)
+            .where(tenantWhere(slideAssets.vendorId, scope))
+            .orderBy(desc(slideAssets.updatedAt));
 
         return rows.map(mapSlide);
     } catch (error) {
@@ -143,10 +148,15 @@ export async function getAuditEvents(
     } = {},
 ): Promise<AuditEvent[]> {
     try {
+        const scope = await tenantScopeOrGlobal();
         const db = await getDb();
         const limit = Math.min(Math.max(input.limit ?? 100, 1), 250);
 
         const conditions = [];
+
+        if (scope?.kind === 'vendor') {
+            conditions.push(eq(auditLog.vendorId, scope.vendorId));
+        }
 
         if (input.action) {
             conditions.push(eq(auditLog.action, input.action));
@@ -183,12 +193,20 @@ function mapAuditEventFromDrizzle(row: AuditLogRow): AuditEvent {
 
 type MediaAssetSummaryRow = Pick<
     MediaAssetRow,
-    'id' | 'title' | 'status' | 'assetType' | 'mediaKind' | 'durationSeconds' | 'createdAt'
+    | 'id'
+    | 'vendorId'
+    | 'title'
+    | 'status'
+    | 'assetType'
+    | 'mediaKind'
+    | 'durationSeconds'
+    | 'createdAt'
 >;
 
 function mapMediaAssetSummary(row: MediaAssetSummaryRow): MediaAssetSummary {
     return {
         id: row.id,
+        vendorId: row.vendorId,
         title: row.title,
         status: row.status as MediaAsset['status'],
         assetType: row.assetType as MediaAsset['assetType'],
@@ -201,6 +219,7 @@ function mapMediaAssetSummary(row: MediaAssetSummaryRow): MediaAssetSummary {
 function mapMediaAsset(row: MediaAssetRow): MediaAsset {
     return {
         id: row.id,
+        vendorId: row.vendorId,
         title: row.title,
         description: row.description ?? null,
         sourceType: row.sourceType as MediaAsset['sourceType'],
@@ -215,10 +234,6 @@ function mapMediaAsset(row: MediaAssetRow): MediaAsset {
         lifecycleState: (row.lifecycleState ?? 'reviewed') as NonNullable<
             MediaAsset['lifecycleState']
         >,
-        vimeoId: row.vimeoId ?? null,
-        vimeoUri: row.vimeoUri ?? null,
-        vimeoPrivacy: row.vimeoPrivacy ?? null,
-        vimeoEmbedStatus: row.vimeoEmbedStatus ?? null,
         playbackReadinessStatus: (row.playbackReadinessStatus ?? 'unchecked') as NonNullable<
             MediaAsset['playbackReadinessStatus']
         >,
@@ -236,6 +251,7 @@ function mapMediaAsset(row: MediaAssetRow): MediaAsset {
 function mapSlide(row: SlideAssetRow): SlideAsset {
     return {
         id: row.id,
+        vendorId: row.vendorId,
         title: row.title,
         slideType: row.slideType as SlideAsset['slideType'],
         content: row.content ?? null,

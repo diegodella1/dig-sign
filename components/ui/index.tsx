@@ -17,12 +17,17 @@ export function MetricTile({
     tone?: Tone;
 }) {
     return (
-        <section className={clsx('surface-card p-4', toneBorder(tone))}>
+        <section className={clsx('surface-card p-5', toneBorder(tone))}>
             <p className="eyebrow">{label}</p>
-            <p className={clsx('mt-2 text-2xl font-semibold tabular-nums', toneText(tone))}>
+            <p
+                className={clsx(
+                    'mt-3 font-display text-3xl font-bold tabular-nums',
+                    toneText(tone),
+                )}
+            >
                 {value}
             </p>
-            <p className="mt-1 text-sm text-muted">{detail}</p>
+            <p className="mt-1 text-sm font-medium text-muted">{detail}</p>
         </section>
     );
 }
@@ -37,7 +42,7 @@ export function ClearStateBadge({
     return (
         <span
             className={clsx(
-                'inline-flex min-h-7 items-center rounded-md border px-2.5 text-xs font-bold',
+                'inline-flex min-h-7 items-center border-2 px-2.5 font-headline text-xs font-bold uppercase',
                 stateBadgeTone(tone),
             )}
         >
@@ -56,7 +61,12 @@ export function ActionHint({
     tone?: Tone;
 }) {
     return (
-        <div className={clsx('rounded-md border px-3 py-2 text-sm', noticeTone(tone))}>
+        <div
+            className={clsx(
+                'border-2 px-3 py-2 text-sm shadow-[2px_2px_0_#1a1a1a]',
+                noticeTone(tone),
+            )}
+        >
             <p className="text-[0.68rem] font-bold uppercase">{label}</p>
             <div className="mt-1 leading-5">{children}</div>
         </div>
@@ -73,7 +83,12 @@ export function Notice({
     children: ReactNode;
 }) {
     return (
-        <div className={clsx('mb-4 rounded-md border px-4 py-3 text-sm', noticeTone(tone))}>
+        <div
+            className={clsx(
+                'mb-4 border-2 px-4 py-3 text-sm shadow-[3px_3px_0_#1a1a1a]',
+                noticeTone(tone),
+            )}
+        >
             {title ? <p className="font-semibold">{title}</p> : null}
             <div className={title ? 'mt-1' : ''}>{children}</div>
         </div>
@@ -94,7 +109,9 @@ export function StatusBanner({
     action?: ReactNode;
 }) {
     return (
-        <section className={clsx('rounded-lg border px-4 py-3', noticeTone(tone))}>
+        <section
+            className={clsx('border-2 px-4 py-3 shadow-[3px_3px_0_#1a1a1a]', noticeTone(tone))}
+        >
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                     <p className="text-[0.68rem] font-bold uppercase">{label}</p>
@@ -123,7 +140,7 @@ export function PrimaryActionPanel({
     secondary?: ReactNode;
 }) {
     return (
-        <section className="mb-5 rounded-lg border border-accent-positive bg-surface-selected-positive p-4 shadow-accent-positive-glow">
+        <section className="mb-5 border-2 border-line bg-surface-selected-positive p-4 shadow-[4px_4px_0_#1a1a1a]">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="min-w-0">
                     <p className="eyebrow text-accent-positive">{eyebrow}</p>
@@ -149,7 +166,7 @@ export function EmptyState({
     action?: ReactNode;
 }) {
     return (
-        <div className="rounded-md border border-dashed border-line bg-panel-soft px-4 py-5 text-sm">
+        <div className="border-2 border-dashed border-line bg-panel-soft px-4 py-5 text-sm">
             <p className="font-semibold text-ink">{title}</p>
             <div className="mt-1 max-w-2xl text-muted">{children}</div>
             {action ? <div className="mt-4">{action}</div> : null}
@@ -160,7 +177,7 @@ export function EmptyState({
 export function FormHeader({ title, detail }: { title: string; detail: string }) {
     return (
         <div>
-            <h2 className="text-base font-semibold">{title}</h2>
+            <h2 className="font-headline text-base font-bold uppercase">{title}</h2>
             <p className="mt-1 text-sm text-muted">{detail}</p>
         </div>
     );
@@ -178,7 +195,12 @@ export function Field({
     className?: string;
 }) {
     return (
-        <label className={clsx('grid gap-1 text-xs font-semibold text-muted', className)}>
+        <label
+            className={clsx(
+                'grid gap-1 font-headline text-xs font-bold uppercase text-muted',
+                className,
+            )}
+        >
             <span>{label}</span>
             {children}
             {hint ? (

@@ -32,6 +32,31 @@ import {
 // ─── integration_settings ────────────────────────────────────────────────────
 // PK is `provider` text (not uuid) — kept as-is from the SQL schema.
 
+export const vendors = sqliteTable(
+    'vendors',
+    {
+        id: text('id')
+            .primaryKey()
+            .$defaultFn(() => crypto.randomUUID()),
+        name: text('name').notNull(),
+        slug: text('slug').notNull(),
+        status: text('status').notNull().default('active'),
+        createdAt: text('created_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+        updatedAt: text('updated_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+    },
+    (table) => ({
+        slugUnique: uniqueIndex('vendors_slug_unique').on(table.slug),
+        statusIdx: index('vendors_status_idx').on(table.status),
+    }),
+);
+
+export type VendorRow = typeof vendors.$inferSelect;
+export type InsertVendorRow = typeof vendors.$inferInsert;
+
 export const integrationSettings = sqliteTable('integration_settings', {
     provider: text('provider').primaryKey(),
     publicConfig: text('public_config', { mode: 'json' })
@@ -61,6 +86,10 @@ export const mediaAssets = sqliteTable('media_assets', {
     id: text('id')
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
+    vendorId: text('vendor_id')
+        .notNull()
+        .default('default')
+        .references(() => vendors.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     description: text('description'),
     sourceType: text('source_type').notNull(),
@@ -102,6 +131,10 @@ export const slideAssets = sqliteTable('slide_assets', {
     id: text('id')
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
+    vendorId: text('vendor_id')
+        .notNull()
+        .default('default')
+        .references(() => vendors.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     slideType: text('slide_type').notNull(),
     content: text('content'),
@@ -134,6 +167,7 @@ export const auditLog = sqliteTable('audit_log', {
     action: text('action').notNull(),
     entityType: text('entity_type').notNull(),
     entityId: text('entity_id'),
+    vendorId: text('vendor_id').references(() => vendors.id, { onDelete: 'set null' }),
     metadata: text('metadata', { mode: 'json' })
         .notNull()
         .$defaultFn(() => ({})),
@@ -154,6 +188,7 @@ export const adminOperators = sqliteTable('admin_operators', {
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
     handle: text('handle').notNull().unique(),
+    vendorId: text('vendor_id').references(() => vendors.id, { onDelete: 'set null' }),
     displayName: text('display_name').notNull(),
     role: text('role').notNull(),
     tokenHash: text('token_hash').notNull(),
@@ -252,6 +287,10 @@ export const musicPlaylists = sqliteTable('music_playlists', {
     id: text('id')
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
+    vendorId: text('vendor_id')
+        .notNull()
+        .default('default')
+        .references(() => vendors.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     status: text('status').notNull().default('ready'),
     createdAt: text('created_at')
@@ -307,6 +346,10 @@ export const layoutPresets = sqliteTable(
         id: text('id')
             .primaryKey()
             .$defaultFn(() => crypto.randomUUID()),
+        vendorId: text('vendor_id')
+            .notNull()
+            .default('default')
+            .references(() => vendors.id, { onDelete: 'cascade' }),
         name: text('name').notNull(),
         slug: text('slug').notNull(),
         config: text('config', { mode: 'json' })
@@ -335,6 +378,10 @@ export const screens = sqliteTable(
         id: text('id')
             .primaryKey()
             .$defaultFn(() => crypto.randomUUID()),
+        vendorId: text('vendor_id')
+            .notNull()
+            .default('default')
+            .references(() => vendors.id, { onDelete: 'cascade' }),
         name: text('name').notNull(),
         slug: text('slug').notNull(),
         layoutPresetId: text('layout_preset_id').references(() => layoutPresets.id, {
@@ -365,6 +412,10 @@ export const contentPlaylists = sqliteTable('content_playlists', {
     id: text('id')
         .primaryKey()
         .$defaultFn(() => crypto.randomUUID()),
+    vendorId: text('vendor_id')
+        .notNull()
+        .default('default')
+        .references(() => vendors.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     status: text('status').notNull().default('ready'),
     createdAt: text('created_at')

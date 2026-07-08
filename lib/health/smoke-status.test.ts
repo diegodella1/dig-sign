@@ -160,8 +160,10 @@ describe('smoke status (KV-backed)', () => {
         };
         mockGetCloudflareContext.mockReset();
         mockGetCloudflareContext.mockResolvedValue(buildKvContext(kv));
+        const dir = mkdtempSync(join(tmpdir(), 'rtv-smoke-'));
+        tempDirs.push(dir);
 
-        const smoke = await readSmokeStatus({});
+        const smoke = await readSmokeStatus({ RTV_SMOKE_STATUS_FILE: join(dir, 'absent.json') });
 
         expect(smoke).toBeNull();
     });

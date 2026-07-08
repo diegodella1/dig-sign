@@ -10,7 +10,7 @@ export type DurationDisplay = { kind: 'live' } | { kind: 'duration'; seconds: nu
  * rendering the result (translating `block.live` for `kind: "live"`, or
  * formatting `seconds` via `formatTimecode` for `kind: "duration"`).
  *
- * Live streaming sources (`hls` / `rtmp`) without a fixed duration qualify as
+ * Live streaming sources (`hls`) without a fixed duration qualify as
  * live. Other unknown durations fall through to a 0-second numeric path so the
  * caller always has a numeric branch available.
  */
@@ -18,10 +18,7 @@ export function getDurationDisplay(input: {
     durationSeconds: number | null;
     sourceType: SourceType;
 }): DurationDisplay {
-    if (
-        input.durationSeconds === null &&
-        (input.sourceType === 'hls' || input.sourceType === 'rtmp')
-    ) {
+    if (input.durationSeconds === null && input.sourceType === 'hls') {
         return { kind: 'live' };
     }
 

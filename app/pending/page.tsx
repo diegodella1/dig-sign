@@ -10,7 +10,7 @@ type Item = {
 const liveNow: Item[] = [
     {
         title: 'Production output path',
-        detail: 'Browser output supports Vimeo, HLS, MP4, images, slides, audio-backed blocks, fallback, audio unlock and reload resume.',
+        detail: 'Browser output supports YouTube/Vimeo URLs, HLS, MP4, images, slides, audio-backed blocks, fallback, audio unlock and reload resume.',
         status: 'Done',
     },
     {

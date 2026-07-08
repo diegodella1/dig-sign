@@ -49,8 +49,12 @@ describe('resolveActiveAssignment', () => {
             }),
         ];
 
-        expect(resolveActiveAssignment(assignments, '2026-07-08', 'wed')?.playlistId).toBe('weekday');
-        expect(resolveActiveAssignment(assignments, '2026-07-11', 'sat')?.playlistId).toBe('weekend');
+        expect(resolveActiveAssignment(assignments, '2026-07-08', 'wed')?.playlistId).toBe(
+            'weekday',
+        );
+        expect(resolveActiveAssignment(assignments, '2026-07-11', 'sat')?.playlistId).toBe(
+            'weekend',
+        );
         expect(
             resolveActiveAssignment(
                 [baseAssignment({ startDate: '2026-07-10', endDate: '2026-07-12' })],
@@ -91,7 +95,6 @@ describe('selectPlaylistCarouselItem', () => {
         description: '',
         thumbnailUrl: '',
         storagePath: null,
-        vimeoId: null,
         lifecycleState: 'reviewed',
         playbackReadinessStatus: 'ready',
         playbackError: null,
@@ -154,7 +157,6 @@ describe('cardsFromPlaylistItems', () => {
             description: '',
             thumbnailUrl: '',
             storagePath: null,
-            vimeoId: null,
             lifecycleState: 'reviewed',
             playbackReadinessStatus: 'ready',
             playbackError: null,

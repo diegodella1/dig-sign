@@ -1,11 +1,15 @@
 import { cache } from 'react';
-import { asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
+import { requireTenantScope, tenantScopeOrGlobal, tenantValue, tenantWhere } from './auth/tenancy';
 import { getDb } from './db/client';
 import {
     contentPlaylistItems,
     contentPlaylists,
+    mediaAssets,
     playlistAssignments,
+    screens,
+    slideAssets,
     type ContentPlaylistItemRow,
     type ContentPlaylistRow,
     type PlaylistAssignmentRow,
@@ -19,6 +23,7 @@ export type WeekdayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
 export type ContentPlaylist = {
     id: string;
+    vendorId: string;
     name: string;
     status: ContentPlaylistStatus;
     itemCount: number;
@@ -71,14 +76,22 @@ export type PlaylistCarouselSelection = {
 };
 
 export const listContentPlaylists = cache(async (): Promise<ContentPlaylist[]> => {
+    const scope = await tenantScopeOrGlobal();
     const db = await getDb();
-    const rows = await db.select().from(contentPlaylists).orderBy(asc(contentPlaylists.name));
+    const rows = await db
+        .select()
+        .from(contentPlaylists)
+        .where(tenantWhere(contentPlaylists.vendorId, scope))
+        .orderBy(asc(contentPlaylists.name));
     const counts = await playlistItemCounts(rows.map((row) => row.id));
 
     return rows.map((row) => mapPlaylist(row, counts.get(row.id) ?? 0));
 });
 
-export async function getContentPlaylist(playlistId: string): Promise<ContentPlaylistDetail | null> {
+export async function getContentPlaylist(
+    playlistId: string,
+): Promise<ContentPlaylistDetail | null> {
+    const scope = await tenantScopeOrGlobal();
     const db = await getDb();
     const [row] = await db
         .select()
@@ -86,7 +99,7 @@ export async function getContentPlaylist(playlistId: string): Promise<ContentPla
         .where(eq(contentPlaylists.id, playlistId))
         .limit(1);
 
-    if (!row) {
+    if (!row || (scope?.kind === 'vendor' && row.vendorId !== scope.vendorId)) {
         return null;
     }
 
@@ -106,12 +119,14 @@ export async function createContentPlaylist(input: {
     name: string;
     status?: ContentPlaylistStatus;
 }): Promise<ContentPlaylist> {
+    const scope = await requireTenantScope();
     const db = await getDb();
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
 
     await db.insert(contentPlaylists).values({
         id,
+        vendorId: tenantValue(scope),
         name: input.name.trim(),
         status: input.status ?? 'draft',
         createdAt: now,
@@ -120,6 +135,7 @@ export async function createContentPlaylist(input: {
 
     return {
         id,
+        vendorId: tenantValue(scope),
         name: input.name.trim(),
         status: input.status ?? 'draft',
         itemCount: 0,
@@ -132,6 +148,7 @@ export async function updateContentPlaylist(
     id: string,
     input: Partial<{ name: string; status: ContentPlaylistStatus }>,
 ): Promise<ContentPlaylist | null> {
+    const scope = await requireTenantScope();
     const db = await getDb();
     const now = new Date().toISOString();
     const patch: Partial<ContentPlaylistRow> = { updatedAt: now };
@@ -144,7 +161,14 @@ export async function updateContentPlaylist(
         patch.status = input.status;
     }
 
-    await db.update(contentPlaylists).set(patch).where(eq(contentPlaylists.id, id));
+    await db
+        .update(contentPlaylists)
+        .set(patch)
+        .where(
+            scope.kind === 'vendor'
+                ? and(eq(contentPlaylists.id, id), eq(contentPlaylists.vendorId, scope.vendorId))
+                : eq(contentPlaylists.id, id),
+        );
     const detail = await getContentPlaylist(id);
 
     if (!detail) {
@@ -153,6 +177,7 @@ export async function updateContentPlaylist(
 
     return {
         id: detail.id,
+        vendorId: detail.vendorId,
         name: detail.name,
         status: detail.status as ContentPlaylistStatus,
         itemCount: detail.items.length,
@@ -169,8 +194,47 @@ export async function setContentPlaylistItems(
         durationSeconds?: number | null;
     }>,
 ): Promise<void> {
+    const scope = await requireTenantScope();
+    const playlist = await getContentPlaylist(playlistId);
+
+    if (!playlist) {
+        throw new Error('Playlist not found');
+    }
+
+    if (scope.kind === 'vendor' && playlist.vendorId !== scope.vendorId) {
+        throw new Error('Playlist not found');
+    }
+
     const db = await getDb();
     const now = new Date().toISOString();
+    const assetIds = items.map((item) => item.assetId).filter(Boolean) as string[];
+    const slideIds = items.map((item) => item.slideId).filter(Boolean) as string[];
+
+    if (assetIds.length) {
+        const assets = await db
+            .select({ id: mediaAssets.id })
+            .from(mediaAssets)
+            .where(
+                and(inArray(mediaAssets.id, assetIds), eq(mediaAssets.vendorId, playlist.vendorId)),
+            );
+
+        if (assets.length !== new Set(assetIds).size) {
+            throw new Error('Playlist contains media from another vendor');
+        }
+    }
+
+    if (slideIds.length) {
+        const slides = await db
+            .select({ id: slideAssets.id })
+            .from(slideAssets)
+            .where(
+                and(inArray(slideAssets.id, slideIds), eq(slideAssets.vendorId, playlist.vendorId)),
+            );
+
+        if (slides.length !== new Set(slideIds).size) {
+            throw new Error('Playlist contains plates from another vendor');
+        }
+    }
 
     await db.delete(contentPlaylistItems).where(eq(contentPlaylistItems.playlistId, playlistId));
 
@@ -195,7 +259,17 @@ export async function setContentPlaylistItems(
 }
 
 export async function listAssignmentsForScreen(screenId: string): Promise<PlaylistAssignment[]> {
+    const scope = await requireTenantScope();
     const db = await getDb();
+    const [screen] = await db
+        .select({ vendorId: screens.vendorId })
+        .from(screens)
+        .where(eq(screens.id, screenId))
+        .limit(1);
+
+    if (!screen || (scope?.kind === 'vendor' && screen.vendorId !== scope.vendorId)) {
+        return [];
+    }
     const rows = await db
         .select()
         .from(playlistAssignments)
@@ -213,7 +287,26 @@ export async function createPlaylistAssignment(input: {
     weekdays?: WeekdayKey[];
     priority?: number;
 }): Promise<PlaylistAssignment> {
+    const scope = await requireTenantScope();
     const db = await getDb();
+    const [screen] = await db
+        .select({ vendorId: screens.vendorId })
+        .from(screens)
+        .where(eq(screens.id, input.screenId))
+        .limit(1);
+    const [playlist] = await db
+        .select({ vendorId: contentPlaylists.vendorId })
+        .from(contentPlaylists)
+        .where(eq(contentPlaylists.id, input.playlistId))
+        .limit(1);
+
+    if (!screen || !playlist || screen.vendorId !== playlist.vendorId) {
+        throw new Error('Playlist and screen must belong to the same vendor');
+    }
+
+    if (scope.kind === 'vendor' && playlist.vendorId !== scope.vendorId) {
+        throw new Error('Playlist not found');
+    }
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
 
@@ -347,7 +440,7 @@ export function buildPlaylistCarouselCards(
                 return {
                     kind: 'slide' as const,
                     id: slide.id,
-        durationSeconds: item.durationSeconds ?? slide.defaultDurationSeconds ?? 30,
+                    durationSeconds: item.durationSeconds ?? slide.defaultDurationSeconds ?? 30,
                 };
             }
 
@@ -428,7 +521,7 @@ export function isPlayablePlaylistAsset(asset: MediaAsset) {
         return Boolean(asset.url || asset.storagePath);
     }
 
-    return Boolean(asset.url || asset.storagePath || asset.vimeoId);
+    return Boolean(asset.url || asset.storagePath);
 }
 
 function matchesDateRange(assignment: PlaylistAssignment, date: string) {
@@ -476,6 +569,7 @@ async function playlistItemCounts(ids: string[]) {
 function mapPlaylist(row: ContentPlaylistRow, itemCount: number): ContentPlaylist {
     return {
         id: row.id,
+        vendorId: row.vendorId,
         name: row.name,
         status: row.status as ContentPlaylistStatus,
         itemCount,

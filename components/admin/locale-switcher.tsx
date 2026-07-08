@@ -24,7 +24,7 @@ export function LocaleSwitcher() {
         <div
             role="group"
             aria-label="Language"
-            className="inline-flex items-center gap-0.5 rounded-md bg-surface-elevated-2 p-0.5"
+            className="inline-flex items-center gap-1 border-2 border-line bg-surface-elevated-2 p-1"
         >
             {locales.map((loc) => {
                 const active = loc === current;
@@ -39,8 +39,8 @@ export function LocaleSwitcher() {
                             'rounded px-2 py-1 text-xs font-medium uppercase tracking-wide transition-colors',
                             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent-positive',
                             active
-                                ? 'bg-surface-selected-positive text-accent-positive'
-                                : 'text-white/60 hover:text-white/90',
+                                ? 'bg-surface-selected-positive text-ink'
+                                : 'text-muted hover:bg-panel-soft hover:text-ink',
                         )}
                     >
                         {loc}

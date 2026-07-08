@@ -91,7 +91,7 @@
       "remoteImage": "Remote image",
       "remoteMp4": "Remote MP4",
       "hls": "HLS",
-      "vimeo": "Vimeo",
+      "embed": "URL YouTube/Vimeo",
       "supabaseImage": "Supabase image"
     },
     "orientation": {
@@ -251,7 +251,7 @@
       "statusLabel": "status {status}",
       "videoSourceUnsupported": "source {source} no soportado para video",
       "imageSourceUnsupported": "source {source} no soportado para imagen",
-      "missingVimeoId": "falta Vimeo ID",
+      "missingEmbedUrl": "falta URL embed",
       "missingUrl": "falta URL",
       "graphicNotSupported": "graphic todavia no renderiza como base"
     }
@@ -337,7 +337,7 @@
     },
     "manualBroadcast": {
       "title": "Broadcast manual",
-      "searchPlaceholder": "Buscar Vimeo…",
+      "searchPlaceholder": "Buscar media…",
       "searching": "Buscando…",
       "empty": "Sin resultados",
       "modeLabel": "Modo",
@@ -348,7 +348,7 @@
       "goLive": "Ir al aire ahora",
       "schedule": "Programar",
       "sourceLabel": "Fuente",
-      "sourceVimeo": "Vimeo",
+      "sourceEmbed": "URL",
       "syncChannels": "Refrescar canales"
     },
     "health": {
@@ -369,7 +369,7 @@
   "assets": {
     "title": "Assets",
     "description": "Biblioteca operativa de videos, imagenes, promos, ads y fallbacks para la grilla.",
-    "importVimeo": "Importar Vimeo",
+    "addUrl": "Agregar URL",
     "uploadedNotice": "Video subido y guardado como asset.",
     "metrics": {
       "total": "Total",
@@ -490,25 +490,25 @@
   },
   "settings": {
     "title": "Settings",
-    "description": "Credenciales, timezone operativo e importacion Vimeo.",
+    "description": "Operadores y configuracion del sistema.",
     "savedNotice": "Settings guardados.",
     "importedNotice": "Episodio importado como asset.",
     "integrations": {
       "title": "Integraciones",
       "detail": "Los secretos se guardan cifrados server-side y no se devuelven completos desde la API.",
-      "vimeoStateSaved": "Vimeo: token guardado ({status})",
-      "vimeoStateMissing": "Vimeo: sin token guardado",
+      "integrationStateSaved": "Integracion guardada ({status})",
+      "integrationStateMissing": "Sin integracion configurada",
       "lastError": "Ultimo error: {error}"
     },
-    "tokenLabel": "Vimeo API token",
+    "tokenLabel": "API token",
     "tokenPlaceholder": "Bearer token",
-    "folderUriLabel": "Vimeo folder/project URI opcional",
+    "folderUriLabel": "Folder/project URI opcional",
     "timezoneLabel": "Timezone",
     "save": "Guardar settings",
-    "vimeoShows": {
-      "title": "Vimeo shows y episodios",
-      "detail": "Elegí un show y convertí episodios visibles en assets listos para revisar.",
-      "missingToken": "Guardá un Vimeo API token para listar shows.",
+    "urlVideos": {
+      "title": "Videos remotos",
+      "detail": "Agrega URLs publicas como assets listos para playlists.",
+      "missingToken": "Agregar URL remota no requiere API token.",
       "showLabel": "Show",
       "pickShow": "Elegir show",
       "viewEpisodes": "Ver episodios",

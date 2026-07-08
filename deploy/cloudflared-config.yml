@@ -1,0 +1,34 @@
+protocol: http2
+tunnel: 55ecc138-2b04-4678-b3cf-5460da1aa1ff
+credentials-file: /etc/cloudflared/55ecc138-2b04-4678-b3cf-5460da1aa1ff.json
+
+ingress:
+  - hostname: clipping.diegodella.ar
+    path: /api/*
+    service: http://127.0.0.1:8011
+  - hostname: clipping.diegodella.ar
+    path: /hls/*
+    service: http://127.0.0.1:8011
+  - hostname: clipping.diegodella.ar
+    service: http://127.0.0.1:3101
+  - hostname: diegodella.ar
+    service: http://127.0.0.1:3080
+  - hostname: tiktok.diegodella.ar
+    service: http://127.0.0.1:3457
+  - hostname: filedrop.diegodella.ar
+    service: http://127.0.0.1:3456
+  - hostname: supabase.diegodella.ar
+    service: http://127.0.0.1:54321
+  - hostname: rtvtime.diegodella.ar
+    service: http://127.0.0.1:3450
+  - hostname: course.diegodella.ar
+    service: http://127.0.0.1:3090
+  - hostname: heimdall.diegodella.ar
+    service: http://127.0.0.1:3460
+  - hostname: intelligenz.diegodella.ar
+    service: http://127.0.0.1:18790
+  - hostname: tradingbot.diegodella.ar
+    service: http://127.0.0.1:8888
+  - hostname: digsign.diegodella.ar
+    service: http://127.0.0.1:3451
+  - service: http_status:404

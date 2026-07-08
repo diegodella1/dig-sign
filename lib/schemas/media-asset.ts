@@ -1,12 +1,11 @@
 import { z } from 'zod';
 
 const sourceTypeEnum = z.enum([
-    'vimeo',
+    'embed',
     'supabase_image',
     'remote_image',
     'remote_mp4',
     'hls',
-    'rtmp',
     'supabase_audio',
 ]);
 const mediaKindEnum = z.enum(['video', 'image', 'audio', 'graphic']);

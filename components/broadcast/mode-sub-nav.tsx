@@ -12,7 +12,7 @@ export function ModeSubNav({ items }: { items: ModeSubNavItem[] }) {
 
     return (
         <nav
-            className="flex max-w-full flex-wrap gap-1"
+            className="flex max-w-full flex-wrap gap-2 border-t-2 border-line pt-3"
             aria-label="Section navigation"
         >
             {items.map((item) => {
@@ -28,10 +28,10 @@ export function ModeSubNav({ items }: { items: ModeSubNavItem[] }) {
                         href={item.href}
                         aria-current={active ? 'page' : undefined}
                         className={[
-                            'inline-flex min-h-8 items-center rounded-md px-3 text-xs font-semibold',
+                            'inline-flex min-h-8 items-center border-2 px-3 font-headline text-xs font-bold uppercase',
                             active
-                                ? 'bg-surface-selected-positive text-accent-positive'
-                                : 'text-muted hover:bg-panel-soft hover:text-ink',
+                                ? 'border-line bg-surface-selected-positive text-ink shadow-[2px_2px_0_#1a1a1a]'
+                                : 'border-transparent text-muted hover:border-line hover:bg-panel-soft hover:text-ink',
                         ].join(' ')}
                     >
                         {item.label}

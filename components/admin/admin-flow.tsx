@@ -21,14 +21,14 @@ export function FlowHero({
     children?: ReactNode;
 }) {
     return (
-        <section className="mb-5 border border-line bg-surface-elevated-2 p-5">
+        <section className="mb-5 border-2 border-line bg-surface-elevated-2 p-5 shadow-[4px_4px_0_#1a1a1a]">
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div className="max-w-4xl">
                     <p className="eyebrow text-accent-positive">{eyebrow}</p>
-                    <h2 className="mt-2 text-2xl font-semibold tracking-normal md:text-3xl">
+                    <h2 className="mt-2 font-display text-2xl font-bold uppercase tracking-normal md:text-4xl">
                         {title}
                     </h2>
-                    <div className="mt-2 text-sm leading-6 text-muted">{detail}</div>
+                    <div className="mt-2 text-sm font-medium leading-6 text-muted">{detail}</div>
                 </div>
                 {children ? (
                     <div className="flex min-w-0 flex-wrap items-center gap-2">{children}</div>
@@ -49,14 +49,14 @@ export function FlowLinkList({
     }>;
 }) {
     return (
-        <nav className="surface-panel divide-y divide-line overflow-hidden">
+        <nav className="surface-panel divide-y-2 divide-line overflow-hidden">
             {items.map((item) => (
                 <Link
                     key={item.href}
                     href={item.href}
-                    className="flex min-h-11 items-center justify-between gap-3 px-4 py-2.5 text-sm transition hover:bg-panel-soft"
+                    className="flex min-h-12 items-center justify-between gap-3 px-4 py-3 text-sm transition hover:bg-panel-soft"
                 >
-                    <span className="font-semibold">{item.label}</span>
+                    <span className="font-headline font-bold uppercase">{item.label}</span>
                     {item.badge ? (
                         <ClearStateBadge tone={item.tone === 'warn' ? 'warn' : 'info'}>
                             {item.badge}
@@ -95,13 +95,13 @@ export function FlowCard({
         <Link
             href={href}
             className={clsx(
-                'group flex min-h-[12rem] flex-col justify-between border p-4 transition hover:-translate-y-0.5 hover:bg-panel-soft',
+                'group flex min-h-[12rem] flex-col justify-between border-2 p-4 shadow-[4px_4px_0_#1a1a1a] transition hover:-translate-x-1 hover:-translate-y-1 hover:bg-panel-soft hover:shadow-[6px_6px_0_#1a1a1a]',
                 toneClass(tone),
             )}
         >
             <span>
                 <span className="flex items-center justify-between gap-3">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-line bg-surface text-muted">
+                    <span className="inline-flex h-10 w-10 items-center justify-center border-2 border-line bg-surface text-muted">
                         <Icon size={19} aria-hidden="true" />
                     </span>
                     {badge ? (
@@ -110,13 +110,15 @@ export function FlowCard({
                         </ClearStateBadge>
                     ) : null}
                 </span>
-                <span className="mt-4 block text-[0.68rem] font-bold uppercase text-muted">
+                <span className="mt-4 block font-headline text-[0.68rem] font-bold uppercase text-muted">
                     {label}
                 </span>
-                <span className="mt-2 block text-xl font-semibold text-ink">{title}</span>
+                <span className="mt-2 block font-display text-xl font-bold uppercase text-ink">
+                    {title}
+                </span>
                 <span className="mt-2 block text-sm leading-6 text-muted">{detail}</span>
             </span>
-            <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-accent-positive">
+            <span className="mt-5 inline-flex items-center gap-2 font-headline text-sm font-bold uppercase text-info">
                 Open
                 <ArrowRight
                     size={15}
@@ -142,9 +144,11 @@ export function FlowRail({
                 {items.map((item) => (
                     <div
                         key={item.label}
-                        className="flex min-h-12 items-center justify-between gap-3 border border-line bg-surface px-3 py-2 text-sm"
+                        className="flex min-h-12 items-center justify-between gap-3 border-2 border-line bg-surface px-3 py-2 text-sm"
                     >
-                        <span className="font-semibold text-muted">{item.label}</span>
+                        <span className="font-headline font-bold uppercase text-muted">
+                            {item.label}
+                        </span>
                         <span
                             className={clsx(
                                 'truncate font-semibold',

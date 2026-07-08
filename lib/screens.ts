@@ -1,12 +1,14 @@
 import { cache } from 'react';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 
+import { requireTenantScope, tenantScopeOrGlobal, tenantValue, tenantWhere } from './auth/tenancy';
 import { getDb } from './db/client';
-import { layoutPresets, screens, type LayoutPresetRow, type ScreenRow } from './db/schema';
+import { layoutPresets, screens, vendors, type LayoutPresetRow, type ScreenRow } from './db/schema';
 import { PLAYOUT_TIMEZONE } from './helpers/time';
 
 export type LayoutPreset = {
     id: string;
+    vendorId: string;
     name: string;
     slug: string;
     config: Record<string, unknown>;
@@ -16,6 +18,7 @@ export type LayoutPreset = {
 
 export type Screen = {
     id: string;
+    vendorId: string;
     name: string;
     slug: string;
     layoutPresetId: string | null;
@@ -28,32 +31,52 @@ export type Screen = {
 
 export const listScreens = cache(async (): Promise<Screen[]> => {
     await ensureSignageBootstrap();
+    const scope = await tenantScopeOrGlobal();
     const db = await getDb();
-    const rows = await db.select().from(screens).orderBy(asc(screens.name));
+    const rows = await db
+        .select()
+        .from(screens)
+        .where(tenantWhere(screens.vendorId, scope))
+        .orderBy(asc(screens.name));
 
     return rows.map(mapScreen);
 });
 
 export async function getScreenBySlug(slug: string): Promise<Screen | null> {
     await ensureSignageBootstrap();
+    const scope = await tenantScopeOrGlobal();
     const db = await getDb();
     const [row] = await db.select().from(screens).where(eq(screens.slug, slug)).limit(1);
 
-    return row ? mapScreen(row) : null;
+    if (!row || (scope?.kind === 'vendor' && row.vendorId !== scope.vendorId)) {
+        return null;
+    }
+
+    return mapScreen(row);
 }
 
 export async function getScreenById(id: string): Promise<Screen | null> {
     await ensureSignageBootstrap();
+    const scope = await tenantScopeOrGlobal();
     const db = await getDb();
     const [row] = await db.select().from(screens).where(eq(screens.id, id)).limit(1);
 
-    return row ? mapScreen(row) : null;
+    if (!row || (scope?.kind === 'vendor' && row.vendorId !== scope.vendorId)) {
+        return null;
+    }
+
+    return mapScreen(row);
 }
 
 export const listLayoutPresets = cache(async (): Promise<LayoutPreset[]> => {
     await ensureSignageBootstrap();
+    const scope = await tenantScopeOrGlobal();
     const db = await getDb();
-    const rows = await db.select().from(layoutPresets).orderBy(asc(layoutPresets.name));
+    const rows = await db
+        .select()
+        .from(layoutPresets)
+        .where(tenantWhere(layoutPresets.vendorId, scope))
+        .orderBy(asc(layoutPresets.name));
 
     return rows.map(mapLayoutPreset);
 });
@@ -63,12 +86,14 @@ export async function createLayoutPreset(input: {
     slug: string;
     config?: Record<string, unknown>;
 }): Promise<LayoutPreset> {
+    const scope = await requireTenantScope();
     const db = await getDb();
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
 
     await db.insert(layoutPresets).values({
         id,
+        vendorId: tenantValue(scope),
         name: input.name.trim(),
         slug: normalizeSlug(input.slug),
         config: input.config ?? {},
@@ -78,6 +103,7 @@ export async function createLayoutPreset(input: {
 
     return {
         id,
+        vendorId: tenantValue(scope),
         name: input.name.trim(),
         slug: normalizeSlug(input.slug),
         config: input.config ?? {},
@@ -94,12 +120,14 @@ export async function createScreen(input: {
     timezone?: string | null;
 }): Promise<Screen> {
     await ensureSignageBootstrap();
+    const scope = await requireTenantScope();
     const db = await getDb();
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
 
     await db.insert(screens).values({
         id,
+        vendorId: tenantValue(scope),
         name: input.name.trim(),
         slug: normalizeSlug(input.slug),
         layoutPresetId: input.layoutPresetId ?? null,
@@ -112,6 +140,7 @@ export async function createScreen(input: {
 
     return {
         id,
+        vendorId: tenantValue(scope),
         name: input.name.trim(),
         slug: normalizeSlug(input.slug),
         layoutPresetId: input.layoutPresetId ?? null,
@@ -134,6 +163,7 @@ export async function updateScreen(
         status: string;
     }>,
 ): Promise<Screen | null> {
+    const scope = await requireTenantScope();
     const db = await getDb();
     const now = new Date().toISOString();
     const patch: Partial<ScreenRow> = { updatedAt: now };
@@ -162,13 +192,24 @@ export async function updateScreen(
         patch.status = input.status;
     }
 
-    await db.update(screens).set(patch).where(eq(screens.id, id));
+    await db
+        .update(screens)
+        .set(patch)
+        .where(
+            scope.kind === 'vendor'
+                ? and(eq(screens.id, id), eq(screens.vendorId, scope.vendorId))
+                : eq(screens.id, id),
+        );
 
     return getScreenById(id);
 }
 
 async function ensureSignageBootstrap() {
     const db = await getDb();
+    await db
+        .insert(vendors)
+        .values({ id: 'default', name: 'Default Vendor', slug: 'default', status: 'active' })
+        .onConflictDoNothing();
     const existing = await db.select({ id: screens.id }).from(screens).limit(1);
 
     if (existing.length) {
@@ -181,6 +222,7 @@ async function ensureSignageBootstrap() {
 
     await db.insert(layoutPresets).values({
         id: presetId,
+        vendorId: 'default',
         name: 'Default',
         slug: 'default',
         config: {},
@@ -190,6 +232,7 @@ async function ensureSignageBootstrap() {
 
     await db.insert(screens).values({
         id: screenId,
+        vendorId: 'default',
         name: 'Main',
         slug: 'main',
         layoutPresetId: presetId,
@@ -203,6 +246,7 @@ async function ensureSignageBootstrap() {
 function mapScreen(row: ScreenRow): Screen {
     return {
         id: row.id,
+        vendorId: row.vendorId,
         name: row.name,
         slug: row.slug,
         layoutPresetId: row.layoutPresetId,
@@ -222,6 +266,7 @@ function mapLayoutPreset(row: LayoutPresetRow): LayoutPreset {
 
     return {
         id: row.id,
+        vendorId: row.vendorId,
         name: row.name,
         slug: row.slug,
         config,

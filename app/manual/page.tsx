@@ -10,11 +10,11 @@ import {
 import Link from 'next/link';
 
 const workflowSteps = [
-    'Open Prepare and add or sync videos, graphics, slides, audio, Vimeo content and weather plates.',
+    'Open Prepare and add uploads, public media URLs, graphics, slides, audio and weather plates.',
     'Create screens for each physical display and assign a timezone.',
     'Build content playlists with plates and media assets in the visual loop editor.',
     'Assign playlists to screens by date range; set a fallback playlist per screen.',
-    'Resolve health issues (database, storage, Vimeo, output token) before opening hours.',
+    'Resolve health issues (database, storage, output token) before opening hours.',
     'Open Operate to monitor each screen: active playlist, current item and health.',
     'Launch `/output/live/[screenSlug]` in OBS or vMix and capture the browser source.',
     'During playback, watch the screen monitor for missing assets or fallback states.',
@@ -24,7 +24,7 @@ const sections = [
     {
         title: 'Prepare',
         icon: PackageOpen,
-        body: 'Unified intake for uploaded media, remote URLs, music beds, Vimeo content, weather cities and reusable graphics.',
+        body: 'Unified intake for uploaded media, YouTube/Vimeo URLs, direct media URLs, music beds, weather cities and reusable graphics.',
         href: '/admin/prepare',
     },
     {
@@ -48,7 +48,7 @@ const sections = [
     {
         title: 'Health',
         icon: HeartPulse,
-        body: 'Confirm environment, D1 schema, R2 storage, Vimeo token and output capture token.',
+        body: 'Confirm environment, D1 schema, R2 storage and output capture token.',
         href: '/admin/health',
     },
 ];
@@ -58,7 +58,7 @@ const operatorHubs = [
         name: 'Prepare',
         href: '/admin/prepare',
         promise: 'Create and review content before it reaches a playlist.',
-        items: ['Assets', 'Vimeo', 'Music', 'Plates'],
+        items: ['Assets', 'URLs', 'Music', 'Plates'],
     },
     {
         name: 'Signage',

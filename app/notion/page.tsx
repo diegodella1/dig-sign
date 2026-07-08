@@ -50,8 +50,7 @@ const operationSteps = [
         route: '/admin/prepare',
         actions: [
             'Upload videos, images, audio and graphics from the Prepare hub.',
-            'Sync Vimeo or open the direct Vimeo route from Prepare.',
-            'Register remote URLs when needed.',
+            'Register YouTube, Vimeo, direct video or public image URLs when needed.',
             'Create weather city plates and custom plates before scheduling.',
             'Mark assets as ready only after reviewing playback, duration and fallback.',
         ],
@@ -122,7 +121,7 @@ const preAirChecks = [
     '/api/health returns ok:true.',
     'Schema/migrations OK.',
     'Storage OK.',
-    'Vimeo token/playback ready.',
+    'Playlist output ready.',
     'OUTPUT_CAPTURE_TOKEN configured.',
     'Browser output opens on the capture machine.',
     'Start Output unlocks audio.',
@@ -174,14 +173,14 @@ export default function NotionStatusPage() {
                     <section className="space-y-5">
                         <div className="text-6xl leading-none">🖥️</div>
                         <p className="text-sm font-medium text-[#787774]">Dig-Sign</p>
-                        <h1 className="text-4xl font-bold leading-tight tracking-[-0.01em] text-[#2f2f2b] md:text-5xl">
+                        <h1 className="text-4xl font-bold leading-tight tracking-normal text-[#2f2f2b] md:text-5xl">
                             Dig-Sign status
                         </h1>
 
                         <Callout>
-                            Status: <strong>production ready.</strong> Ready for controlled operation
-                            with an operator present. Browser output has been confirmed in web
-                            player, vMix and OBS. The main remaining product gate is final plate
+                            Status: <strong>production ready.</strong> Ready for controlled
+                            operation with an operator present. Browser output has been confirmed in
+                            web player, vMix and OBS. The main remaining product gate is final plate
                             design plus stronger output alerts.
                         </Callout>
 
@@ -273,7 +272,7 @@ export default function NotionStatusPage() {
 
                     <section className="space-y-5">
                         <div className="text-6xl leading-none">🎛️</div>
-                        <h1 className="text-4xl font-bold leading-tight tracking-[-0.01em] text-[#2f2f2b] md:text-5xl">
+                        <h1 className="text-4xl font-bold leading-tight tracking-normal text-[#2f2f2b] md:text-5xl">
                             Operations manual
                         </h1>
 

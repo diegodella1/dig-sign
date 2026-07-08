@@ -1,7 +1,8 @@
 import { revalidatePath } from 'next/cache';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { auditedMutation } from '../audit/audit';
+import { requireTenantScope, tenantValue } from '../auth/tenancy';
 import { getDb } from '../db/client';
 import { mediaAssets, contentPlaylistItems, musicPlaylistItems, slideAssets } from '../db/schema';
 import { err, extractError, ok, type Result } from '../result';
@@ -18,6 +19,8 @@ export async function createSlideAsset(input: {
     metadata?: Record<string, unknown> | undefined;
 }): Promise<Result<void>> {
     try {
+        const scope = await requireTenantScope();
+
         if (
             input.slideType !== 'image' &&
             input.slideType !== 'html' &&
@@ -41,6 +44,7 @@ export async function createSlideAsset(input: {
             },
             async () => {
                 await db.insert(slideAssets).values({
+                    vendorId: tenantValue(scope),
                     title: input.title,
                     slideType: input.slideType,
                     content: input.content || null,
@@ -62,6 +66,7 @@ export async function createSlideAsset(input: {
 
 export async function archiveSlideAsset(slideId: string): Promise<Result<void>> {
     try {
+        const scope = await requireTenantScope();
         const db = await getDb();
 
         await auditedMutation(
@@ -75,7 +80,14 @@ export async function archiveSlideAsset(slideId: string): Promise<Result<void>> 
                 await db
                     .update(slideAssets)
                     .set({ status: 'archived', updatedAt: new Date().toISOString() })
-                    .where(eq(slideAssets.id, slideId));
+                    .where(
+                        scope.kind === 'vendor'
+                            ? and(
+                                  eq(slideAssets.id, slideId),
+                                  eq(slideAssets.vendorId, scope.vendorId),
+                              )
+                            : eq(slideAssets.id, slideId),
+                    );
             },
         );
         revalidatePath('/admin/slides');
@@ -100,6 +112,8 @@ export async function createMediaAsset(input: {
     lifecycleState?: string | undefined;
 }): Promise<Result<string>> {
     try {
+        const scope = await requireTenantScope();
+
         if (input.assetType === 'ad' && input.durationSeconds && input.durationSeconds > 300) {
             return err('Ads cannot be longer than 300 seconds');
         }
@@ -116,6 +130,7 @@ export async function createMediaAsset(input: {
             async () => {
                 await db.insert(mediaAssets).values({
                     id,
+                    vendorId: tenantValue(scope),
                     title: input.title,
                     sourceType: input.sourceType,
                     mediaKind: input.mediaKind,
@@ -158,6 +173,8 @@ export async function updateMediaAsset(input: {
     revalidatePaths?: string[] | undefined;
 }): Promise<Result<void>> {
     try {
+        const scope = await requireTenantScope();
+
         if (!input.id) {
             return err('Asset missing');
         }
@@ -170,7 +187,11 @@ export async function updateMediaAsset(input: {
         const [current] = await db
             .select({ metadata: mediaAssets.metadata })
             .from(mediaAssets)
-            .where(eq(mediaAssets.id, input.id))
+            .where(
+                scope.kind === 'vendor'
+                    ? and(eq(mediaAssets.id, input.id), eq(mediaAssets.vendorId, scope.vendorId))
+                    : eq(mediaAssets.id, input.id),
+            )
             .limit(1);
 
         if (!current) {
@@ -212,12 +233,19 @@ export async function updateMediaAsset(input: {
                         metadata,
                         updatedAt: new Date().toISOString(),
                     })
-                    .where(eq(mediaAssets.id, input.id));
+                    .where(
+                        scope.kind === 'vendor'
+                            ? and(
+                                  eq(mediaAssets.id, input.id),
+                                  eq(mediaAssets.vendorId, scope.vendorId),
+                              )
+                            : eq(mediaAssets.id, input.id),
+                    );
             },
         );
 
         if (input.fallbackLoop) {
-            const cleared = await clearOtherFallbackLoops(input.id);
+            const cleared = await clearOtherFallbackLoops(input.id, tenantValue(scope));
 
             if (!cleared.success) {
                 return cleared;
@@ -268,12 +296,16 @@ function buildUpdateMediaMetadata(
     return metadata;
 }
 
-async function clearOtherFallbackLoops(activeAssetId: string): Promise<Result<void>> {
+async function clearOtherFallbackLoops(
+    activeAssetId: string,
+    vendorId: string,
+): Promise<Result<void>> {
     try {
         const db = await getDb();
         const rows = await db
             .select({ id: mediaAssets.id, metadata: mediaAssets.metadata })
-            .from(mediaAssets);
+            .from(mediaAssets)
+            .where(eq(mediaAssets.vendorId, vendorId));
 
         for (const row of rows) {
             const id = typeof row?.id === 'string' ? row.id : '';
@@ -306,6 +338,8 @@ export async function deleteMediaAsset(input: {
     force?: boolean;
 }): Promise<Result<void>> {
     try {
+        const scope = await requireTenantScope();
+
         if (!input.id) {
             return err('Asset missing');
         }
@@ -319,7 +353,11 @@ export async function deleteMediaAsset(input: {
                 lifecycleState: mediaAssets.lifecycleState,
             })
             .from(mediaAssets)
-            .where(eq(mediaAssets.id, input.id))
+            .where(
+                scope.kind === 'vendor'
+                    ? and(eq(mediaAssets.id, input.id), eq(mediaAssets.vendorId, scope.vendorId))
+                    : eq(mediaAssets.id, input.id),
+            )
             .limit(1);
 
         if (!asset) {
@@ -349,7 +387,16 @@ export async function deleteMediaAsset(input: {
                 previous: { title: String(asset.title ?? '') },
             },
             async () => {
-                await db.delete(mediaAssets).where(eq(mediaAssets.id, input.id));
+                await db
+                    .delete(mediaAssets)
+                    .where(
+                        scope.kind === 'vendor'
+                            ? and(
+                                  eq(mediaAssets.id, input.id),
+                                  eq(mediaAssets.vendorId, scope.vendorId),
+                              )
+                            : eq(mediaAssets.id, input.id),
+                    );
             },
         );
         revalidatePath('/admin/assets');

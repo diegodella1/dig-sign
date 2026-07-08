@@ -32,7 +32,6 @@ export default async function PreparePage() {
                         badge: `${readyAssets.length}/${assets.length} ready`,
                         ...(reviewAssets.length ? { tone: 'warn' as const } : {}),
                     },
-                    { href: '/admin/vimeo', label: 'Import' },
                     {
                         href: '/admin/music',
                         label: 'Music',

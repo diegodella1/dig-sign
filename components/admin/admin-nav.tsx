@@ -1,6 +1,6 @@
 'use client';
 
-import { MonitorPlay, PackageOpen, RadioTower, Settings } from 'lucide-react';
+import { LayoutDashboard, MonitorPlay, PackageOpen, RadioTower, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -16,6 +16,12 @@ type NavItem = {
 
 export const primaryNavItems: NavItem[] = [
     {
+        label: 'Dashboard',
+        href: '/admin',
+        icon: LayoutDashboard,
+        match: 'exact',
+    },
+    {
         label: 'Operate',
         href: '/admin/operate',
         icon: RadioTower,
@@ -25,7 +31,7 @@ export const primaryNavItems: NavItem[] = [
         label: 'Prepare',
         href: '/admin/prepare',
         icon: PackageOpen,
-        activePaths: ['/admin/assets', '/admin/vimeo', '/admin/slides', '/admin/music'],
+        activePaths: ['/admin/assets', '/admin/slides', '/admin/music'],
     },
     {
         label: 'Signage',
@@ -48,7 +54,7 @@ export function AdminNav({ mobile = false }: { mobile?: boolean }) {
     if (mobile) {
         return (
             <nav
-                className="mt-2 flex max-w-full gap-1 overflow-x-auto pb-1 md:hidden"
+                className="mt-3 flex max-w-full gap-2 overflow-x-auto pb-1 md:hidden"
                 aria-label="Admin sections"
             >
                 {primaryNavItems.map(({ label, href, icon: Icon }) => {
@@ -62,13 +68,14 @@ export function AdminNav({ mobile = false }: { mobile?: boolean }) {
                             aria-label={label}
                             title={label}
                             className={[
-                                'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border',
+                                'inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border-2 px-3 font-headline text-xs font-bold uppercase',
                                 active
-                                    ? 'border-accent-positive bg-surface-selected-positive text-accent-positive'
-                                    : 'border-line bg-surface text-muted',
+                                    ? 'border-line bg-surface-selected-positive text-ink shadow-[3px_3px_0_#1a1a1a]'
+                                    : 'border-line bg-surface text-muted hover:bg-panel-soft hover:text-ink',
                             ].join(' ')}
                         >
                             <Icon size={18} aria-hidden="true" />
+                            <span>{label}</span>
                         </Link>
                     );
                 })}
@@ -77,7 +84,7 @@ export function AdminNav({ mobile = false }: { mobile?: boolean }) {
     }
 
     return (
-        <nav className="mt-6 flex flex-col items-center gap-1" aria-label="Admin sections">
+        <nav className="flex flex-1 flex-col gap-2" aria-label="Admin sections">
             {primaryNavItems.map((item) => (
                 <NavIconLink key={item.href} item={item} active={item.href === activeHref} />
             ))}
@@ -95,13 +102,14 @@ function NavIconLink({ item, active }: { item: NavItem; active: boolean }) {
             aria-label={item.label}
             title={item.label}
             className={[
-                'grid h-10 w-10 place-items-center rounded-md transition-colors',
+                'flex min-h-12 items-center gap-3 border-2 px-4 font-headline text-sm font-bold uppercase transition',
                 active
-                    ? 'bg-surface-selected-positive text-accent-positive shadow-accent-positive-glow'
-                    : 'text-muted hover:bg-panel-soft hover:text-ink',
+                    ? 'border-line bg-surface-selected-positive text-ink shadow-[3px_3px_0_#1a1a1a]'
+                    : 'border-transparent text-muted hover:border-line hover:bg-panel-soft hover:text-ink hover:shadow-[3px_3px_0_#1a1a1a]',
             ].join(' ')}
         >
             <Icon size={20} aria-hidden="true" />
+            <span>{item.label}</span>
         </Link>
     );
 }
@@ -115,9 +123,7 @@ function findActiveHref(pathname: string): string | null {
 
     for (const item of primaryNavItems) {
         if (
-            item.activePaths?.some(
-                (path) => pathname === path || pathname.startsWith(`${path}/`),
-            )
+            item.activePaths?.some((path) => pathname === path || pathname.startsWith(`${path}/`))
         ) {
             return item.href;
         }

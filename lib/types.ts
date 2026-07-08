@@ -9,13 +9,12 @@ export type AssetLifecycleState =
     | 'scheduled_in_use';
 export type PlaybackReadinessStatus = 'unchecked' | 'ready' | 'failed';
 export type SourceType =
-    | 'vimeo'
+    | 'embed'
     | 'supabase_image'
     | 'supabase_audio'
     | 'remote_image'
     | 'remote_mp4'
-    | 'hls'
-    | 'rtmp';
+    | 'hls';
 export type MediaKind = 'video' | 'image' | 'audio' | 'graphic';
 export type BlockType = 'video' | 'image' | 'slide' | 'ad' | 'promo' | 'fallback';
 export type LayerType = 'overlay' | 'image' | 'slide' | 'logo_bug' | 'lower_third' | 'promo';
@@ -39,6 +38,7 @@ export const BLOCK_CATEGORIES: readonly BlockCategory[] = [
 
 export type MediaAsset = {
     id: string;
+    vendorId?: string;
     title: string;
     description?: string | null;
     sourceType: SourceType;
@@ -51,10 +51,6 @@ export type MediaAsset = {
     durationSeconds?: number | null;
     status: AssetStatus;
     lifecycleState?: AssetLifecycleState;
-    vimeoId?: string | null;
-    vimeoUri?: string | null;
-    vimeoPrivacy?: string | null;
-    vimeoEmbedStatus?: string | null;
     playbackReadinessStatus?: PlaybackReadinessStatus;
     playbackCheckedAt?: string | null;
     playbackError?: string | null;
@@ -65,6 +61,7 @@ export type MediaAsset = {
 
 export type SlideAsset = {
     id: string;
+    vendorId?: string;
     title: string;
     slideType: 'image' | 'html' | 'markdown' | 'template';
     content?: string | null;
@@ -115,12 +112,12 @@ export type OutputOverride = {
     id: string;
     programDayId: string;
     enabled: boolean;
-    sourceType: 'scheduled_block' | 'vimeo' | 'slide' | 'hls' | 'remote_image';
+    sourceType: 'scheduled_block' | 'embed' | 'slide' | 'hls' | 'remote_image';
     blockId?: string | null;
     assetId?: string | null;
     slideId?: string | null;
     streamUrl?: string | null;
-    streamProtocol?: 'hls' | 'rtmp' | null;
+    streamProtocol?: 'hls' | null;
     label?: string | null;
     expiresAt?: string | null;
     metadata?: Record<string, unknown> | null;

@@ -5,12 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { safeAdminReturnTo, shouldFailClosedForMissingAdminToken } from './auth';
 import { shouldFailClosedForMissingOutputToken } from './output-auth';
 
-const serviceRoleApiRoutes = [
-    'app/api/assets/upload/route.ts',
-    'app/api/settings/route.ts',
-    'app/api/vimeo/import/route.ts',
-    'app/api/vimeo/sync/route.ts',
-];
+const serviceRoleApiRoutes = ['app/api/assets/upload/route.ts', 'app/api/settings/route.ts'];
 
 describe('service-role API guards', () => {
     it('requires admin auth before privileged API mutations', () => {

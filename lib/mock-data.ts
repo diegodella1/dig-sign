@@ -4,9 +4,10 @@ const now = new Date().toISOString();
 
 export const mockMediaAssets: MediaAsset[] = [
     {
-        id: 'asset-vimeo-demo',
-        title: 'Vimeo Program Placeholder',
-        sourceType: 'vimeo',
+        id: 'asset-embed-demo',
+        vendorId: 'default',
+        title: 'Public Video URL Placeholder',
+        sourceType: 'embed',
         mediaKind: 'video',
         assetType: 'video',
         url: 'https://vimeo.com/76979871',
@@ -14,12 +15,12 @@ export const mockMediaAssets: MediaAsset[] = [
         durationSeconds: 7200,
         status: 'ready',
         lifecycleState: 'reviewed',
-        vimeoId: '76979871',
         createdAt: now,
         updatedAt: now,
     },
     {
         id: 'asset-fallback',
+        vendorId: 'default',
         title: 'Dig-Sign Fallback Slate',
         sourceType: 'remote_image',
         mediaKind: 'image',
@@ -37,6 +38,7 @@ export const mockMediaAssets: MediaAsset[] = [
 export const mockSlideAssets: SlideAsset[] = [
     {
         id: 'slide-weather',
+        vendorId: 'default',
         title: 'Weather',
         slideType: 'template',
         templateId: 'weather',
