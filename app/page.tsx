@@ -1,4 +1,4 @@
-import { RadioTower, PackageOpen, CalendarDays, Settings, BookOpen } from 'lucide-react';
+import { MonitorPlay, PackageOpen, RadioTower, Settings, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 
 export default function HomePage() {
@@ -6,25 +6,25 @@ export default function HomePage() {
         {
             label: 'Operate',
             href: '/admin/operate',
-            detail: 'Control room — on-air signal, next blocks, health, recovery.',
+            detail: 'Monitor screens, playlists on air, and player health.',
             icon: RadioTower,
         },
         {
             label: 'Prepare',
             href: '/admin/prepare',
-            detail: 'Media, music, guests, plates, and Vimeo import.',
+            detail: 'Media, music, plates, and Vimeo import.',
             icon: PackageOpen,
         },
         {
-            label: 'Program',
-            href: '/admin/program',
-            detail: 'Calendar, rundown, loops, fallback, and day activation.',
-            icon: CalendarDays,
+            label: 'Signage',
+            href: '/admin/screens',
+            detail: 'Screens, content playlists, and day-based assignments.',
+            icon: MonitorPlay,
         },
         {
             label: 'Admin',
             href: '/admin/settings',
-            detail: 'Settings, health, runbook, audit, and capture setup.',
+            detail: 'Settings, health, audit, and capture setup.',
             icon: Settings,
         },
     ];
@@ -32,11 +32,13 @@ export default function HomePage() {
     return (
         <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-10">
             <header>
-                <p className="eyebrow text-accent-positive">Roxom TV</p>
-                <h1 className="mt-2 text-4xl font-semibold tracking-normal">Playout Manager</h1>
+                <p className="eyebrow text-accent-positive">Dig-Sign</p>
+                <h1 className="mt-2 text-4xl font-semibold tracking-normal">
+                    Digital Signage Manager
+                </h1>
                 <p className="mt-3 max-w-2xl text-muted">
-                    Broadcast operations console for linear playout. Start in Operate during live
-                    hours; use Prepare and Program before air.
+                    Operations console for multi-screen digital signage. Build playlists, assign them
+                    by day, and open a player URL on each display.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">
                     <Link className="btn-primary" href="/admin/login">

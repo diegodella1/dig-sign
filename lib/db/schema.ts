@@ -16,8 +16,7 @@
  *   RLS / triggers / functions → dropped (handled at app layer)
  *
  * The unique partial index on output_overrides(program_day_id) WHERE enabled=1
- * cannot be expressed via Drizzle's index() DSL for SQLite; it is emitted in
- * the migration SQL using a raw `CREATE UNIQUE INDEX … WHERE enabled = 1`.
+ * was removed in migration 0004_drop_schedule.sql.
  */
 
 import { sql } from 'drizzle-orm';
@@ -25,7 +24,6 @@ import {
     sqliteTable,
     text,
     integer,
-    real,
     uniqueIndex,
     index,
     primaryKey,
@@ -126,116 +124,6 @@ export const slideAssets = sqliteTable('slide_assets', {
 export type SlideAssetRow = typeof slideAssets.$inferSelect;
 export type InsertSlideAssetRow = typeof slideAssets.$inferInsert;
 
-// ─── program_days ────────────────────────────────────────────────────────────
-// air_date UNIQUE date → text (YYYY-MM-DD).
-// program_status enum → text.
-// fallback_asset_id FK → ON DELETE SET NULL.
-
-export const programDays = sqliteTable('program_days', {
-    id: text('id')
-        .primaryKey()
-        .$defaultFn(() => crypto.randomUUID()),
-    airDate: text('air_date').notNull().unique(),
-    timezone: text('timezone').notNull().default('America/Los_Angeles'),
-    status: text('status').notNull().default('draft'),
-    title: text('title'),
-    notes: text('notes'),
-    fallbackAssetId: text('fallback_asset_id').references(() => mediaAssets.id, {
-        onDelete: 'set null',
-    }),
-    createdAt: text('created_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-    updatedAt: text('updated_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-});
-
-export type ProgramDayRow = typeof programDays.$inferSelect;
-export type InsertProgramDayRow = typeof programDays.$inferInsert;
-
-// ─── program_blocks ──────────────────────────────────────────────────────────
-// block_type enum → text; program_status enum → text.
-// start_time (Postgres TIME) → text (HH:MM:SS).
-// hide_overlays boolean → integer mode:'boolean'.
-// category CHECK → enforced in app layer.
-// The overlap trigger is dropped; overlap enforcement moves to app layer.
-
-export const programBlocks = sqliteTable('program_blocks', {
-    id: text('id')
-        .primaryKey()
-        .$defaultFn(() => crypto.randomUUID()),
-    programDayId: text('program_day_id')
-        .notNull()
-        .references(() => programDays.id, { onDelete: 'cascade' }),
-    title: text('title').notNull(),
-    blockType: text('block_type').notNull(),
-    category: text('category').notNull(),
-    assetId: text('asset_id').references(() => mediaAssets.id, {
-        onDelete: 'set null',
-    }),
-    slideId: text('slide_id').references(() => slideAssets.id, {
-        onDelete: 'set null',
-    }),
-    startTime: text('start_time').notNull(),
-    startTimeSeconds: integer('start_time_seconds').notNull(),
-    durationSeconds: integer('duration_seconds').notNull(),
-    status: text('status').notNull().default('draft'),
-    hideOverlays: integer('hide_overlays', { mode: 'boolean' }).notNull().default(false),
-    fallbackAssetId: text('fallback_asset_id').references(() => mediaAssets.id, {
-        onDelete: 'set null',
-    }),
-    notes: text('notes'),
-    metadata: text('metadata', { mode: 'json' })
-        .notNull()
-        .$defaultFn(() => ({})),
-    createdAt: text('created_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-    updatedAt: text('updated_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-});
-
-export type ProgramBlockRow = typeof programBlocks.$inferSelect;
-export type InsertProgramBlockRow = typeof programBlocks.$inferInsert;
-
-// ─── scheduled_layers ────────────────────────────────────────────────────────
-// layer_type enum → text; layer_position enum → text.
-// enabled / locked boolean → integer mode:'boolean'.
-
-export const scheduledLayers = sqliteTable('scheduled_layers', {
-    id: text('id')
-        .primaryKey()
-        .$defaultFn(() => crypto.randomUUID()),
-    programBlockId: text('program_block_id')
-        .notNull()
-        .references(() => programBlocks.id, { onDelete: 'cascade' }),
-    title: text('title').notNull(),
-    layerType: text('layer_type').notNull(),
-    assetId: text('asset_id').references(() => mediaAssets.id, {
-        onDelete: 'set null',
-    }),
-    slideId: text('slide_id').references(() => slideAssets.id, {
-        onDelete: 'set null',
-    }),
-    startTimeSeconds: integer('start_time_seconds').notNull().default(0),
-    durationSeconds: integer('duration_seconds').notNull(),
-    zIndex: integer('z_index').notNull().default(10),
-    position: text('position').notNull().default('lower_third'),
-    enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
-    locked: integer('locked', { mode: 'boolean' }).notNull().default(false),
-    createdAt: text('created_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-    updatedAt: text('updated_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-});
-
-export type ScheduledLayerRow = typeof scheduledLayers.$inferSelect;
-export type InsertScheduledLayerRow = typeof scheduledLayers.$inferInsert;
-
 // ─── audit_log ───────────────────────────────────────────────────────────────
 
 export const auditLog = sqliteTable('audit_log', {
@@ -256,51 +144,6 @@ export const auditLog = sqliteTable('audit_log', {
 
 export type AuditLogRow = typeof auditLog.$inferSelect;
 export type InsertAuditLogRow = typeof auditLog.$inferInsert;
-
-// ─── operator_runbook_checks ─────────────────────────────────────────────────
-// section CHECK → enforced in app layer.
-// checked boolean → integer mode:'boolean'.
-// unique (program_day_id, section, item_key) → expressed via uniqueIndex.
-
-export const operatorRunbookChecks = sqliteTable(
-    'operator_runbook_checks',
-    {
-        id: text('id')
-            .primaryKey()
-            .$defaultFn(() => crypto.randomUUID()),
-        programDayId: text('program_day_id')
-            .notNull()
-            .references(() => programDays.id, { onDelete: 'cascade' }),
-        section: text('section').notNull(),
-        itemKey: text('item_key').notNull(),
-        checked: integer('checked', { mode: 'boolean' }).notNull().default(false),
-        notes: text('notes'),
-        checkedAt: text('checked_at'),
-        createdAt: text('created_at')
-            .notNull()
-            .$defaultFn(() => new Date().toISOString()),
-        updatedAt: text('updated_at')
-            .notNull()
-            .$defaultFn(() => new Date().toISOString()),
-    },
-    (table) => ({
-        // mirrors: unique (program_day_id, section, item_key)
-        uniqDaySectionItem: uniqueIndex('operator_runbook_checks_day_section_item_uniq').on(
-            table.programDayId,
-            table.section,
-            table.itemKey,
-        ),
-        // mirrors: idx_operator_runbook_checks_day
-        dayIdx: index('idx_operator_runbook_checks_day').on(
-            table.programDayId,
-            table.section,
-            table.itemKey,
-        ),
-    }),
-);
-
-export type OperatorRunbookCheckRow = typeof operatorRunbookChecks.$inferSelect;
-export type InsertOperatorRunbookCheckRow = typeof operatorRunbookChecks.$inferInsert;
 
 // ─── admin_operators ─────────────────────────────────────────────────────────
 // role CHECK → enforced in app layer.
@@ -456,136 +299,17 @@ export const musicPlaylistItems = sqliteTable(
 export type MusicPlaylistItemRow = typeof musicPlaylistItems.$inferSelect;
 export type InsertMusicPlaylistItemRow = typeof musicPlaylistItems.$inferInsert;
 
-// ─── output_overrides ────────────────────────────────────────────────────────
-// enabled boolean → integer mode:'boolean'.
-// source_type CHECK → enforced in app layer.
-// stream_protocol CHECK → enforced in app layer.
-// expires_at → text (ISO string).
-// The Postgres partial unique index (WHERE enabled) is emitted as a raw SQL
-// index in the migration; Drizzle sqlite-core does not support WHERE clauses
-// in index() at schema definition time.
+// ─── layout_presets ───────────────────────────────────────────────────────────
 
-export const outputOverrides = sqliteTable('output_overrides', {
-    id: text('id')
-        .primaryKey()
-        .$defaultFn(() => crypto.randomUUID()),
-    programDayId: text('program_day_id')
-        .notNull()
-        .references(() => programDays.id, { onDelete: 'cascade' }),
-    enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
-    sourceType: text('source_type').notNull(),
-    blockId: text('block_id').references(() => programBlocks.id, {
-        onDelete: 'set null',
-    }),
-    assetId: text('asset_id').references(() => mediaAssets.id, {
-        onDelete: 'set null',
-    }),
-    slideId: text('slide_id').references(() => slideAssets.id, {
-        onDelete: 'set null',
-    }),
-    streamUrl: text('stream_url'),
-    streamProtocol: text('stream_protocol'),
-    label: text('label'),
-    expiresAt: text('expires_at'),
-    metadata: text('metadata', { mode: 'json' })
-        .notNull()
-        .$defaultFn(() => ({})),
-    createdBy: text('created_by').references(() => adminOperators.id, {
-        onDelete: 'set null',
-    }),
-    createdAt: text('created_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-    updatedAt: text('updated_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-});
-
-export type OutputOverrideRow = typeof outputOverrides.$inferSelect;
-export type InsertOutputOverrideRow = typeof outputOverrides.$inferInsert;
-
-// ─── events ──────────────────────────────────────────────────────────────────
-// start_date / end_date → text (YYYY-MM-DD).
-// start_time / end_time → text (HH:MM:SS).
-// is_active / show_date_badge boolean → integer mode:'boolean'.
-// overlay_opacity numeric → real.
-// title_size CHECK → enforced in app layer.
-// schedule_times jsonb → text mode:'json'.
-
-export const events = sqliteTable(
-    'events',
-    {
-        id: text('id')
-            .primaryKey()
-            .$defaultFn(() => crypto.randomUUID()),
-        title: text('title').notNull(),
-        description: text('description'),
-        imageUrl: text('image_url'),
-        startDate: text('start_date').notNull(),
-        endDate: text('end_date'),
-        startTime: text('start_time'),
-        endTime: text('end_time'),
-        isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
-        orderIndex: integer('order_index').notNull().default(0),
-        color: text('color').notNull().default('#1ae784'),
-        titleFont: text('title_font'),
-        titleSize: text('title_size'),
-        titleColor: text('title_color'),
-        textColor: text('text_color'),
-        overlayOpacity: real('overlay_opacity'),
-        showDateBadge: integer('show_date_badge', { mode: 'boolean' }).notNull().default(true),
-        location: text('location'),
-        scheduleTimes: text('schedule_times', { mode: 'json' }),
-        createdAt: text('created_at')
-            .notNull()
-            .$defaultFn(() => new Date().toISOString()),
-        updatedAt: text('updated_at')
-            .notNull()
-            .$defaultFn(() => new Date().toISOString()),
-    },
-    (table) => ({
-        // mirrors: idx_events_calendar
-        calendarIdx: index('idx_events_calendar').on(
-            table.isActive,
-            table.startDate,
-            table.orderIndex,
-        ),
-    }),
-);
-
-export type EventRow = typeof events.$inferSelect;
-export type InsertEventRow = typeof events.$inferInsert;
-
-// ─── guests ──────────────────────────────────────────────────────────────────
-// guest_status enum → text.
-// appearance_at → text (ISO string).
-// photo_asset_id / video_asset_id FK → ON DELETE SET NULL.
-
-export const guests = sqliteTable(
-    'guests',
+export const layoutPresets = sqliteTable(
+    'layout_presets',
     {
         id: text('id')
             .primaryKey()
             .$defaultFn(() => crypto.randomUUID()),
         name: text('name').notNull(),
-        role: text('role'),
-        company: text('company'),
-        host: text('host'),
-        program: text('program'),
-        category: text('category').notNull().default('markets'),
-        appearanceAt: text('appearance_at'),
-        photoUrl: text('photo_url'),
-        photoAssetId: text('photo_asset_id').references(() => mediaAssets.id, {
-            onDelete: 'set null',
-        }),
-        videoUrl: text('video_url'),
-        videoAssetId: text('video_asset_id').references(() => mediaAssets.id, {
-            onDelete: 'set null',
-        }),
-        color: text('color').notNull().default('#f7931a'),
-        sortOrder: integer('sort_order').notNull().default(0),
-        status: text('status').notNull().default('ready'),
-        metadata: text('metadata', { mode: 'json' })
+        slug: text('slug').notNull(),
+        config: text('config', { mode: 'json' })
             .notNull()
             .$defaultFn(() => ({})),
         createdAt: text('created_at')
@@ -596,23 +320,132 @@ export const guests = sqliteTable(
             .$defaultFn(() => new Date().toISOString()),
     },
     (table) => ({
-        // mirrors: guests_status_appearance_idx
-        statusAppearanceIdx: index('guests_status_appearance_idx').on(
-            table.status,
-            table.appearanceAt,
-            table.sortOrder,
-        ),
-        // mirrors: guests_category_idx
-        categoryIdx: index('guests_category_idx').on(table.category),
-        // mirrors: guests_photo_asset_idx
-        photoAssetIdx: index('guests_photo_asset_idx').on(table.photoAssetId),
-        // mirrors: guests_video_asset_idx
-        videoAssetIdx: index('guests_video_asset_idx').on(table.videoAssetId),
+        slugUnique: uniqueIndex('layout_presets_slug_unique').on(table.slug),
     }),
 );
 
-export type GuestRow = typeof guests.$inferSelect;
-export type InsertGuestRow = typeof guests.$inferInsert;
+export type LayoutPresetRow = typeof layoutPresets.$inferSelect;
+export type InsertLayoutPresetRow = typeof layoutPresets.$inferInsert;
+
+// ─── screens ───────────────────────────────────────────────────────────────────
+
+export const screens = sqliteTable(
+    'screens',
+    {
+        id: text('id')
+            .primaryKey()
+            .$defaultFn(() => crypto.randomUUID()),
+        name: text('name').notNull(),
+        slug: text('slug').notNull(),
+        layoutPresetId: text('layout_preset_id').references(() => layoutPresets.id, {
+            onDelete: 'set null',
+        }),
+        fallbackPlaylistId: text('fallback_playlist_id'),
+        timezone: text('timezone'),
+        status: text('status').notNull().default('active'),
+        createdAt: text('created_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+        updatedAt: text('updated_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+    },
+    (table) => ({
+        slugUnique: uniqueIndex('screens_slug_unique').on(table.slug),
+        statusIdx: index('screens_status_idx').on(table.status),
+    }),
+);
+
+export type ScreenRow = typeof screens.$inferSelect;
+export type InsertScreenRow = typeof screens.$inferInsert;
+
+// ─── content_playlists ─────────────────────────────────────────────────────────
+
+export const contentPlaylists = sqliteTable('content_playlists', {
+    id: text('id')
+        .primaryKey()
+        .$defaultFn(() => crypto.randomUUID()),
+    name: text('name').notNull(),
+    status: text('status').notNull().default('ready'),
+    createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+});
+
+export type ContentPlaylistRow = typeof contentPlaylists.$inferSelect;
+export type InsertContentPlaylistRow = typeof contentPlaylists.$inferInsert;
+
+// ─── content_playlist_items ────────────────────────────────────────────────────
+
+export const contentPlaylistItems = sqliteTable(
+    'content_playlist_items',
+    {
+        id: text('id')
+            .primaryKey()
+            .$defaultFn(() => crypto.randomUUID()),
+        playlistId: text('playlist_id')
+            .notNull()
+            .references(() => contentPlaylists.id, { onDelete: 'cascade' }),
+        assetId: text('asset_id').references(() => mediaAssets.id, { onDelete: 'cascade' }),
+        slideId: text('slide_id').references(() => slideAssets.id, { onDelete: 'cascade' }),
+        sortOrder: integer('sort_order').notNull(),
+        durationSeconds: integer('duration_seconds'),
+        createdAt: text('created_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+    },
+    (table) => ({
+        playlistOrderIdx: index('content_playlist_items_playlist_order_idx').on(
+            table.playlistId,
+            table.sortOrder,
+        ),
+    }),
+);
+
+export type ContentPlaylistItemRow = typeof contentPlaylistItems.$inferSelect;
+export type InsertContentPlaylistItemRow = typeof contentPlaylistItems.$inferInsert;
+
+// ─── playlist_assignments ──────────────────────────────────────────────────────
+
+export const playlistAssignments = sqliteTable(
+    'playlist_assignments',
+    {
+        id: text('id')
+            .primaryKey()
+            .$defaultFn(() => crypto.randomUUID()),
+        screenId: text('screen_id')
+            .notNull()
+            .references(() => screens.id, { onDelete: 'cascade' }),
+        playlistId: text('playlist_id')
+            .notNull()
+            .references(() => contentPlaylists.id, { onDelete: 'cascade' }),
+        startDate: text('start_date'),
+        endDate: text('end_date'),
+        weekdays: text('weekdays', { mode: 'json' })
+            .notNull()
+            .$defaultFn(() => []),
+        priority: integer('priority').notNull().default(0),
+        status: text('status').notNull().default('active'),
+        createdAt: text('created_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+        updatedAt: text('updated_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+    },
+    (table) => ({
+        screenStatusIdx: index('playlist_assignments_screen_status_idx').on(
+            table.screenId,
+            table.status,
+        ),
+    }),
+);
+
+export type PlaylistAssignmentRow = typeof playlistAssignments.$inferSelect;
+export type InsertPlaylistAssignmentRow = typeof playlistAssignments.$inferInsert;
 
 // ─── Re-export sql helper so callers can do `import { sql } from '@/lib/db/schema'` ─
 export { sql };

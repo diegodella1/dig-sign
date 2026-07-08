@@ -1,16 +1,16 @@
-# RTV TL Manager Operator Guide
+# Dig-Sign Operator Guide
 
-Short guide for running the current production workflow.
+Short guide for the current signage workflow.
 
 ## Login
 
 Open:
 
 ```txt
-https://rtvtime.diegodella.ar/admin/login
+https://digsign.diegodella.ar/admin/login
 ```
 
-Use the configured admin token or named operator handle/token.
+Use the configured admin bootstrap token or a named operator handle/token.
 
 ## Navigation
 
@@ -18,113 +18,152 @@ The console uses four modes:
 
 | Mode | Route | Purpose |
 |------|-------|---------|
-| **Operate** | `/admin/operate` | Control room — on-air, next, health, recovery |
-| **Prepare** | `/admin/prepare` | Plates, media, people, import |
-| **Program** | `/admin/program` | Calendar, rundown, timed loops, fallback policy, activate |
-| **Admin** | `/admin/settings` | Settings, health, runbook, audit, capture |
+| **Operate** | `/admin/operate` | Screen monitor, health, capture URLs |
+| **Prepare** | `/admin/prepare` | Plates, media, music, Vimeo import |
+| **Signage** | `/admin/screens` | Screens, playlists, day assignments |
+| **Admin** | `/admin/settings` | Settings, health, audit |
 
-During live hours, start at **Operate**. Use **Capture** (`/admin/output`) on the OBS/vMix machine only. Operate is the monitor; Output is capture-only.
+Start at **Operate** during playback hours. Use the capture URL from Operate on the OBS/vMix machine only.
+
+Legacy bookmarks still work via redirects (`/admin/program` → screens, `/admin/output` → operate).
 
 ## Daily Workflow
 
-1. **Prepare content**
-    - Start at `/admin/prepare`.
-    - **Plates** (`/admin/slides`): weather, markets, guest lineups, YouTube, custom graphics.
-    - Mark eligible silent videos in **Media** when you plan to use silent-video fallback.
-    - **Media** (`/admin/assets`): upload and verify playable files only.
-    - **People** (`/admin/guests`): guest directory for lineup plates.
-    - **Music** (`/admin/music`): background playlist for visual blocks.
-    - **Import** (`/admin/vimeo`): sync Vimeo shows into Media.
+### 1. Prepare content
 
-2. **Program the day**
-    - Start at `/admin/program`.
-    - Create or open the day from Calendar.
-    - Add blocks in `/admin/schedule/[date]`.
-    - Configure **Fallback policy** at `/admin/program/fallback`: silent video, plate rotation, or
-      emergency slate only. This is the global safety net when nothing is on air or playback fails.
-    - Use **Fill range with plates** on the schedule page for **timed slide loops** in the rundown
-      only. It does not change fallback policy.
-    - Assign ready media, slides, overlays, and per-block fallback overrides when needed.
-    - For normal video programs that need disclosure, enable `Previously Recorded bug` and choose
-      one of the four screen corners. This does not apply to ads, promos, slides, images, fallback,
-      Reuters, or manual overrides.
+Start at `/admin/prepare`.
 
-3. **Check readiness**
-    - Fix schedule health errors.
-    - Confirm **Fallback policy** is Ready in Program → Fallback (toolbar chip on Schedule shows the
-      same status). Unscheduled gaps read **Protected** when fallback is ready, **Unprotected** when
-      it is not.
-    - Open `/admin/runbook/[date]`.
-    - Complete critical preflight checks.
+- **Plates** (`/admin/slides`) — weather cities, YouTube embeds, template graphics.
+- **Media** (`/admin/assets`) — upload and verify playable files (video, image, audio).
+- **Music** (`/admin/music`) — background music playlists for visual items in output.
+- **Import** (`/admin/vimeo`) — sync Vimeo catalog into the media library.
 
-4. **Go live**
-    - Activate the day from **Program** hub or today's **Schedule** (Draft → Ready → Active).
-    - Open `/admin/operate` for the control room (on-air, next, health, recovery).
-    - Open `/admin/output` on the capture machine only.
-    - Launch Live Browser Output.
-    - Click `Start Output` once to unlock audio.
-    - Capture that browser window in OBS/vMix.
+Only mark assets **ready** after playback is verified. Draft or failed assets should not go into playlists.
 
-5. **During live**
-    - Watch alerts and diagnostics on **Operate** (merged monitor panel).
-    - Check active block, next block, fallback reason, clock skew, and drift.
-    - Use the runbook for incidents and handoff notes.
+### 2. Configure signage
 
-6. **Stop**
-    - Use `/admin/output` -> Stop broadcast.
-    - Complete shutdown checks.
+**Screens** (`/admin/screens`)
+
+- One row per physical display (slug used in the player URL, e.g. `main`, `lobby`).
+- Set timezone (default: `America/Argentina/Buenos_Aires`).
+- Assign a **fallback playlist** — plays when no day assignment matches or the assignment is empty.
+
+**Playlists** (`/admin/playlists`)
+
+- Create a content playlist per loop (morning board, promos, weather rotation, etc.).
+- Open the playlist editor: drag plates and media, set seconds per item, save.
+- Items rotate in order; total loop duration is the sum of item durations.
+
+**Assignments** (on each screen page)
+
+- Link a playlist to a screen with optional start/end dates.
+- For a single-day loop, set start and end to the same date.
+- For an open-ended loop, leave end date empty.
+
+### 3. Check readiness
+
+Open `/admin/health` and fix any failing checks:
+
+- Environment variables configured
+- D1 database reachable
+- R2 storage reachable
+- Vimeo token valid (if using Vimeo)
+- Output capture token set (production)
+- At least one screen configured
+
+Confirm each screen's fallback playlist has at least one playable item.
+
+### 4. Go live
+
+1. Open `/admin/operate`.
+2. Review the monitor tile for each screen (active playlist, current item, health).
+3. Copy the capture URL for the target screen (`/output/live/[slug]?token=...`).
+4. Open that URL on the capture machine.
+5. Click **Start Output** once to unlock browser audio.
+6. Add the browser window as a source in OBS or vMix.
+
+Repeat for each physical display (different screen slug per machine).
+
+### 5. During playback
+
+- Watch Operate for fallback states, missing assets, or health degradation.
+- If a playlist item references deleted media, output falls back to the screen's fallback playlist or a safe empty state.
+- Use `/admin/audit` to review recent operator actions if something changed unexpectedly.
+
+### 6. Change content mid-day
+
+- Edit the playlist in `/admin/playlists/[id]` and save — output picks up changes on the next poll cycle.
+- To switch loops, update the screen assignment or fallback playlist; no "activate day" step is required.
 
 ## Output Behavior
 
-`/output/live` renders the active schedule for browser capture. It supports Vimeo, direct HLS, MP4, images, slides, fallback states, background music for visual blocks, and the optional `PREVIOUSLY RECORDED` bug for normal video programs.
+`/output/live/[screenSlug]` renders the resolved playlist for that screen and date.
 
-After reload, output resolves the active block again and seeks video to the correct scheduled offset. Browser audio still requires one operator click because autoplay with sound is blocked by browser policy.
+Supported item types:
 
-Use `/output/preview/[blockId]` to test one block before air.
+- **Slides/plates** — weather, YouTube, HTML templates
+- **Video** — Vimeo, HLS, MP4 via media library
+- **Images** — static images with configurable duration
+- **Background music** — optional bed on visual items when music output is configured
+
+State API:
+
+```txt
+GET /api/output/channel/state?screen=main&token=YOUR_OUTPUT_CAPTURE_TOKEN
+```
+
+The player polls this endpoint every ~2 seconds. Without a valid token, the API returns 401 in production.
+
+Browser audio requires one operator click (**Start Output**) after load or reload because autoplay with sound is blocked by browser policy.
 
 ## Go Live Drill
 
-Run this before trusting a machine for broadcast:
+Run before trusting a capture machine:
 
-1. Open `/admin/health`.
-2. Confirm environment, Supabase, storage, Vimeo, output token, and static assets are OK.
-   Public `/api/health` only shows pass/degraded/fail summaries; admin health shows the full detail.
-3. Open `/admin/output`.
-4. Launch Live Browser Output.
-5. Click `Start Output`.
-6. Reload the output page mid-video.
-7. Confirm video resumes at the current show time.
-8. Confirm OBS/vMix receives both video and audio.
+1. Open `/admin/health` — all checks green or acceptable degraded.
+2. Open `/admin/operate` — every screen shows a playlist or fallback.
+3. Open `/output/live/main?token=...` on the capture machine.
+4. Click **Start Output**.
+5. Confirm video/slides advance through the playlist loop.
+6. Reload the page — playback should resume on the current carousel position.
+7. Confirm OBS/vMix receives video and audio.
+
+Public `/api/health` shows pass/degraded/fail summaries only. Full detail is on `/admin/health` when logged in.
 
 ## Operator Notes
 
-- Use Prepare -> Program -> Operate. That is the primary path.
-- Do not schedule draft/failed media.
-- Every active day should have a ready fallback policy (silent video, plate rotation, or emergency
-  slate).
-- Plate rotations for fallback and timed slide loops on the schedule use the background playlist;
-  video, ad, promo and live blocks pause it.
-- Guest plates can be different per segment because each Guest Lineup plate stores its own selected
-  guests and order.
-- Weather plates can be created per city; use lat/lon only as advanced correction data.
-- Reuters URLs are dynamic. Refresh the block or live override if the endpoint expires.
-- Metals plates use Roxom metals data when available and fallback market data when unavailable.
-- Weather plates use OpenWeather when configured and Open-Meteo when no key is present.
-- Calendar/event plates use the Supabase `events` table.
-- Secrets belong in `.env` or encrypted settings, not docs or chat.
+- Workflow: **Prepare → Signage → Operate**. That is the primary path.
+- There is **no hour-based rundown**. Timing comes from item durations inside each playlist.
+- Each screen needs a **fallback playlist** for off-hours and failure recovery.
+- Weather plates use OpenWeather when configured; otherwise Open-Meteo.
+- Secrets belong in environment variables or encrypted settings — not docs or chat.
+- Default screen slug is `main`; `/output/live` redirects there automatically.
 
 ## Useful Pages
 
-- `/manual` - public manual
-- `/pending` - backlog
-- `/admin/prepare` - hub: Plates, Media, People, Music, Import
-- `/admin/program/fallback` - global fallback policy (silent video, plate rotation, emergency slate)
-- `/admin/prepare/gap-fill` - redirects to `/admin/program/fallback`
-- `/admin/slides` - plates (graphics)
-- `/admin/assets` - media library (operator label: Media)
-- `/admin/guests` - guest directory (People)
-- `/admin/vimeo` - Vimeo import
-- `/admin/program` - schedule, timed loops, fallback policy, activate
-- `/admin/operate` - live control-room hub
-- `/admin/health` - readiness checks
-- `/api/health` - machine-readable health
+| Page | URL |
+|------|-----|
+| Public manual | `/manual` |
+| Backlog | `/pending` |
+| Prepare hub | `/admin/prepare` |
+| Plates | `/admin/slides` |
+| Media library | `/admin/assets` |
+| Vimeo import | `/admin/vimeo` |
+| Music | `/admin/music` |
+| Screens | `/admin/screens` |
+| Playlists | `/admin/playlists` |
+| Operate / monitor | `/admin/operate` |
+| Health | `/admin/health` |
+| Audit | `/admin/audit` |
+| Player (main screen) | `/output/live/main` |
+| Health API | `/api/health` |
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| Fallback slate / empty loop | No assignment for today, empty playlist, or missing assets | Check screen assignment and fallback playlist items |
+| 401 on output URL | Missing or wrong `OUTPUT_CAPTURE_TOKEN` | Set token in env; append `?token=` to URL |
+| Audio silent | Browser autoplay policy | Click **Start Output** on the player page |
+| Screen not in monitor | Screen status not `active` | Edit screen on `/admin/screens/[slug]` |
+| Health migration fail | D1 not migrated through `0004` | Run `wrangler d1 migrations apply dig-sign-db --remote` |

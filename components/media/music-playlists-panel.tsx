@@ -34,7 +34,7 @@ type Props = {
     initialPlaylists: Playlist[];
     initialSettings: OutputSettings;
     createPlaylistAction: (formData: FormData) => Promise<void>;
-    assignSchedulePlaylistAction: (formData: FormData) => Promise<void>;
+    assignSchedulePlaylistAction?: (formData: FormData) => Promise<void>;
 };
 
 export function MusicPlaylistsPanel({
@@ -156,8 +156,7 @@ export function MusicPlaylistsPanel({
                 <div>
                     <h2 className="text-lg font-semibold">Playlists</h2>
                     <p className="mt-1 text-sm text-muted">
-                        Build named playlists from ready tracks. The schedule playlist is used for
-                        slide, image and YouTube blocks.
+                        Build named playlists from ready tracks for optional background audio.
                     </p>
                 </div>
                 <form action={createPlaylistAction} className="flex flex-wrap gap-2">
@@ -210,30 +209,32 @@ export function MusicPlaylistsPanel({
                         <p className="text-sm text-muted">Loading playlist…</p>
                     ) : activeDetail ? (
                         <>
-                            <form
-                                action={assignSchedulePlaylistAction}
-                                className="flex flex-wrap items-center gap-2 rounded-md bg-panel-soft p-3"
-                            >
-                                <input type="hidden" name="playlist_id" value={activeDetail.id} />
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="radio"
-                                        name="schedule_default"
-                                        checked={settings.schedulePlaylistId === activeDetail.id}
-                                        readOnly
-                                        onClick={() =>
-                                            setSettings((current) => ({
-                                                ...current,
-                                                schedulePlaylistId: activeDetail.id,
-                                            }))
-                                        }
-                                    />
-                                    Schedule default playlist
-                                </label>
-                                <button type="submit" className="btn-primary text-sm">
-                                    Set as schedule playlist
-                                </button>
-                            </form>
+                            {assignSchedulePlaylistAction ? (
+                                <form
+                                    action={assignSchedulePlaylistAction}
+                                    className="flex flex-wrap items-center gap-2 rounded-md bg-panel-soft p-3"
+                                >
+                                    <input type="hidden" name="playlist_id" value={activeDetail.id} />
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <input
+                                            type="radio"
+                                            name="schedule_default"
+                                            checked={settings.schedulePlaylistId === activeDetail.id}
+                                            readOnly
+                                            onClick={() =>
+                                                setSettings((current) => ({
+                                                    ...current,
+                                                    schedulePlaylistId: activeDetail.id,
+                                                }))
+                                            }
+                                        />
+                                        Schedule default playlist
+                                    </label>
+                                    <button type="submit" className="btn-primary text-sm">
+                                        Set as schedule playlist
+                                    </button>
+                                </form>
+                            ) : null}
 
                             <div className="space-y-2">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">

@@ -2,18 +2,13 @@ import { prepareSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { PlatesWorkspace } from '@/components/prepare/plates-workspace';
 import { ButtonLink } from '@/components/ui';
-import { getGuests, getSlides } from '@/lib/data';
+import { getSlides } from '@/lib/data';
 
 import {
-    addAllDataPlates,
     addCustomPlateAction,
-    addDataPlate,
-    addGuestLineupPlateAction,
     addWeatherPlateAction,
     addYouTubePlateAction,
-    archiveGuestLineupPlateAction,
     archivePlate,
-    updateGuestLineupPlateAction,
     updateWeatherPlateAction,
 } from './actions';
 
@@ -25,43 +20,33 @@ export default async function SlidesPage({
     searchParams: Promise<{ tab?: string }>;
 }) {
     const params = await searchParams;
-    const [slides, guests] = await Promise.all([getSlides(), getGuests()]);
+    const slides = await getSlides();
     const readyCount = slides.filter((slide) => slide.status === 'ready').length;
 
     return (
         <AdminShell
             title="Plates"
-            description="Create and review broadcast-ready graphics before scheduling."
+            description="Create and review display-ready graphics before scheduling."
             subNav={prepareSubNav}
             actions={
-                <>
-                    <ButtonLink href="/admin/program/fallback" variant="secondary">
-                        Fallback policy
-                    </ButtonLink>
-                    <ButtonLink href="/admin/guests">People</ButtonLink>
-                </>
+                <ButtonLink href="/admin/playlists" variant="secondary">
+                    Fallback policy
+                </ButtonLink>
             }
         >
-            <section className="mb-5 grid gap-3 md:grid-cols-3">
+            <section className="mb-5 grid gap-3 md:grid-cols-2">
                 <Metric label="Active plates" value={String(slides.filter((s) => s.status !== 'archived').length)} />
                 <Metric label="Ready" value={String(readyCount)} />
-                <Metric label="People" value={String(guests.filter((g) => g.status !== 'archived').length)} />
             </section>
 
             <PlatesWorkspace
                 slides={slides}
-                guests={guests}
                 initialTab={params.tab}
-                addDataPlate={addDataPlate}
-                addAllDataPlates={addAllDataPlates}
                 archivePlate={archivePlate}
                 addWeatherPlateAction={addWeatherPlateAction}
                 updateWeatherPlateAction={updateWeatherPlateAction}
                 addYouTubePlateAction={addYouTubePlateAction}
                 addCustomPlateAction={addCustomPlateAction}
-                addGuestLineupPlateAction={addGuestLineupPlateAction}
-                updateGuestLineupPlateAction={updateGuestLineupPlateAction}
-                archiveGuestLineupPlateAction={archiveGuestLineupPlateAction}
             />
         </AdminShell>
     );

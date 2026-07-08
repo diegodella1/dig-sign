@@ -119,11 +119,16 @@ type OutputState =
 type Props = {
     debug?: boolean;
     startAt?: number | null;
-    previewBlockId?: string;
     token?: string | undefined;
+    screen?: string;
 };
 
-export function BrowserOutputRenderer({ debug = false, startAt, previewBlockId, token }: Props) {
+export function BrowserOutputRenderer({
+    debug = false,
+    startAt,
+    token,
+    screen = 'main',
+}: Props) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const musicRef = useRef<HTMLAudioElement>(null);
     const hlsRef = useRef<Hls | null>(null);
@@ -151,13 +156,11 @@ export function BrowserOutputRenderer({ debug = false, startAt, previewBlockId, 
             params.set('startAt', String(startAt));
         }
 
-        if (previewBlockId) {
-            params.set('previewBlockId', previewBlockId);
-        }
+        params.set('screen', screen || 'main');
         const query = params.toString();
 
         return `/api/output/channel/state${query ? `?${query}` : ''}`;
-    }, [previewBlockId, startAt, token]);
+    }, [screen, startAt, token]);
 
     useEffect(
         () => () => {
@@ -174,7 +177,7 @@ export function BrowserOutputRenderer({ debug = false, startAt, previewBlockId, 
 
         async function loadState() {
             if (inFlightRef.current) {
-                if (!cancelled && !previewBlockId) {
+                if (!cancelled) {
                     timer = setTimeout(loadState, 2000);
                 }
 
@@ -216,7 +219,7 @@ export function BrowserOutputRenderer({ debug = false, startAt, previewBlockId, 
                     inFlightRef.current = null;
                 }
 
-                if (!cancelled && !previewBlockId) {
+                if (!cancelled) {
                     timer = setTimeout(loadState, 2000);
                 }
             }
@@ -233,7 +236,7 @@ export function BrowserOutputRenderer({ debug = false, startAt, previewBlockId, 
             inFlightRef.current?.abort();
             inFlightRef.current = null;
         };
-    }, [previewBlockId, state?.signature, stateUrl]);
+    }, [state?.signature, stateUrl]);
 
     useEffect(() => {
         const video = videoRef.current;

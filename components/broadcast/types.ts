@@ -1,34 +1,26 @@
-export type OutputMonitorPayload = {
-    generatedAt: string;
+export type ScreenMonitorSnapshot = {
+    slug: string;
+    name: string;
     timezone: string;
     serverSeconds: number;
-    day: { airDate: string; status: string } | null;
-    block: {
-        title: string;
-        status: string;
-        elapsedInBlock: number;
-        durationSeconds: number;
-    } | null;
-    asset: {
-        id?: string;
-        title: string;
-        sourceType: string;
-        status: string;
-        lifecycleState: string;
-        playbackReadinessStatus: string;
-        playbackError: string | null;
-    } | null;
-    fallback: { title: string } | null;
-    fallbackReason: string | null;
-    override: {
-        id: string;
-        sourceType: string;
-        label: string | null;
-        streamProtocol: string | null;
-        expiresAt: string | null;
-    } | null;
+    playlistId: string | null;
+    playlistName: string | null;
+    assignmentId: string | null;
+    reason: string | null;
+    outputKind: string;
+    title: string;
+    durationSeconds: number | null;
+    elapsedSeconds: number | null;
     mediaError: string | null;
 };
+
+export type SignageMonitorPayload = {
+    generatedAt: string;
+    screens: ScreenMonitorSnapshot[];
+};
+
+/** @deprecated Schedule-era alias. Prefer SignageMonitorPayload. */
+export type OutputMonitorPayload = SignageMonitorPayload;
 
 export type UpNextBlock = {
     id: string;

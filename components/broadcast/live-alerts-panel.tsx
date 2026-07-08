@@ -2,84 +2,59 @@
 
 import { useOutputMonitor } from '@/hooks/use-output-monitor';
 
-import type { OutputMonitorPayload } from '@/components/broadcast/types';
+import type { SignageMonitorPayload } from '@/components/broadcast/types';
 
 const DRIFT_WARN_SECONDS = 3;
 
-export function LiveAlertsPanel({ initial }: { initial: OutputMonitorPayload }) {
+export function LiveAlertsPanel({ initial }: { initial: SignageMonitorPayload }) {
     const { payload, clientSeconds, error } = useOutputMonitor(initial);
-    const nowMs = new Date(payload.generatedAt).getTime();
     const alerts: Array<{ tone: 'danger' | 'warn'; title: string; detail: string }> = [];
 
     if (error) {
         alerts.push({ tone: 'danger', title: 'Monitor offline', detail: error });
     }
 
-    if (Math.abs(clientSeconds - payload.serverSeconds) >= DRIFT_WARN_SECONDS) {
+    const referenceSeconds = payload.screens[0]?.serverSeconds ?? clientSeconds;
+
+    if (Math.abs(clientSeconds - referenceSeconds) >= DRIFT_WARN_SECONDS) {
         alerts.push({
             tone: 'warn',
             title: 'Clock drift',
-            detail: `Client/server skew is ${Math.abs(clientSeconds - payload.serverSeconds)}s. Reload output if playback looks wrong.`,
+            detail: `Client/server skew is ${Math.abs(clientSeconds - referenceSeconds)}s. Reload players if playback looks wrong.`,
         });
     }
 
-    if (payload.mediaError) {
-        alerts.push({ tone: 'danger', title: 'Media error', detail: payload.mediaError });
-    }
+    for (const screen of payload.screens) {
+        if (screen.mediaError) {
+            alerts.push({
+                tone: 'danger',
+                title: `${screen.name}: output issue`,
+                detail: screen.mediaError,
+            });
+        }
 
-    if (payload.asset?.playbackReadinessStatus === 'failed') {
-        alerts.push({
-            tone: 'danger',
-            title: 'Playback failed',
-            detail: payload.asset.playbackError ?? 'Asset playback check failed.',
-        });
-    }
-
-    if (payload.fallbackReason && payload.fallbackReason !== 'normal') {
-        alerts.push({
-            tone: 'warn',
-            title: 'Fallback active',
-            detail: payload.fallbackReason,
-        });
-    }
-
-    if (payload.override?.expiresAt) {
-        const expires = new Date(payload.override.expiresAt);
-
-        if (!Number.isNaN(expires.getTime()) && expires.getTime() < nowMs + 15 * 60_000) {
+        if (!screen.playlistId) {
             alerts.push({
                 tone: 'warn',
-                title: 'Override expiring',
-                detail: `${payload.override.label ?? payload.override.sourceType} expires soon.`,
+                title: `${screen.name}: no playlist`,
+                detail: 'Assign a day rule or fallback playlist on the screen settings page.',
+            });
+        }
+
+        if (screen.playlistId && screen.outputKind === 'fallback') {
+            alerts.push({
+                tone: 'warn',
+                title: `${screen.name}: fallback slate`,
+                detail: screen.reason ?? 'Playlist empty or not ready.',
             });
         }
     }
 
-    if (!payload.day) {
+    if (!payload.screens.length) {
         alerts.push({
             tone: 'warn',
-            title: 'No program day',
-            detail: "Create and activate today's schedule before going live.",
-        });
-    }
-
-    if (
-        payload.block &&
-        payload.block.durationSeconds > 0 &&
-        payload.block.elapsedInBlock >= payload.block.durationSeconds - 2
-    ) {
-        alerts.push({
-            tone: 'warn',
-            title: 'Block ending',
-            detail: `${payload.block.title} is about to roll.`,
-        });
-    }
-
-    if (!payload.block && payload.day?.status === 'active') {
-        alerts.push({
-            tone: 'warn',
-            title: 'Schedule gap',
-            detail: 'Day is active but no block covers this time. Fallback should be visible.',
+            title: 'No screens',
+            detail: 'Create at least one screen before deploying players.',
         });
     }
 

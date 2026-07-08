@@ -24,8 +24,12 @@ export function outputAccessDeniedReason() {
 }
 
 export function liveOutputHref(debug = false) {
+    return liveOutputHrefForScreen('main', debug);
+}
+
+export function liveOutputHrefForScreen(screenSlug: string, debug = false) {
     if (process.env.OUTPUT_CAPTURE_TOKEN) {
-        const params = new URLSearchParams({ return_to: '/output/live' });
+        const params = new URLSearchParams({ return_to: `/output/live/${screenSlug}` });
 
         if (debug) {
             params.set('debug', 'true');
@@ -40,10 +44,14 @@ export function liveOutputHref(debug = false) {
     }
     const query = params.toString();
 
-    return appUrl(`/output/live${query ? `?${query}` : ''}`).toString();
+    return appUrl(`/output/live/${screenSlug}${query ? `?${query}` : ''}`).toString();
 }
 
 export function directLiveOutputHref(debug = false) {
+    return directLiveOutputHrefForScreen('main', debug);
+}
+
+export function directLiveOutputHrefForScreen(screenSlug: string, debug = false) {
     const params = new URLSearchParams();
 
     if (debug) {
@@ -55,7 +63,7 @@ export function directLiveOutputHref(debug = false) {
     }
     const query = params.toString();
 
-    return appUrl(`/output/live${query ? `?${query}` : ''}`).toString();
+    return appUrl(`/output/live/${screenSlug}${query ? `?${query}` : ''}`).toString();
 }
 
 export function shouldFailClosedForMissingOutputToken(env = process.env) {

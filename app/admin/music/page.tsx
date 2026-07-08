@@ -8,7 +8,6 @@ import { EmptyState, FormHeader, MetricTile, Notice } from '@/components/ui';
 import { getAssets } from '@/lib/data';
 import { getMusicOutputSettings, listPlaylists } from '@/lib/music-playlists';
 import {
-    assignSchedulePlaylist,
     createMusicPlaylist,
     updateMediaAsset,
 } from '@/lib/mutations';
@@ -69,31 +68,12 @@ export default async function MusicPage({
         }
 
         revalidatePath('/admin/music');
-        revalidatePath('/admin/program/fallback');
-    }
-
-    async function assignSchedulePlaylistAction(formData: FormData) {
-        'use server';
-        const playlistId = String(formData.get('playlist_id') || '');
-
-        if (!playlistId) {
-            throw new Error('Choose a playlist');
-        }
-
-        const result = await assignSchedulePlaylist(playlistId);
-
-        if (!result.success) {
-            throw new Error(result.error);
-        }
-
-        revalidatePath('/admin/music');
-        revalidatePath('/output/live');
     }
 
     return (
         <AdminShell
             title="Music"
-            description="MP3 library and named playlists for schedule and fallback output."
+            description="MP3 library and named playlists for optional background audio."
             subNav={prepareSubNav}
         >
             {params.uploaded ? (
@@ -125,14 +105,14 @@ export default async function MusicPage({
                 <section className="surface-panel p-4">
                     <FormHeader
                         title="Playback rule"
-                        detail="Schedule playlist plays on slide, image and YouTube blocks. Video blocks pause it and visual blocks resume from the same position."
+                        detail="Background music is optional. Content playlists on each screen control what appears on displays."
                     />
                     <div className="mt-4 grid gap-2 text-sm">
                         <p className="rounded-md bg-panel-soft px-3 py-2 text-muted">
-                            Output rotates through the selected playlist in order.
+                            Build named playlists below for future background audio use.
                         </p>
                         <p className="rounded-md bg-panel-soft px-3 py-2 text-muted">
-                            Fallback playlist is configured on Program → Fallback policy.
+                            Screen fallback loops are configured per screen under Signage → Screens.
                         </p>
                         <p className="rounded-md bg-panel-soft px-3 py-2 text-muted">
                             Known runtime: {Math.round(totalDuration / 60)}m across ready tracks.
@@ -152,7 +132,6 @@ export default async function MusicPage({
                     initialPlaylists={playlists}
                     initialSettings={outputSettings}
                     createPlaylistAction={createPlaylistAction}
-                    assignSchedulePlaylistAction={assignSchedulePlaylistAction}
                 />
             </div>
 

@@ -1,6 +1,6 @@
-**Updated 2026-05-07. Dark broadcast direction adopted. The previous light operational OKLCH theme is DEPRECATED. Source of truth: `rtv-air-manager_2.html` (visual brief).**
+**Updated 2026-05-07. Dark direction adopted. The previous light operational OKLCH theme is DEPRECATED.**
 
-# RTVTime Admin Design System
+# Dig-Sign Admin Design System
 
 ## Register
 

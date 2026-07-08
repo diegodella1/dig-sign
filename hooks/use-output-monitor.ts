@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 
-import type { OutputMonitorPayload } from '@/components/broadcast/types';
+import type { SignageMonitorPayload } from '@/components/broadcast/types';
 
 const DEFAULT_POLL_MS = 2000;
 
-export function useOutputMonitor(initial: OutputMonitorPayload, pollMs = DEFAULT_POLL_MS) {
+export function useOutputMonitor(initial: SignageMonitorPayload, pollMs = DEFAULT_POLL_MS) {
     const [payload, setPayload] = useState(initial);
-    const [clientSeconds, setClientSeconds] = useState(initial.serverSeconds);
+    const primarySeconds = initial.screens[0]?.serverSeconds ?? 0;
+    const [clientSeconds, setClientSeconds] = useState(primarySeconds);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -30,11 +31,11 @@ export function useOutputMonitor(initial: OutputMonitorPayload, pollMs = DEFAULT
                     throw new Error(`Monitor ${response.status}`);
                 }
 
-                const next = (await response.json()) as OutputMonitorPayload;
+                const next = (await response.json()) as SignageMonitorPayload;
 
                 if (!cancelled) {
                     setPayload(next);
-                    setClientSeconds(next.serverSeconds);
+                    setClientSeconds(next.screens[0]?.serverSeconds ?? 0);
                     setError(null);
                 }
             } catch (refreshError) {

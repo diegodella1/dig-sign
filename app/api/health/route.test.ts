@@ -20,22 +20,20 @@ vi.mock('@/lib/settings', () => ({
     getVimeoToken: vi.fn(async () => 'vimeo-token'),
 }));
 
-vi.mock('@/lib/services/reuters-credentials', () => ({
-    getReutersSettings: vi.fn(async () => ({ hasSecret: true })),
-}));
-
-vi.mock('@/lib/data', () => ({
-    getLiveSchedule: vi.fn(async () => ({
-        day: { id: 'day-1', airDate: '2026-05-18', status: 'active' },
-        blocks: [],
-        layers: [],
-        mediaAssets: [],
-        slideAssets: [],
-    })),
-}));
-
-vi.mock('@/lib/output-overrides', () => ({
-    getActiveOutputOverride: vi.fn(async () => null),
+vi.mock('@/lib/screens', () => ({
+    listScreens: vi.fn(async () => [
+        {
+            id: 'screen-1',
+            name: 'Main',
+            slug: 'main',
+            layoutPresetId: null,
+            fallbackPlaylistId: null,
+            timezone: 'America/Argentina/Buenos_Aires',
+            status: 'active',
+            createdAt: '2026-05-18T00:00:00.000Z',
+            updatedAt: '2026-05-18T00:00:00.000Z',
+        },
+    ]),
 }));
 
 vi.mock('@/lib/health/smoke-status', () => ({

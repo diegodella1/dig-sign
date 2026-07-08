@@ -22,7 +22,7 @@ import { useMemo, useRef } from 'react';
 
 import {
     countLoopCards,
-    isPlayableFallbackCarouselAsset,
+    isPlayablePlaylistAsset,
     itemLabelForCard,
     sortAssetsByTitle,
     sortSlidesByTitle,
@@ -31,10 +31,7 @@ import {
 
 import type { MediaAsset, SlideAsset } from '@/lib/types';
 
-export type LoopEditorMode = 'gap-fill' | 'scheduled';
-
 type LoopEditorProps = {
-    mode: LoopEditorMode;
     slides: SlideAsset[];
     assets?: MediaAsset[];
     cards: LoopEditorCard[];
@@ -56,7 +53,6 @@ const DEFAULT_FIELD_NAMES = {
 };
 
 export function LoopEditor({
-    mode,
     slides,
     assets = [],
     cards,
@@ -72,7 +68,7 @@ export function LoopEditor({
         [readySlides],
     );
     const readyVideoAssets = useMemo(
-        () => assets.filter(isPlayableFallbackCarouselAsset).sort(sortAssetsByTitle),
+        () => assets.filter(isPlayablePlaylistAsset).sort(sortAssetsByTitle),
         [assets],
     );
     const assetById = useMemo(
@@ -84,7 +80,6 @@ export function LoopEditor({
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
     );
     const totalDuration = cards.reduce((total, card) => total + card.durationSeconds, 0);
-    const showVideoPicker = mode === 'gap-fill';
     const cardKeyRef = useRef(0);
 
     function nextCardKey(prefix: string, id: string) {
@@ -129,23 +124,6 @@ export function LoopEditor({
         );
     }
 
-    function updateSlideId(index: number, slideId: string) {
-        const slide = slideById.get(slideId);
-        onCardsChange(
-            cards.map((card, cardIndex) =>
-                cardIndex === index
-                    ? {
-                          ...card,
-                          id: slideId,
-                          slideId,
-                          durationSeconds:
-                              slide?.defaultDurationSeconds ?? card.durationSeconds ?? 30,
-                      }
-                    : card,
-            ),
-        );
-    }
-
     function removeCard(cardKey: string) {
         onCardsChange(cards.filter((item) => item.key !== cardKey));
     }
@@ -177,10 +155,8 @@ export function LoopEditor({
                 </div>
             ))}
 
-            {mode === 'gap-fill' ? (
-                <>
-                    <div className="grid gap-2">
-                        <p className="text-xs font-semibold uppercase text-muted">Ready plates</p>
+            <div className="grid gap-2">
+                <p className="text-xs font-semibold uppercase text-muted">Ready plates</p>
                         <div className="grid max-h-72 gap-2 overflow-auto pr-1 md:grid-cols-2">
                             {readySlides.map((slide) => {
                                 const count = countLoopCards(cards, 'slide', slide.id);
@@ -215,11 +191,8 @@ export function LoopEditor({
                         </div>
                     </div>
 
-                    {showVideoPicker ? (
-                        <div className="grid gap-2">
-                            <p className="text-xs font-semibold uppercase text-muted">
-                                Promo/ad videos
-                            </p>
+            <div className="grid gap-2">
+                <p className="text-xs font-semibold uppercase text-muted">Media assets</p>
                             <div className="grid max-h-56 gap-2 overflow-auto pr-1 md:grid-cols-2">
                                 {readyVideoAssets.map((asset) => {
                                     const count = countLoopCards(cards, 'asset', asset.id);
@@ -234,7 +207,8 @@ export function LoopEditor({
                                                     {asset.title}
                                                 </span>
                                                 <span className="block text-xs text-muted">
-                                                    {asset.assetType} · {asset.durationSeconds ?? 30}s
+                                                {asset.mediaKind} · {asset.assetType} ·{' '}
+                                                {asset.durationSeconds ?? 30}s
                                                     {count ? ` · ${count}x in loop` : ''}
                                                 </span>
                                             </span>
@@ -252,14 +226,11 @@ export function LoopEditor({
                                 })}
                                 {!readyVideoAssets.length ? (
                                     <p className="rounded-md border border-line bg-panel-soft px-3 py-2 text-sm text-muted md:col-span-2">
-                                        No ready promo/ad videos yet.
+                                        No ready media assets yet.
                                     </p>
                                 ) : null}
                             </div>
                         </div>
-                    ) : null}
-                </>
-            ) : null}
 
             <div className="grid gap-2">
                 <div className="flex items-center justify-between gap-3">
@@ -279,14 +250,10 @@ export function LoopEditor({
                                 key={card.key}
                                 card={card}
                                 index={index}
-                                mode={mode}
-                                readySlides={readySlides}
                                 slideById={slideById}
                                 assetById={assetById}
                                 onDurationChange={updateDuration}
-                                onSlideChange={updateSlideId}
                                 onRemove={() => removeCard(card.key)}
-                                canRemove={mode === 'scheduled' ? cards.length > 1 : true}
                             />
                         ))}
                     </SortableContext>
@@ -294,9 +261,7 @@ export function LoopEditor({
 
                 {!cards.length ? (
                     <p className="rounded-md border border-warn-line bg-warn-soft px-3 py-2 text-sm text-warn-strong">
-                        {mode === 'gap-fill'
-                            ? 'Select at least one ready plate or promo/ad video.'
-                            : 'Add at least one ready plate.'}
+                        Add at least one ready plate or media asset.
                     </p>
                 ) : null}
             </div>
@@ -307,25 +272,17 @@ export function LoopEditor({
 function SortableLoopRow({
     card,
     index,
-    mode,
-    readySlides,
     slideById,
     assetById,
     onDurationChange,
-    onSlideChange,
     onRemove,
-    canRemove,
 }: {
     card: LoopEditorCard;
     index: number;
-    mode: LoopEditorMode;
-    readySlides: SlideAsset[];
     slideById: Map<string, SlideAsset>;
     assetById: Map<string, MediaAsset>;
     onDurationChange: (index: number, durationSeconds: number) => void;
-    onSlideChange: (index: number, slideId: string) => void;
     onRemove: () => void;
-    canRemove: boolean;
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: card.key,
@@ -352,29 +309,17 @@ function SortableLoopRow({
             </button>
 
             <div className="min-w-0 self-center">
-                {mode === 'scheduled' ? (
-                    <label className="grid gap-1 text-xs font-semibold text-muted">
-                        Plate
-                        <select
-                            value={card.id}
-                            onChange={(event) => onSlideChange(index, event.target.value)}
-                            className="border border-line px-2 py-1 text-sm font-normal text-ink"
-                        >
-                            {readySlides.map((slide) => (
-                                <option key={slide.id} value={slide.id}>
-                                    {slide.title}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                ) : (
-                    <>
-                        <p className="truncate text-sm font-semibold">{title}</p>
-                        <p className="text-xs text-muted">
-                            {card.kind === 'asset' ? 'Video' : 'Plate'} · position {index + 1}
-                        </p>
-                    </>
-                )}
+                <>
+                    <p className="truncate text-sm font-semibold">{title}</p>
+                    <p className="text-xs text-muted">
+                        {card.kind === 'asset'
+                            ? assetById.get(card.id)?.mediaKind === 'image'
+                                ? 'Image'
+                                : 'Video'
+                            : 'Plate'}{' '}
+                        · position {index + 1}
+                    </p>
+                </>
             </div>
 
             <label className="grid gap-1 text-xs font-semibold text-muted">
@@ -392,7 +337,6 @@ function SortableLoopRow({
                 type="button"
                 className="grid size-10 place-items-center self-end rounded-md border border-line"
                 onClick={onRemove}
-                disabled={!canRemove}
                 aria-label="Remove item from loop"
             >
                 <Trash2 size={15} aria-hidden="true" />

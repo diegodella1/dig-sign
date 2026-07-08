@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Dig-Sign Vimeo catalog sync daily
+
+[Timer]
+OnCalendar=*-*-* 04:15:00
+Persistent=true
+Unit=digsign-vimeo-sync.service
+
+[Install]
+WantedBy=timers.target

@@ -6,7 +6,7 @@ release and go-live checklist for the Roxom TV browser-output workflow.
 ## Current Production Shape
 
 - App: standalone Next.js service on the host.
-- Public route: `https://rtvtime.diegodella.ar`.
+- Public route: `https://digsign.diegodella.ar`.
 - Network: Cloudflare tunnel in front of local service.
 - Backend: Supabase database/storage.
 - Uploaded media: local Supabase Storage served publicly through `/api/media/assets/[assetId]`.
@@ -73,7 +73,7 @@ playout schedule auth and audit visibility.
 Run the production read-only smoke manually before going on air:
 
 ```bash
-export RTV_PROD_BASE_URL="https://example.com"
+export DIGSIGN_PROD_BASE_URL="https://example.com"
 export ADMIN_BOOTSTRAP_TOKEN="..."
 export OUTPUT_CAPTURE_TOKEN="..." # when configured
 rtk npm run smoke:prod
@@ -82,7 +82,7 @@ rtk npm run smoke:prod
 The production smoke is intentionally read-only. It must not create days, upload media, publish a
 schedule, trigger sync jobs, or mutate Supabase.
 
-For the current `rtvtime.diegodella.ar` host, production deploy is local standalone Next.js behind
+For the current `digsign.diegodella.ar` host, production deploy is local standalone Next.js behind
 `cloudflared`:
 
 ```bash
@@ -93,7 +93,7 @@ The deploy script records persisted smoke status for `/api/health`. To run the p
 smoke manually:
 
 ```bash
-export RTV_PROD_BASE_URL="https://rtvtime.diegodella.ar"
+export DIGSIGN_PROD_BASE_URL="https://digsign.diegodella.ar"
 export ADMIN_BOOTSTRAP_TOKEN="..."
 export OUTPUT_CAPTURE_TOKEN="..."
 rtk npm run smoke:prod

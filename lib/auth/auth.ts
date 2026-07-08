@@ -65,27 +65,27 @@ export async function revokeCurrentOperatorSession() {
 
 export function safeAdminReturnTo(value: string | null | undefined) {
     if (!value) {
-        return '/admin/calendar';
+        return '/admin/screens';
     }
 
     if (!isSafeAdminReturnPath(value)) {
-        return '/admin/calendar';
+        return '/admin/screens';
     }
 
     if (value.startsWith('//')) {
-        return '/admin/calendar';
+        return '/admin/screens';
     }
 
     try {
         const parsed = new URL(value, 'http://local');
 
         if (parsed.origin !== 'http://local') {
-            return '/admin/calendar';
+            return '/admin/screens';
         }
 
         return `${parsed.pathname}${parsed.search}${parsed.hash}`;
     } catch {
-        return '/admin/calendar';
+        return '/admin/screens';
     }
 }
 

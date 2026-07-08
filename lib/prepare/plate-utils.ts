@@ -3,24 +3,12 @@ import { isYouTubeSlide } from '@/lib/slides/youtube';
 
 import type { SlideAsset } from '@/lib/types';
 
-export type PlateTab = 'all' | 'weather' | 'data' | 'guests' | 'youtube' | 'custom';
+export type PlateTab = 'all' | 'weather' | 'youtube' | 'custom';
 
-const DATA_TEMPLATE_IDS = new Set<SlideTemplateId>(
-    SLIDE_TEMPLATES.map((t) => t.id).filter(
-        (id): id is SlideTemplateId => id !== 'guest-lineup' && id !== 'weather',
-    ),
-);
-
-const DEPRECATED_TEMPLATE_IDS = new Set(['news', 'show', 'video']);
+const DEPRECATED_TEMPLATE_IDS = new Set(['news', 'show', 'video', 'guest-lineup']);
 
 export function parsePlateTab(value: string | undefined): PlateTab {
-    if (
-        value === 'weather' ||
-        value === 'data' ||
-        value === 'guests' ||
-        value === 'youtube' ||
-        value === 'custom'
-    ) {
+    if (value === 'weather' || value === 'youtube' || value === 'custom') {
         return value;
     }
 
@@ -32,20 +20,8 @@ export function plateCategory(slide: SlideAsset): PlateTab {
         return 'weather';
     }
 
-    if (slide.templateId === 'guest-lineup') {
-        return 'guests';
-    }
-
     if (isYouTubeSlide(slide)) {
         return 'youtube';
-    }
-
-    if (slide.templateId && DATA_TEMPLATE_IDS.has(slide.templateId as SlideTemplateId)) {
-        return 'data';
-    }
-
-    if (!slide.templateId && !isYouTubeSlide(slide)) {
-        return 'custom';
     }
 
     return 'custom';
@@ -54,10 +30,6 @@ export function plateCategory(slide: SlideAsset): PlateTab {
 export function plateTypeLabel(slide: SlideAsset) {
     if (slide.templateId === 'weather') {
         return 'Weather';
-    }
-
-    if (slide.templateId === 'guest-lineup') {
-        return 'Guest lineup';
     }
 
     if (isYouTubeSlide(slide)) {
@@ -130,7 +102,7 @@ function numberMeta(value: unknown, fallback: number) {
 }
 
 export const SYSTEM_SLIDE_PRESETS = SLIDE_TEMPLATES.filter(
-    (template) => template.id !== 'guest-lineup' && template.id !== 'weather',
+    (template) => template.id !== 'weather',
 ).map((template) => ({
     title: `${template.label} plate`,
     templateId: template.id,

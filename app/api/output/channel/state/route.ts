@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { composeChannelState, fallbackState } from '@/lib/output/channel-state';
+import { fallbackState } from '@/lib/output/fallback-state';
+import { composeScreenState } from '@/lib/output/screen-state';
 import { isOutputRequestAllowed, outputAccessDeniedReason } from '@/lib/auth/output-auth';
 
 export const dynamic = 'force-dynamic';
@@ -17,12 +18,10 @@ export async function GET(request: Request) {
         }
         const mediaAccessToken =
             searchParams.get('token') ?? process.env.OUTPUT_CAPTURE_TOKEN ?? '';
-        const startAtParam = searchParams.get('startAt');
-        const requestedStartAt = startAtParam === null ? null : Number(startAtParam);
-        const state = await composeChannelState({
+        const screenSlug = searchParams.get('screen')?.trim() || 'main';
+        const state = await composeScreenState({
+            screenSlug,
             now: new Date(),
-            previewBlockId: searchParams.get('previewBlockId'),
-            requestedStartAt,
             mediaAccessToken,
         });
 

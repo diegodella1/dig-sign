@@ -8,7 +8,6 @@ const sourceTypeEnum = z.enum([
     'hls',
     'rtmp',
     'supabase_audio',
-    'reuters',
 ]);
 const mediaKindEnum = z.enum(['video', 'image', 'audio', 'graphic']);
 const assetTypeEnum = z.enum([

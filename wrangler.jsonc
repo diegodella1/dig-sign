@@ -1,20 +1,17 @@
 {
     // ─── Required secrets (set out-of-band, NEVER commit) ───────────────────────
-    // wrangler secret put APP_ENCRYPTION_KEY           (decrypts stored Vimeo/Reuters creds)
+    // wrangler secret put APP_ENCRYPTION_KEY           (decrypts stored Vimeo creds)
     // wrangler secret put ADMIN_BOOTSTRAP_TOKEN        (admin bootstrap login)
     // wrangler secret put VIMEO_ACCESS_TOKEN          (optional; falls back to encrypted DB value)
-    // wrangler secret put REUTERS_CLIENT_ID            (only when REUTERS_PROVIDER=real)
-    // wrangler secret put REUTERS_CLIENT_SECRET        (only when REUTERS_PROVIDER=real)
-    // wrangler secret put REUTERS_REFRESH_TOKEN        (only when REUTERS_PROVIDER=real)
     //
     // Data: Cloudflare D1 (binding DB) + R2 (binding MEDIA_BUCKET) — see blocks below.
     // Migrated off Supabase 2026-06-04; no SUPABASE_* / NEXT_PUBLIC_SUPABASE_* needed.
     //
     // Per-environment dashboard env vars (NOT secrets, but per-env config):
-    //   Set in Cloudflare dashboard > Workers & Pages > roxom-playout-manager > Settings > Variables
-    //   NEXT_PUBLIC_APP_BASE_URL      (e.g. https://roxomtv.com) — build-time inlined
+    //   Set in Cloudflare dashboard > Workers & Pages > dig-sign > Settings > Variables
+    //   NEXT_PUBLIC_APP_BASE_URL      (e.g. https://digsign.diegodella.ar) — build-time inlined
     // ────────────────────────────────────────────────────────────────────────────
-    "name": "roxom-playout-manager",
+    "name": "dig-sign",
     "main": ".open-next/worker.js",
     "compatibility_date": "2026-04-15",
     "compatibility_flags": ["nodejs_compat"],
@@ -40,32 +37,32 @@
             "preview_id": "1592b3ff06a44ae9b3aee486420382eb",
         },
     ],
-    // ─── D1 database (Phase D1 migration) ───────────────────────────────────────
-    // Run `wrangler d1 create rtv-tl-manager-db` to provision and replace the
+    // ─── D1 database ─────────────────────────────────────────────────────────────
+    // Run `wrangler d1 create dig-sign-db` to provision and replace the
     // PLACEHOLDER below with the real database_id printed by that command.
     "d1_databases": [
         {
             "binding": "DB",
-            "database_name": "rtv-tl-manager-db",
-            "database_id": "f698737f-1c28-434d-8218-9304b9461423",
+            "database_name": "dig-sign-db",
+            "database_id": "PLACEHOLDER_PROD_D1_ID",
             "migrations_dir": "./drizzle",
         },
     ],
-    // ─── R2 media storage (Phase R2 migration) ───────────────────────────────────
-    // Run `wrangler r2 bucket create rtv-tl-manager-media` to provision.
+    // ─── R2 media storage ────────────────────────────────────────────────────────
+    // Run `wrangler r2 bucket create dig-sign-media` to provision.
     "r2_buckets": [
         {
             "binding": "MEDIA_BUCKET",
-            "bucket_name": "rtv-tl-manager-media",
+            "bucket_name": "dig-sign-media",
         },
     ],
     // ─── Named env: dev ──────────────────────────────────────────────────────────
     // Used by: npm run deploy:dev  →  wrangler deploy --keep-vars --env dev
-    // Run `wrangler d1 create rtv-tl-manager-db-dev` and replace PLACEHOLDER_DEV_D1_ID.
-    // Run `wrangler r2 bucket create rtv-tl-manager-media-dev` for the dev R2 bucket.
+    // Run `wrangler d1 create dig-sign-db-dev` and replace PLACEHOLDER_DEV_D1_ID.
+    // Run `wrangler r2 bucket create dig-sign-media-dev` for the dev R2 bucket.
     "env": {
         "dev": {
-            "name": "roxom-playout-manager-dev",
+            "name": "dig-sign-dev",
             "keep_vars": true,
             "assets": {
                 "directory": ".open-next/assets",
@@ -81,24 +78,24 @@
             "d1_databases": [
                 {
                     "binding": "DB",
-                    "database_name": "rtv-tl-manager-db-dev",
-                    "database_id": "2e6532c4-e8a9-49d5-99c6-76c70a71fca1",
+                    "database_name": "dig-sign-db-dev",
+                    "database_id": "PLACEHOLDER_DEV_D1_ID",
                     "migrations_dir": "./drizzle",
                 },
             ],
             "r2_buckets": [
                 {
                     "binding": "MEDIA_BUCKET",
-                    "bucket_name": "rtv-tl-manager-media-dev",
+                    "bucket_name": "dig-sign-media-dev",
                 },
             ],
         },
         // ─── Named env: prod ─────────────────────────────────────────────────────
         // Used by: npm run deploy:prod  →  wrangler deploy --keep-vars --env prod
         // Shares the same D1 + R2 ids as the top-level (production) bindings.
-        // Replace PLACEHOLDER_PROD_D1_ID once `wrangler d1 create rtv-tl-manager-db` runs.
+        // Replace PLACEHOLDER_PROD_D1_ID once `wrangler d1 create dig-sign-db` runs.
         "prod": {
-            "name": "roxom-playout-manager",
+            "name": "dig-sign",
             "keep_vars": true,
             "assets": {
                 "directory": ".open-next/assets",
@@ -114,15 +111,15 @@
             "d1_databases": [
                 {
                     "binding": "DB",
-                    "database_name": "rtv-tl-manager-db",
-                    "database_id": "f698737f-1c28-434d-8218-9304b9461423",
+                    "database_name": "dig-sign-db",
+                    "database_id": "PLACEHOLDER_PROD_D1_ID",
                     "migrations_dir": "./drizzle",
                 },
             ],
             "r2_buckets": [
                 {
                     "binding": "MEDIA_BUCKET",
-                    "bucket_name": "rtv-tl-manager-media",
+                    "bucket_name": "dig-sign-media",
                 },
             ],
         },

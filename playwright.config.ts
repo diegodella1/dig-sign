@@ -3,9 +3,13 @@ import { loadEnvConfig } from '@next/env';
 
 loadEnvConfig(process.cwd());
 
-const e2ePort = process.env.RTV_E2E_PORT ?? '3451';
-const e2eBaseURL = process.env.RTV_BASE_URL ?? `http://127.0.0.1:${e2ePort}`;
-const webServer = process.env.RTV_BASE_URL
+function smokeEnv(primary: string, legacy: string) {
+    return process.env[primary] ?? process.env[legacy];
+}
+
+const e2ePort = smokeEnv('DIGSIGN_E2E_PORT', 'RTV_E2E_PORT') ?? '3451';
+const e2eBaseURL = smokeEnv('DIGSIGN_BASE_URL', 'RTV_BASE_URL') ?? `http://127.0.0.1:${e2ePort}`;
+const webServer = smokeEnv('DIGSIGN_BASE_URL', 'RTV_BASE_URL')
     ? {}
     : {
           webServer: {

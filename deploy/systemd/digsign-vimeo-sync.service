@@ -1,0 +1,11 @@
+[Unit]
+Description=Dig-Sign Vimeo catalog sync
+After=network-online.target digsign.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=diego
+WorkingDirectory=/home/diego/Documents/dig-sign
+EnvironmentFile=/home/diego/Documents/dig-sign/.env
+ExecStart=/home/diego/Documents/dig-sign/scripts/sync_vimeo.sh

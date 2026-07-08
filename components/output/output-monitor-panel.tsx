@@ -1,22 +1,24 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useOutputMonitor } from '@/hooks/use-output-monitor';
 
 import { formatTimecode } from '@/lib/helpers/time';
 
-import type { OutputMonitorPayload } from '@/components/broadcast/types';
+import type { SignageMonitorPayload } from '@/components/broadcast/types';
 
-export function OutputMonitorPanel({ initial }: { initial: OutputMonitorPayload }) {
+export function OutputMonitorPanel({ initial }: { initial: SignageMonitorPayload }) {
     const { payload, clientSeconds, error } = useOutputMonitor(initial);
-    const drift = Math.abs(clientSeconds - payload.serverSeconds);
+    const referenceSeconds = payload.screens[0]?.serverSeconds ?? clientSeconds;
+    const drift = Math.abs(clientSeconds - referenceSeconds);
 
     return (
         <section className="grid gap-4">
             <div>
-                <p className="eyebrow">Browser output</p>
+                <p className="eyebrow">Screen output</p>
                 <p className="mt-1 text-sm text-muted">
-                    Open `/output/live`, click Start Output once, and capture the browser in
-                    OBS/vMix.
+                    Open <code>/output/live/[screen]</code> on each player device. Polls every 2s.
                 </p>
             </div>
 
@@ -28,39 +30,38 @@ export function OutputMonitorPanel({ initial }: { initial: OutputMonitorPayload 
 
             <dl className="grid gap-2 sm:grid-cols-2">
                 <MonitorRow label="Generated" value={new Date(payload.generatedAt).toLocaleString()} />
-                <MonitorRow label="Timezone" value={payload.timezone} />
-                <MonitorRow label="Server clock" value={formatTimecode(payload.serverSeconds)} />
-                <MonitorRow label="Client clock" value={formatTimecode(clientSeconds)} />
                 <MonitorRow label="Drift" value={`${drift}s`} tone={drift >= 3 ? 'warn' : 'ok'} />
-                <MonitorRow
-                    label="Day"
-                    value={
-                        payload.day
-                            ? `${payload.day.airDate} (${payload.day.status})`
-                            : 'None'
-                    }
-                />
-                <MonitorRow
-                    label="Block"
-                    value={
-                        payload.block
-                            ? `${payload.block.title} · ${formatTimecode(payload.block.elapsedInBlock)} / ${formatTimecode(payload.block.durationSeconds)}`
-                            : 'None'
-                    }
-                />
-                <MonitorRow
-                    label="Asset"
-                    value={payload.asset ? `${payload.asset.title} (${payload.asset.sourceType})` : 'None'}
-                />
-                <MonitorRow
-                    label="Fallback"
-                    value={payload.fallback?.title ?? payload.fallbackReason ?? 'None'}
-                />
-                <MonitorRow
-                    label="Override"
-                    value={payload.override?.label ?? payload.override?.sourceType ?? 'None'}
-                />
             </dl>
+
+            <ul className="divide-y divide-line rounded-md border border-line">
+                {payload.screens.map((screen) => (
+                    <li key={screen.slug} className="grid gap-2 px-4 py-3 text-sm sm:grid-cols-2">
+                        <div>
+                            <p className="font-semibold">{screen.name}</p>
+                            <p className="text-xs text-muted">
+                                /output/live/{screen.slug} · {screen.timezone}
+                            </p>
+                        </div>
+                        <div className="text-muted">
+                            <p>
+                                {screen.playlistName ?? 'No playlist'} · {screen.outputKind}
+                            </p>
+                            <p className="truncate">{screen.title}</p>
+                            {screen.durationSeconds ? (
+                                <p>
+                                    {formatTimecode(screen.elapsedSeconds ?? 0)} /{' '}
+                                    {formatTimecode(screen.durationSeconds)}
+                                </p>
+                            ) : null}
+                        </div>
+                        <div className="sm:col-span-2">
+                            <Link href={`/admin/screens/${screen.slug}`} className="text-xs underline">
+                                Manage screen
+                            </Link>
+                        </div>
+                    </li>
+                ))}
+            </ul>
         </section>
     );
 }
@@ -79,8 +80,8 @@ function MonitorRow({
 
     return (
         <div className="rounded-md border border-line bg-panel-soft px-3 py-2">
-            <dt className="text-[10px] font-bold uppercase text-muted">{label}</dt>
-            <dd className={`mt-1 font-semibold ${toneClass}`}>{value}</dd>
+            <dt className="text-xs font-semibold uppercase text-muted">{label}</dt>
+            <dd className={`mt-1 text-sm font-medium ${toneClass}`}>{value}</dd>
         </div>
     );
 }

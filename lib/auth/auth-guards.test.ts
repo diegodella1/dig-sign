@@ -7,8 +7,6 @@ import { shouldFailClosedForMissingOutputToken } from './output-auth';
 
 const serviceRoleApiRoutes = [
     'app/api/assets/upload/route.ts',
-    'app/api/assets/upload-schedule/route.ts',
-    'app/api/guests/upload/route.ts',
     'app/api/settings/route.ts',
     'app/api/vimeo/import/route.ts',
     'app/api/vimeo/sync/route.ts',
@@ -36,13 +34,11 @@ describe('admin page shell guard', () => {
 
 describe('admin return_to safety', () => {
     it('accepts only local admin/live destinations outside the login page', () => {
-        expect(safeAdminReturnTo('/admin/output?debug=1')).toBe('/admin/output?debug=1');
-        expect(safeAdminReturnTo('/live')).toBe('/live');
-        expect(safeAdminReturnTo('/live?mode=now')).toBe('/live?mode=now');
-        expect(safeAdminReturnTo('/admin/login?return_to=/admin/output')).toBe('/admin/calendar');
-        expect(safeAdminReturnTo('/manual')).toBe('/admin/calendar');
-        expect(safeAdminReturnTo('https://evil.example/admin')).toBe('/admin/calendar');
-        expect(safeAdminReturnTo('//evil.example/admin')).toBe('/admin/calendar');
+        expect(safeAdminReturnTo('/admin/operate?debug=1')).toBe('/admin/operate?debug=1');
+        expect(safeAdminReturnTo('/admin/login?return_to=/admin/operate')).toBe('/admin/screens');
+        expect(safeAdminReturnTo('/manual')).toBe('/admin/screens');
+        expect(safeAdminReturnTo('https://evil.example/admin')).toBe('/admin/screens');
+        expect(safeAdminReturnTo('//evil.example/admin')).toBe('/admin/screens');
     });
 });
 

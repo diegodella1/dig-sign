@@ -1,44 +1,36 @@
 import Link from 'next/link';
-import { RadioTower, CalendarDays, PackageOpen } from 'lucide-react';
+import { MonitorPlay, PackageOpen, RadioTower } from 'lucide-react';
 
 import { AdminShell } from '@/components/admin/admin-shell';
 import { ButtonLink, Notice } from '@/components/ui';
-import { getAssetSummaries, getLiveSchedule } from '@/lib/data';
+import { getAssetSummaries } from '@/lib/data';
 import { collectOperatorHealth } from '@/lib/health/health-checks';
-import { analyzeSchedule } from '@/lib/scheduling/schedule-health';
-import { findActiveSchedule } from '@/lib/scheduling/scheduler';
-import {
-    isoDateInTimezone,
-    PLAYOUT_TIMEZONE,
-    secondsSinceMidnightInTimezone,
-} from '@/lib/helpers/time';
+import { listContentPlaylists } from '@/lib/content-playlists';
+import { buildSignageMonitorPayload } from '@/lib/output/screen-monitor';
+import { listScreens } from '@/lib/screens';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
-    const today = isoDateInTimezone(new Date(), PLAYOUT_TIMEZONE);
-    const [schedule, assets, healthReport] = await Promise.all([
-        getLiveSchedule(),
+    const [assets, healthReport, screens, playlists, monitor] = await Promise.all([
         getAssetSummaries(),
         collectOperatorHealth(),
+        listScreens(),
+        listContentPlaylists(),
+        buildSignageMonitorPayload(),
     ]);
-    const timezone = schedule.day?.timezone ?? PLAYOUT_TIMEZONE;
-    const nowSeconds = secondsSinceMidnightInTimezone(new Date(), timezone);
-    const active = findActiveSchedule(schedule, nowSeconds);
-    const health = analyzeSchedule(schedule, schedule.blocks);
     const readyAssets = assets.filter((asset) => asset.status === 'ready').length;
     const needsFix = assets.length - readyAssets;
-    const isLive = schedule.day?.status === 'active';
+    const readyPlaylists = playlists.filter((playlist) => playlist.status === 'ready').length;
+    const issueScreens = monitor.screens.filter(
+        (screen) => !screen.playlistId || screen.outputKind === 'fallback',
+    ).length;
 
     return (
         <AdminShell
             title="Dashboard"
-            description="Day-start overview. Use Operate during broadcast."
-            actions={
-                <ButtonLink href={isLive || active.block ? '/admin/operate' : '/admin/program'}>
-                    {isLive || active.block ? 'Open Operate' : 'Open Program'}
-                </ButtonLink>
-            }
+            description="Signage overview. Use Operate to monitor players."
+            actions={<ButtonLink href="/admin/operate">Open Operate</ButtonLink>}
         >
             {healthReport.status !== 'ok' ? (
                 <Notice tone={healthReport.status === 'fail' ? 'danger' : 'warn'} title="System health">
@@ -54,24 +46,14 @@ export default async function AdminDashboardPage() {
                     href="/admin/operate"
                     icon={RadioTower}
                     title="Operate"
-                    detail={
-                        active.block
-                            ? `On air: ${active.block.title}`
-                            : isLive
-                              ? 'Day active — open control room'
-                              : 'Live control room'
-                    }
+                    detail={`${screens.length} screen${screens.length === 1 ? '' : 's'} · ${issueScreens ? `${issueScreens} need attention` : 'all clear'}`}
                     tone="operate"
                 />
                 <ModeCard
-                    href="/admin/program"
-                    icon={CalendarDays}
-                    title="Program"
-                    detail={
-                        health.criticalCount
-                            ? `${health.criticalCount} critical schedule issues`
-                            : `${schedule.blocks.length} blocks today`
-                    }
+                    href="/admin/screens"
+                    icon={MonitorPlay}
+                    title="Signage"
+                    detail={`${readyPlaylists} ready playlist${readyPlaylists === 1 ? '' : 's'}`}
                     tone="program"
                 />
                 <ModeCard
@@ -81,15 +63,6 @@ export default async function AdminDashboardPage() {
                     detail={`${readyAssets} ready · ${needsFix} need fix`}
                     tone="prepare"
                 />
-            </section>
-
-            <section className="mt-5 rounded-md border border-line bg-surface-elevated-2 p-4 text-sm">
-                <p className="text-xs font-bold uppercase tracking-wide text-muted">Today</p>
-                <p className="mt-2 font-semibold">{schedule.day?.title ?? `Programming ${today}`}</p>
-                <p className="mt-1 text-muted">
-                    {today} · Day {schedule.day?.status ?? 'missing'} · Health{' '}
-                    {health.criticalCount ? `${health.criticalCount} critical` : 'clear'}
-                </p>
             </section>
         </AdminShell>
     );

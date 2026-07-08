@@ -2,8 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { getDurationDisplay } from './duration-display';
 
 describe('getDurationDisplay', () => {
-    it('returns kind=live when reuters source has no duration', () => {
-        expect(getDurationDisplay({ durationSeconds: null, sourceType: 'reuters' })).toEqual({
+    it('returns kind=live when an hls source has no duration', () => {
+        expect(getDurationDisplay({ durationSeconds: null, sourceType: 'hls' })).toEqual({
+            kind: 'live',
+        });
+    });
+
+    it('returns kind=live when an rtmp source has no duration', () => {
+        expect(getDurationDisplay({ durationSeconds: null, sourceType: 'rtmp' })).toEqual({
             kind: 'live',
         });
     });
@@ -22,15 +28,8 @@ describe('getDurationDisplay', () => {
         });
     });
 
-    it('treats reuters with explicit 0 duration as numeric, not live', () => {
-        expect(getDurationDisplay({ durationSeconds: 0, sourceType: 'reuters' })).toEqual({
-            kind: 'duration',
-            seconds: 0,
-        });
-    });
-
-    it('does not trigger live for hls with null duration', () => {
-        expect(getDurationDisplay({ durationSeconds: null, sourceType: 'hls' })).toEqual({
+    it('treats an hls source with explicit 0 duration as numeric, not live', () => {
+        expect(getDurationDisplay({ durationSeconds: 0, sourceType: 'hls' })).toEqual({
             kind: 'duration',
             seconds: 0,
         });

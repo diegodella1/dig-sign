@@ -1,8 +1,8 @@
 {
   "home": {
-    "eyebrow": "Roxom TV",
-    "title": "Playout Manager",
-    "subtitle": "Consola interna para programar el dia, verificar la senal y mantener la salida al aire.",
+    "eyebrow": "Dig-Sign",
+    "title": "Gestor de Cartelería Digital",
+    "subtitle": "Consola interna para programar el dia, verificar la senal y mantener las pantallas reproduciendo.",
     "links": {
       "calendar": {
         "label": "Calendario",
@@ -27,8 +27,8 @@
     "schedule": "Agenda"
   },
   "chrome": {
-    "brand": "Roxom TV",
-    "tagline": "Playout manager",
+    "brand": "Dig-Sign",
+    "tagline": "Gestor de cartelería digital",
     "broadcastOutput": "Salida broadcast",
     "openDebug": "Abrir debug",
     "onAir": "AL AIRE",
@@ -56,14 +56,11 @@
       "fallback": "Fallback"
     },
     "category": {
-      "mercados": "Mercados",
-      "earthcam": "Earthcam",
-      "clima": "Clima",
-      "calendario": "Calendario",
-      "trending": "Trending",
-      "deuda": "Deuda",
-      "reuters": "Reuters",
-      "broadcast": "Broadcast"
+      "media": "Media",
+      "slide": "Placa",
+      "announcement": "Anuncio",
+      "ad": "Publicidad",
+      "generic": "Genérico"
     },
     "live": "EN VIVO",
     "noAsset": "Sin asset"
@@ -352,13 +349,7 @@
       "schedule": "Programar",
       "sourceLabel": "Fuente",
       "sourceVimeo": "Vimeo",
-      "sourceReuters": "Reuters Live",
-      "reutersChannels": "Canales Reuters",
-      "syncChannels": "Refrescar canales",
-      "noReutersConfigured": "Configurá las credenciales Reuters en settings."
-    },
-    "reuters": {
-      "empty": "No hay canales Reuters disponibles."
+      "syncChannels": "Refrescar canales"
     },
     "health": {
       "title": "Health del schedule",
@@ -524,35 +515,18 @@
       "noEpisodes": "Ese show no tiene episodios visibles para este token.",
       "episodeLabel": "Episodio",
       "importEpisode": "Importar episodio como asset"
-    },
-    "reuters": {
-      "title": "Reuters",
-      "detail": "Credenciales OAuth2 para Reuters Connect. Los secretos se guardan cifrados server-side.",
-      "fixturesNotice": "Corriendo con fixtures. Configurá credenciales y poné REUTERS_PROVIDER=real para habilitar el feed real.",
-      "statusSaved": "Reuters: credenciales guardadas ({status})",
-      "statusMissing": "Reuters: sin credenciales guardadas",
-      "lastError": "Ultimo error: {error}",
-      "clientId": "Client ID",
-      "clientIdPlaceholder": "OAuth2 client_id",
-      "clientSecret": "Client secret",
-      "clientSecretPlaceholder": "OAuth2 client_secret",
-      "refreshToken": "Refresh token",
-      "refreshTokenPlaceholder": "OAuth2 refresh_token",
-      "save": "Guardar Reuters",
-      "refreshChannels": "Refrescar canales",
-      "status": "Estado"
     }
   },
   "login": {
-    "eyebrow": "Roxom TV",
+    "eyebrow": "Dig-Sign",
     "title": "Acceso admin",
-    "body": "Ingresá el token operativo configurado para administrar RTVTime.",
+    "body": "Ingresá el token operativo configurado para administrar Dig-Sign.",
     "tokenLabel": "Token",
     "submit": "Entrar",
     "errorInvalid": "Token invalido."
   },
   "output": {
-    "brand": "ROXOM TV",
+    "brand": "DIG-SIGN",
     "fallback": {
       "noActiveBlock": "No active block",
       "missingAsset": "Missing asset",
@@ -585,10 +559,6 @@
   "errors": {
     "required": "Este campo es obligatorio.",
     "invalid": "Valor invalido.",
-    "networkFailed": "La solicitud de red fallo.",
-    "reuters": {
-      "noClient": "El cliente de Reuters no esta configurado.",
-      "notImplemented": "El proveedor real de Reuters no esta implementado. Ver lib/reuters-real.ts."
-    }
+    "networkFailed": "La solicitud de red fallo."
   }
 }

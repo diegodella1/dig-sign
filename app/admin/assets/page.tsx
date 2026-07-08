@@ -17,7 +17,6 @@ import {
 } from '@/components/ui';
 import { getAssets } from '@/lib/data';
 import { createMediaAsset, deleteMediaAsset, updateMediaAsset } from '@/lib/mutations';
-import { isoDateInTimezone, PLAYOUT_TIMEZONE } from '@/lib/helpers/time';
 
 import type { MediaAsset } from '@/lib/types';
 import type { ReactNode } from 'react';
@@ -53,7 +52,6 @@ export default async function AssetsPage({
         title: asset.title,
         asset,
     }));
-    const today = isoDateInTimezone(new Date(), PLAYOUT_TIMEZONE);
     const query = (params.q ?? '').trim().toLowerCase();
     const filteredItems = libraryItems
         .filter((item) => {
@@ -229,7 +227,7 @@ export default async function AssetsPage({
             subNav={prepareSubNav}
             actions={
                 <>
-                    <ButtonLink href="/admin/program/fallback" variant="secondary">
+                    <ButtonLink href="/admin/playlists" variant="secondary">
                         Fallback policy
                     </ButtonLink>
                     <a className="btn-primary" href="/admin/vimeo">
@@ -255,7 +253,6 @@ export default async function AssetsPage({
                 total={libraryItems.length}
                 ready={readyCount}
                 attention={attentionCount}
-                today={today}
             />
 
             <details className="surface-panel mb-4 overflow-hidden">
@@ -516,8 +513,6 @@ export default async function AssetsPage({
                     <LibraryItemRow
                         key={item.id}
                         item={item}
-                        today={today}
-                        params={params}
                         editAsset={editAsset}
                         deleteAsset={deleteAsset}
                     />
@@ -533,7 +528,7 @@ export default async function AssetsPage({
                                     </Link>{' '}
                                     and configure{' '}
                                     <Link
-                                        href="/admin/program/fallback"
+                                        href="/admin/playlists"
                                         className="font-semibold underline"
                                     >
                                         fallback policy
@@ -608,12 +603,10 @@ function LibraryConsoleBar({
     total,
     ready,
     attention,
-    today,
 }: {
     total: number;
     ready: number;
     attention: number;
-    today: string;
 }) {
     return (
         <section className="surface-panel mb-4 px-3 py-2">
@@ -627,14 +620,14 @@ function LibraryConsoleBar({
                 />
                 <div className="min-w-0 flex-1 rounded-md border border-line bg-panel-soft px-3 py-2 text-sm">
                     <p className="text-[10px] font-bold uppercase text-muted">Fallback</p>
-                    <p className="truncate font-semibold text-ink">Configure in Program</p>
+                    <p className="truncate font-semibold text-ink">Configure in Playlists</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <ButtonLink href="/admin/program/fallback" variant="secondary">
-                        Fallback policy
+                    <ButtonLink href="/admin/playlists" variant="secondary">
+                        Manage playlists
                     </ButtonLink>
-                    <ButtonLink href={`/admin/schedule/${today}`} variant="secondary">
-                        Schedule
+                    <ButtonLink href="/admin/screens" variant="secondary">
+                        Screens
                     </ButtonLink>
                 </div>
             </div>
@@ -711,74 +704,16 @@ function assetPageHref(params: Record<string, string | undefined>, page: number)
     return `/admin/assets${text ? `?${text}` : ''}`;
 }
 
-function scheduleLibraryItemHref(
-    date: string,
-    item: LibraryItem,
-    params: Record<string, string | undefined>,
-) {
-    return scheduleAssetHref(date, item.asset, params);
-}
-
-function scheduleAssetHref(
-    date: string,
-    asset: MediaAsset,
-    params: Record<string, string | undefined>,
-) {
-    const query = new URLSearchParams({ asset: asset.id });
-    const source = params.kind === 'vimeo' ? 'vimeo' : undefined;
-    const kind = scheduleKind(params.kind);
-    const showName = params.show_name || getMetadataText(asset, 'vimeo_show_name');
-
-    for (const [key, value] of Object.entries({
-        q: params.q,
-        kind,
-        source,
-        show_name: showName,
-        month: params.month,
-        year: params.year,
-    })) {
-        if (value) {
-            query.set(key, value);
-        }
-    }
-
-    return `/admin/schedule/${date}?${query.toString()}`;
-}
-
-function scheduleKind(kind?: string) {
-    if (!kind || kind === 'all' || kind === 'vimeo') {
-        return undefined;
-    }
-
-    if (kind === 'videos') {
-        return 'video';
-    }
-
-    if (kind === 'images') {
-        return 'image';
-    }
-
-    if (kind === 'slides') {
-        return 'slide';
-    }
-
-    if (kind === 'audio') {
-        return undefined;
-    }
-
-    return kind;
+function scheduleLibraryItemHref() {
+    return '/admin/playlists';
 }
 
 function LibraryItemRow({
     item,
-    today,
-    params,
     editAsset,
     deleteAsset,
 }: {
     item: LibraryItem;
-    today: string;
-    params: Record<string, string | undefined>;
     editAsset: (formData: FormData) => Promise<void>;
     deleteAsset: (formData: FormData) => Promise<void>;
 }) {
@@ -797,9 +732,7 @@ function LibraryItemRow({
                             {assetTypeLabel(item.asset.assetType)}
                         </ClearStateBadge>
                         <ClearStateBadge tone={item.asset.status === 'ready' ? 'ok' : 'warn'}>
-                            {item.asset.status === 'ready'
-                                ? 'Can schedule'
-                                : `Status ${item.asset.status}`}
+                            {item.asset.status === 'ready' ? 'Playlist ready' : `Status ${item.asset.status}`}
                         </ClearStateBadge>
                         {isFallbackLoop ? (
                             <ClearStateBadge tone="ok">Silent gap fill</ClearStateBadge>
@@ -826,8 +759,8 @@ function LibraryItemRow({
             </summary>
             <div className="mt-4 flex flex-wrap gap-2">
                 {!libraryItemNeedsAttention(item) && libraryItemCanSchedule(item) ? (
-                    <a className="btn-primary" href={scheduleLibraryItemHref(today, item, params)}>
-                        Schedule this
+                    <a className="btn-primary" href={scheduleLibraryItemHref()}>
+                        Add to playlist
                     </a>
                 ) : libraryItemCanSchedule(item) ? (
                     <span className="rounded-md border border-warn-line bg-warn-soft px-3 py-2 text-sm font-semibold text-warn-strong">
@@ -848,11 +781,11 @@ function LibraryItemRow({
                         No preview
                     </span>
                 )}
-                <a className="btn-secondary" href="/admin/calendar">
-                    Choose Day
-                </a>
+                <ButtonLink href="/admin/screens" variant="secondary">
+                    Manage screens
+                </ButtonLink>
                 {isFallbackLoop ? (
-                    <ButtonLink href="/admin/program/fallback" variant="secondary">
+                    <ButtonLink href="/admin/playlists" variant="secondary">
                         Fallback policy
                     </ButtonLink>
                 ) : null}
@@ -868,7 +801,7 @@ function LibraryItemRow({
                         Delete this asset from the library
                     </p>
                     <ConfirmSubmitButton
-                        message={`Delete "${item.asset.title}" from the library? Scheduled blocks using it will show missing asset warnings.`}
+                        message={`Delete "${item.asset.title}" from the library? Playlists using it may show missing asset warnings.`}
                         className="rounded-md border border-danger-line bg-surface px-4 py-2 text-sm font-semibold text-danger-strong hover:bg-danger-soft"
                     >
                         Delete asset
@@ -928,7 +861,6 @@ function AssetEditForm({
                 <option value="vimeo">Vimeo</option>
                 <option value="supabase_image">Supabase image</option>
                 <option value="supabase_audio">Supabase audio</option>
-                <option value="reuters">Reuters</option>
             </select>
             <select
                 name="media_kind"

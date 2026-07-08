@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-base_url="${RTV_BASE_URL:-http://127.0.0.1:3450}"
+base_url="${DIGSIGN_BASE_URL:-http://127.0.0.1:3450}"
 cookie_jar="$(mktemp)"
 trap 'rm -f "$cookie_jar"' EXIT
 

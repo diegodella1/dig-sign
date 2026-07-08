@@ -1,6 +1,4 @@
-import { getLiveSchedule } from '../data';
-import { getActiveOutputOverride } from '../output-overrides';
-import { getReutersSettings } from '../services/reuters-credentials';
+import { listScreens } from '../screens';
 import { getVimeoSettings, getVimeoToken } from '../settings';
 import {
     isSmokeStatusOk,
@@ -12,23 +10,19 @@ import { getDb } from '../db/client';
 import { getMediaBucket } from '../storage/r2';
 import {
     adminOperators,
-    guests,
     mediaAssets,
     operatorPreferences,
-    outputOverrides,
-    programDays,
+    screens,
     slideAssets,
 } from '../db/schema';
 
 type VimeoSettings = Awaited<ReturnType<typeof getVimeoSettings>>;
 type VimeoToken = Awaited<ReturnType<typeof getVimeoToken>>;
-type ReutersSettings = Awaited<ReturnType<typeof getReutersSettings>>;
-type LiveSchedule = Awaited<ReturnType<typeof getLiveSchedule>>;
-
 type SettingsResult<T> = { ok: true; value: T } | { ok: false; error: unknown };
 
 export type CollectOperatorHealthOptions = {
-    preloadedLiveSchedule?: LiveSchedule;
+    /** @deprecated Schedule-era preload. Ignored. */
+    preloadedLiveSchedule?: unknown;
 };
 
 async function safeSettings<T>(loader: () => Promise<T>): Promise<SettingsResult<T>> {
@@ -48,7 +42,6 @@ export type OperatorHealthCheck = {
         | 'schema'
         | 'storage'
         | 'vimeo'
-        | 'reuters'
         | 'output'
         | 'migrations'
         | 'smoke';
@@ -62,7 +55,7 @@ export type OperatorHealthCheck = {
 export type OperatorHealthReport = {
     ok: boolean;
     status: OperatorHealthStatus;
-    service: 'roxom-playout-manager';
+    service: 'dig-sign';
     generatedAt: string;
     uptime: number;
     checks: Record<OperatorHealthCheck['id'], OperatorHealthCheck>;
@@ -85,32 +78,26 @@ export function sanitizeOperatorHealthReport(report: OperatorHealthReport): Oper
     return { ...report, checks };
 }
 
-export async function collectOperatorHealth(
-    options: CollectOperatorHealthOptions = {},
-): Promise<OperatorHealthReport> {
-    const [vimeoSettings, vimeoToken, reutersSettings] = await Promise.all([
+export async function collectOperatorHealth(): Promise<OperatorHealthReport> {
+    const [vimeoSettings, vimeoToken] = await Promise.all([
         safeSettings(getVimeoSettings),
         safeSettings(getVimeoToken),
-        safeSettings(getReutersSettings),
     ]);
-    const [supabase, schema, storage, vimeo, reuters, output, migrations, smoke] =
-        await Promise.all([
-            checkSupabase(),
-            checkSchema(),
-            checkStorage(),
-            checkVimeo(vimeoSettings, vimeoToken),
-            checkReuters(reutersSettings),
-            checkOutput(options.preloadedLiveSchedule),
-            checkMigrations(),
-            checkSmoke(),
-        ]);
+    const [supabase, schema, storage, vimeo, output, migrations, smoke] = await Promise.all([
+        checkSupabase(),
+        checkSchema(),
+        checkStorage(),
+        checkVimeo(vimeoSettings, vimeoToken),
+        checkOutput(),
+        checkMigrations(),
+        checkSmoke(),
+    ]);
     const checks = {
         env: checkEnv(),
         supabase,
         schema,
         storage,
         vimeo,
-        reuters,
         output,
         migrations,
         smoke,
@@ -121,7 +108,7 @@ export async function collectOperatorHealth(
     return {
         ok,
         status: ok ? (degraded ? 'degraded' : 'ok') : 'fail',
-        service: 'roxom-playout-manager',
+        service: 'dig-sign',
         generatedAt: new Date().toISOString(),
         uptime: Math.round(process.uptime()),
         checks,
@@ -153,7 +140,7 @@ async function checkSupabase(): Promise<OperatorHealthCheck> {
     try {
         const db = await getDb();
 
-        await db.select({ id: programDays.id }).from(programDays).limit(1);
+        await db.select({ id: mediaAssets.id }).from(mediaAssets).limit(1);
 
         return pass('supabase', 'Database', 'D1 database query succeeded');
     } catch (error) {
@@ -182,15 +169,6 @@ async function checkSchema(): Promise<OperatorHealthCheck> {
                     metadata: slideAssets.metadata,
                 })
                 .from(slideAssets)
-                .limit(1),
-            db
-                .select({
-                    id: guests.id,
-                    photoAssetId: guests.photoAssetId,
-                    videoAssetId: guests.videoAssetId,
-                    updatedAt: guests.updatedAt,
-                })
-                .from(guests)
                 .limit(1),
         ]);
 
@@ -240,64 +218,23 @@ async function checkVimeo(
     return pass('vimeo', 'Vimeo', settings?.lastError ?? 'Vimeo token configured');
 }
 
-async function checkReuters(
-    settingsResult: SettingsResult<ReutersSettings>,
-): Promise<OperatorHealthCheck> {
-    if (!settingsResult.ok) {
-        return degraded(
-            'reuters',
-            'Reuters',
-            `Reuters check failed: ${errorMessage(settingsResult.error)}`,
-        );
-    }
-    const settings = settingsResult.value;
-
-    if (settings?.lastError) {
-        return degraded('reuters', 'Reuters', settings.lastError);
-    }
-
-    return pass(
-        'reuters',
-        'Reuters',
-        settings?.hasSecret
-            ? 'Reuters credentials configured; dynamic stream URLs are per block or override'
-            : 'Manual Reuters HLS/RTMP endpoint entry is available',
-    );
-}
-
-async function checkOutput(preloadedLiveSchedule?: LiveSchedule): Promise<OperatorHealthCheck> {
+async function checkOutput(): Promise<OperatorHealthCheck> {
     if (!process.env.OUTPUT_CAPTURE_TOKEN) {
-        return fail('output', 'Output', 'OUTPUT_CAPTURE_TOKEN missing', '/admin/output');
+        return fail('output', 'Output', 'OUTPUT_CAPTURE_TOKEN missing', '/admin/screens');
     }
 
     try {
-        const live = preloadedLiveSchedule ?? (await getLiveSchedule());
-        const override = await getActiveOutputOverride(live.day?.id);
+        const screens = await listScreens();
 
-        if (override?.sourceType === 'reuters') {
-            return override.streamUrl
-                ? pass(
-                      'output',
-                      'Output',
-                      `Reuters override active: ${override.streamProtocol ?? 'stream'}`,
-                  )
-                : degraded(
-                      'output',
-                      'Output',
-                      'Reuters override missing stream URL',
-                      '/admin/output',
-                  );
-        }
-
-        return live.day
-            ? pass('output', 'Output', `Live day ${live.day.airDate} loaded`, '/admin/output')
-            : degraded('output', 'Output', 'No live day loaded', '/admin/calendar');
+        return screens.length
+            ? pass('output', 'Output', `${screens.length} screen(s) configured`, '/admin/screens')
+            : degraded('output', 'Output', 'No screens configured', '/admin/screens');
     } catch (error) {
         return fail(
             'output',
             'Output',
             `Output check failed: ${errorMessage(error)}`,
-            '/admin/output',
+            '/admin/screens',
         );
     }
 }
@@ -316,22 +253,7 @@ async function checkMigrations(): Promise<OperatorHealthCheck> {
                 })
                 .from(operatorPreferences)
                 .limit(1),
-            db
-                .select({
-                    id: outputOverrides.id,
-                    programDayId: outputOverrides.programDayId,
-                    enabled: outputOverrides.enabled,
-                })
-                .from(outputOverrides)
-                .limit(1),
-            db
-                .select({
-                    id: guests.id,
-                    status: guests.status,
-                    sortOrder: guests.sortOrder,
-                })
-                .from(guests)
-                .limit(1),
+            db.select({ id: screens.id, slug: screens.slug }).from(screens).limit(1),
         ]);
 
         return pass('migrations', 'Migrations', 'D1 ops readiness tables are available');

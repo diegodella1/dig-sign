@@ -15,16 +15,6 @@ export function middleware(request: NextRequest) {
         return withCsrfCookie(request, withSecurityHeaders(csrfResponse));
     }
 
-    if (
-        request.nextUrl.pathname === '/rtvtime' ||
-        request.nextUrl.pathname.startsWith('/rtvtime/')
-    ) {
-        const url = request.nextUrl.clone();
-        url.pathname = request.nextUrl.pathname.replace(/^\/rtvtime/, '') || '/';
-
-        return withCsrfCookie(request, withSecurityHeaders(NextResponse.redirect(url, 308)));
-    }
-
     if (!isAdminProtectedPath(request.nextUrl.pathname)) {
         return withSecurityHeaders(nextWithCsrfHeader(request));
     }

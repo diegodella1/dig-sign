@@ -1,17 +1,12 @@
 import fs from 'node:fs';
 
 const required = [
-    { path: 'lib/mutations/blocks.ts', token: 'auditedMutation' },
     { path: 'lib/mutations/assets.ts', token: 'auditedMutation' },
-    { path: 'lib/mutations/guests.ts', token: 'auditedMutation' },
-    { path: 'lib/mutations/slides.ts', token: 'auditedMutation' },
-    { path: 'lib/mutations/output.ts', token: 'auditedMutation' },
-    { path: 'lib/mutations/output.ts', token: 'recordAuditEvent' },
+    { path: 'lib/mutations/plates.ts', token: 'auditedMutation' },
+    { path: 'lib/mutations/content-playlists.ts', token: 'auditedMutation' },
+    { path: 'lib/mutations/screens.ts', token: 'auditedMutation' },
     { path: 'lib/settings.ts', token: 'auditedMutation' },
-    { path: 'lib/services/reuters-credentials.ts', token: 'auditedMutation' },
-    { path: 'app/admin/output/page.tsx', token: 'recordAuditEvent' },
     { path: 'app/api/vimeo/sync/route.ts', token: 'recordAuditEvent' },
-    { path: 'app/api/reuters/sync/route.ts', token: 'recordAuditEvent' },
 ];
 
 const violations = [];

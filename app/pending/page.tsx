@@ -9,7 +9,7 @@ type Item = {
 
 const liveNow: Item[] = [
     {
-        title: 'Production playout path',
+        title: 'Production output path',
         detail: 'Browser output supports Vimeo, HLS, MP4, images, slides, audio-backed blocks, fallback, audio unlock and reload resume.',
         status: 'Done',
     },
@@ -20,7 +20,7 @@ const liveNow: Item[] = [
     },
     {
         title: 'Production guardrails',
-        detail: 'Admin Health, schedule health, output monitor, audit, CSRF, rate limiting, output token protection and Supabase readiness are in place.',
+        detail: 'Admin Health, schedule health, output monitor, audit, CSRF, rate limiting and output token protection are in place.',
         status: 'Done',
     },
     {
@@ -39,13 +39,8 @@ const liveNow: Item[] = [
         status: 'Done',
     },
     {
-        title: 'Migration kit',
-        detail: 'The downloadable production bundle includes environment values and a Supabase bootstrap SQL for a fresh backend.',
-        status: 'Done',
-    },
-    {
         title: 'Public upload playback',
-        detail: 'Uploaded ads/promos stored in local Supabase now play through the public app media proxy instead of 127.0.0.1 storage URLs.',
+        detail: 'Uploaded ads/promos play through the public app media proxy instead of raw storage URLs.',
         status: 'Done',
     },
     {
@@ -64,26 +59,21 @@ const liveNow: Item[] = [
         status: 'Done',
     },
     {
-        title: 'Guest lineup plates',
-        detail: 'Operators can create guests with URL or uploaded photo/video media, then build individualized Guest Lineup plates with selected guests.',
-        status: 'Done',
-    },
-    {
-        title: 'Real-data plate inputs',
-        detail: 'Metals use Roxom API data with fallback, weather uses Open-Meteo without a key, calendar/event plates use Supabase events, and debt no longer depends on a missing background.',
+        title: 'Weather plates',
+        detail: 'Weather plates can be created per city and use Open-Meteo without a key when OpenWeather is not configured.',
         status: 'Done',
     },
     {
         title: 'Previously Recorded bug',
-        detail: 'Normal video programs can show a four-corner PREVIOUSLY RECORDED bug; ads, promos, slides, images, fallback, Reuters and manual overrides stay clean.',
+        detail: 'Normal video blocks can show a four-corner PREVIOUSLY RECORDED bug; ads, promos, slides, images, fallback and manual overrides stay clean.',
         status: 'Done',
     },
 ];
 
 const nextWork: Item[] = [
     {
-        title: 'On-air plate redesign',
-        detail: 'Remodel the visual language of cards, plates and output surfaces so the channel feels broadcast-ready.',
+        title: 'Plate redesign',
+        detail: 'Remodel the visual language of cards, plates and output surfaces so the displays feel polished.',
         status: 'Next',
     },
     {
@@ -115,7 +105,7 @@ const later: Item[] = [
         status: 'Later',
     },
     {
-        title: 'Broadcast upgrades',
+        title: 'Output upgrades',
         detail: 'Captions, recording, failover, multiple bitrates and direct OBS/vMix automation.',
         status: 'Later',
     },
@@ -123,8 +113,7 @@ const later: Item[] = [
 
 const risks = [
     'Browser audio needs one operator click after load or reload.',
-    'Reuters URLs can expire and must be refreshed before or during air.',
-    'The current output is operational; final plate design still needs a broadcast-quality remodel.',
+    'The current output is operational; final plate design still needs a visual remodel.',
     'Cloudflare Workers/OpenNext should be smoke-tested before becoming the primary production path.',
     'Fallback assets must stay ready for unattended operation.',
 ];
@@ -145,9 +134,9 @@ export default function PendingPage() {
                         What Is Done, What Is Next
                     </h1>
                     <p className="mt-4 max-w-3xl text-base leading-7 text-white/65">
-                        Current shipping status for RTV Planner. The core product is live; the
+                        Current shipping status for Dig-Sign. The core product is live; the
                         remaining work is output design polish, stronger alerts, smoke visibility
-                        and broadcast automation.
+                        and output automation.
                     </p>
                     <div className="mt-5 flex flex-wrap gap-2">
                         <Link className="btn-secondary" href="/manual">
@@ -156,7 +145,7 @@ export default function PendingPage() {
                         <Link className="btn-secondary" href="/admin/health">
                             Admin Health
                         </Link>
-                        <Link className="btn-secondary" href="/admin/output">
+                        <Link className="btn-secondary" href="/admin/operate">
                             Output
                         </Link>
                     </div>
@@ -165,7 +154,7 @@ export default function PendingPage() {
                 <section className="grid gap-3 border-b border-white/10 py-6 md:grid-cols-3">
                     <Metric label="Current state" value="Production live" />
                     <Metric label="Main gate" value="Plate polish" />
-                    <Metric label="Next value" value="Broadcast polish" />
+                    <Metric label="Next value" value="Output polish" />
                 </section>
 
                 <ItemGroup

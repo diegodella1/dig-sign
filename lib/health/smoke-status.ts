@@ -10,15 +10,12 @@ export type SmokeStatus = {
 };
 
 const DEFAULT_MAX_AGE_SECONDS = 24 * 60 * 60;
-const DEFAULT_SMOKE_STATUS_FILE = '/tmp/rtvplanner-smoke-status.json';
+const DEFAULT_SMOKE_STATUS_FILE = '/tmp/digsign-smoke-status.json';
+const LEGACY_SMOKE_STATUS_FILE = '/tmp/rtvplanner-smoke-status.json';
 const KV_KEY = 'smoke:status';
 
 type SmokeEnv = Record<string, string | undefined>;
 
-/**
- * Minimal KVNamespace shape used here. Declared locally to avoid pulling in
- * `@cloudflare/workers-types`. Mirrors `lib/helpers/kv-cache.ts`.
- */
 interface KvLike {
     get(key: string, type: 'json'): Promise<unknown>;
     put(key: string, value: string): Promise<void>;
@@ -29,11 +26,16 @@ interface SmokeKvEnv {
 }
 
 export async function readSmokeStatus(env: SmokeEnv = process.env): Promise<SmokeStatus | null> {
-    if (env.RTV_LAST_SMOKE_STATUS) {
+    const inlineStatus = smokeEnv(env, 'DIGSIGN_LAST_SMOKE_STATUS', 'RTV_LAST_SMOKE_STATUS');
+
+    if (inlineStatus) {
+        const label = smokeEnv(env, 'DIGSIGN_LAST_SMOKE_LABEL', 'RTV_LAST_SMOKE_LABEL');
+        const recordedAt = smokeEnv(env, 'DIGSIGN_LAST_SMOKE_AT', 'RTV_LAST_SMOKE_AT');
+
         return {
-            status: env.RTV_LAST_SMOKE_STATUS,
-            ...(env.RTV_LAST_SMOKE_LABEL ? { label: env.RTV_LAST_SMOKE_LABEL } : {}),
-            ...(env.RTV_LAST_SMOKE_AT ? { recordedAt: env.RTV_LAST_SMOKE_AT } : {}),
+            status: inlineStatus,
+            ...(label ? { label } : {}),
+            ...(recordedAt ? { recordedAt } : {}),
         };
     }
     const fromKv = await readFromKv();
@@ -80,7 +82,10 @@ export function isSmokeStatusStale(smoke: SmokeStatus, env: SmokeEnv = process.e
     if (!Number.isFinite(recorded)) {
         return true;
     }
-    const maxAgeSeconds = Number(env.RTV_SMOKE_MAX_AGE_SECONDS || DEFAULT_MAX_AGE_SECONDS);
+    const maxAgeSeconds = Number(
+        smokeEnv(env, 'DIGSIGN_SMOKE_MAX_AGE_SECONDS', 'RTV_SMOKE_MAX_AGE_SECONDS') ||
+            DEFAULT_MAX_AGE_SECONDS,
+    );
     const maxAge =
         Number.isFinite(maxAgeSeconds) && maxAgeSeconds > 0
             ? maxAgeSeconds
@@ -140,16 +145,16 @@ function readFromFile(env: SmokeEnv): SmokeStatus | null {
     const path = smokeStatusPath(env);
 
     if (!existsSync(path)) {
+        const legacyPath = resolve(process.cwd(), LEGACY_SMOKE_STATUS_FILE);
+
+        if (legacyPath !== path && existsSync(legacyPath)) {
+            return readStatusFile(legacyPath);
+        }
+
         return null;
     }
 
-    try {
-        const parsed = JSON.parse(readFileSync(path, 'utf8')) as SmokeStatus;
-
-        return typeof parsed.status === 'string' ? parsed : null;
-    } catch {
-        return null;
-    }
+    return readStatusFile(path);
 }
 
 function writeToFile(status: SmokeStatus, env: SmokeEnv): void {
@@ -159,5 +164,23 @@ function writeToFile(status: SmokeStatus, env: SmokeEnv): void {
 }
 
 function smokeStatusPath(env: SmokeEnv) {
-    return resolve(process.cwd(), env.RTV_SMOKE_STATUS_FILE || DEFAULT_SMOKE_STATUS_FILE);
+    return resolve(
+        process.cwd(),
+        smokeEnv(env, 'DIGSIGN_SMOKE_STATUS_FILE', 'RTV_SMOKE_STATUS_FILE') ||
+            DEFAULT_SMOKE_STATUS_FILE,
+    );
+}
+
+function readStatusFile(path: string) {
+    try {
+        const parsed = JSON.parse(readFileSync(path, 'utf8')) as SmokeStatus;
+
+        return typeof parsed.status === 'string' ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function smokeEnv(env: SmokeEnv, primary: string, legacy: string) {
+    return env[primary] ?? env[legacy];
 }

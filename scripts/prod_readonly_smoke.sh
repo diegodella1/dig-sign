@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-base_url="${RTV_PROD_BASE_URL:-${RTV_BASE_URL:-}}"
+base_url="${DIGSIGN_PROD_BASE_URL:-${DIGSIGN_BASE_URL:-}}"
 if [[ -z "$base_url" ]]; then
-  echo "RTV_PROD_BASE_URL is required" >&2
+  echo "DIGSIGN_PROD_BASE_URL is required" >&2
   exit 1
 fi
 base_url="${base_url%/}"
@@ -36,15 +36,15 @@ curl -sS "$base_url/api/health" >"$tmp_dir/health.json"
 node scripts/assert_health_no_non_smoke_fail.mjs "$tmp_dir/health.json"
 
 echo "admin auth redirect"
-admin_status="$(curl -sS -o /dev/null -w "%{http_code}" "$base_url/admin/calendar")"
+admin_status="$(curl -sS -o /dev/null -w "%{http_code}" "$base_url/admin/screens")"
 case "$admin_status" in
   301|302|303|307|308) ;;
   *) echo "Expected admin redirect, got $admin_status" >&2; exit 1 ;;
 esac
 
 echo "admin authenticated"
-curl -fsS --cookie "rpm_admin_token=${ADMIN_BOOTSTRAP_TOKEN}" "$base_url/admin/calendar" >"$tmp_dir/admin.html"
-grep -qi "admin\\|calendar\\|program" "$tmp_dir/admin.html"
+curl -fsS --cookie "rpm_admin_token=${ADMIN_BOOTSTRAP_TOKEN}" "$base_url/admin/screens" >"$tmp_dir/admin.html"
+grep -qi "admin\\|screen\\|signage" "$tmp_dir/admin.html"
 
 echo "output session"
 session_headers="$tmp_dir/output-session.headers"

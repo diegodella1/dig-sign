@@ -12,8 +12,8 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-    title: 'Roxom Playout Manager',
-    description: 'Calendar-controlled broadcast playout manager for Roxom TV',
+    title: 'Dig-Sign',
+    description: 'Multi-screen digital signage manager',
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

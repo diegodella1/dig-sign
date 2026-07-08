@@ -9,6 +9,20 @@ const nextConfig = {
     experimental: {
         middlewareClientMaxBodySize: '100mb',
     },
+    async redirects() {
+        return [
+            { source: '/admin/program', destination: '/admin/screens', permanent: false },
+            { source: '/admin/program/:path*', destination: '/admin/screens', permanent: false },
+            { source: '/admin/calendar', destination: '/admin/screens', permanent: false },
+            { source: '/admin/schedule/:path*', destination: '/admin/playlists', permanent: false },
+            { source: '/admin/runbook', destination: '/admin/operate', permanent: false },
+            { source: '/admin/runbook/:path*', destination: '/admin/operate', permanent: false },
+            { source: '/admin/output', destination: '/admin/operate', permanent: false },
+            { source: '/admin/prepare/gap-fill', destination: '/admin/playlists', permanent: false },
+            { source: '/live', destination: '/output/live/main', permanent: false },
+            { source: '/output/preview/:path*', destination: '/output/live/main', permanent: false },
+        ];
+    },
     images: {
         remotePatterns: [
             { protocol: 'https', hostname: '**.vimeocdn.com' },

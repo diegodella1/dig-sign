@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 
 import { auditedMutation } from '../audit/audit';
 import { getDb } from '../db/client';
-import { mediaAssets, programBlocks, scheduledLayers, slideAssets } from '../db/schema';
+import { mediaAssets, contentPlaylistItems, musicPlaylistItems, slideAssets } from '../db/schema';
 import { err, extractError, ok, type Result } from '../result';
 import { getMediaBucket } from '../storage/r2';
 
@@ -79,7 +79,7 @@ export async function archiveSlideAsset(slideId: string): Promise<Result<void>> 
             },
         );
         revalidatePath('/admin/slides');
-        revalidatePath('/admin/calendar');
+        revalidatePath('/admin/screens');
 
         return ok(undefined);
     } catch (error) {
@@ -224,7 +224,6 @@ export async function updateMediaAsset(input: {
             }
         }
         revalidatePath('/admin/assets');
-        revalidatePath('/admin/output');
 
         for (const path of input.revalidatePaths ?? []) {
             revalidatePath(path);
@@ -328,7 +327,7 @@ export async function deleteMediaAsset(input: {
         }
 
         const scheduledInUse =
-            asset.lifecycleState === 'scheduled_in_use' || (await isAssetScheduled(input.id));
+            asset.lifecycleState === 'scheduled_in_use' || (await isAssetInUse(input.id));
 
         if (scheduledInUse && !input.force) {
             return err('Asset is scheduled in use. Confirm force delete to continue.');
@@ -362,29 +361,20 @@ export async function deleteMediaAsset(input: {
     }
 }
 
-async function isAssetScheduled(assetId: string): Promise<boolean> {
+async function isAssetInUse(assetId: string): Promise<boolean> {
     const db = await getDb();
-    const [blockRows, layerRows] = await Promise.all([
+    const [playlistRows, musicRows] = await Promise.all([
         db
-            .select({
-                assetId: programBlocks.assetId,
-                fallbackAssetId: programBlocks.fallbackAssetId,
-                status: programBlocks.status,
-            })
-            .from(programBlocks),
+            .select({ assetId: contentPlaylistItems.assetId })
+            .from(contentPlaylistItems)
+            .where(eq(contentPlaylistItems.assetId, assetId))
+            .limit(1),
         db
-            .select({
-                assetId: scheduledLayers.assetId,
-                enabled: scheduledLayers.enabled,
-            })
-            .from(scheduledLayers),
+            .select({ assetId: musicPlaylistItems.assetId })
+            .from(musicPlaylistItems)
+            .where(eq(musicPlaylistItems.assetId, assetId))
+            .limit(1),
     ]);
 
-    return (
-        blockRows.some(
-            (row) =>
-                row.status !== 'archived' &&
-                (row.assetId === assetId || row.fallbackAssetId === assetId),
-        ) || layerRows.some((row) => row.enabled !== false && row.assetId === assetId)
-    );
+    return playlistRows.length > 0 || musicRows.length > 0;
 }

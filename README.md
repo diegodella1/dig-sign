@@ -1,107 +1,99 @@
-# RTV Planner
+# Dig-Sign
 
-RTV Planner is the broadcast control room for Roxom TV. It lets an operator plan the day, prepare media, validate schedule risk, run a live checklist, and send a protected browser playout signal into OBS or vMix.
+Dig-Sign is the control room for multi-screen digital signage. Operators prepare media and plates, build content playlists, assign them to screens by day, monitor playback, and capture protected browser output in OBS or vMix.
 
-It is not a public video site. It is an internal operator console for keeping a daily TV-style stream organized, auditable and ready to recover.
+It is not a public video site. It is an internal operator console for keeping display loops organized, auditable, and recoverable.
 
 ## Current Status
 
-Production is live at `rtvtime.diegodella.ar` using local standalone Next.js behind a Cloudflare tunnel. The core workflow is ready for controlled operation with an operator present.
+Production is live at `digsign.diegodella.ar` using standalone Next.js behind a Cloudflare tunnel. The signage workflow is ready for controlled operation with an operator present.
 
-What is already working:
+What is working today:
 
-- unified operator flow with `/admin/prepare`, `/admin/program` and `/admin/operate`
-- daily schedule builder with timed blocks
-- timeline-first schedule UI with visible newly-added block confirmation, time ranges and gap filling
-- media library for uploads, remote URLs, Vimeo, slides, music and fallbacks
-- guest library with per-plate lineups, uploaded/remote guest photos and short muted guest videos
-- city-specific weather plates, schedule-only **Fill range with plates** loops, and a unified
-  **Fallback policy** for off-air and playback-failure safety
-- Supabase database/storage backend, including local-storage media proxy for public playback
-- browser playout for OBS/vMix capture
-- Vimeo, HLS, MP4, images, slides and Reuters stream snapshots
-- real-data slide feeds for metals, weather, market/open boards, debt, guests and calendar events,
-  with graceful fallbacks when providers are unavailable
-- reload recovery that resumes video near the current scheduled offset
-- validated web player capture in browser, vMix and OBS
-- uploaded ads/promos served through `/api/media/assets/:assetId` so local Supabase storage stays playable from OBS/vMix and remote browsers
-- per-program `PREVIOUSLY RECORDED` on-screen bug with four-corner placement, limited to normal
-  video program blocks
-- output control, monitor state and live overrides
-- runbook for preflight, live notes, incident handling and shutdown
-- admin health, schedule health and Go Live Drill
-- persisted smoke status from deploy/read-only smoke scripts
-- named operators, sessions, role guards, CSRF protection and audit logging
-- protected active-block/health operational endpoints, atomic API rate limiting and alert cooldowns
-- fresh Supabase bootstrap SQL for moving to a new backend
+- **Prepare** — media library, Vimeo import, music playlists, weather/YouTube plates
+- **Signage** — screens, content playlists (visual loop editor), day-based playlist assignments, per-screen fallback playlists
+- **Operate** — per-screen monitor, health summary, audit trail, capture URLs
+- **Output** — `/output/live/[screenSlug]` with state from `/api/output/channel/state?screen=`
+- **Backend** — Cloudflare D1 (database) and R2 (media storage)
+- **Playback** — Vimeo, HLS, MP4, images, slides, playlist carousel rotation, background music on visual items
+- **Uploaded media** — served through `/api/media/assets/[assetId]`
+- **Security** — named operators, sessions, CSRF protection, audit logging, output capture token
+- **Health** — admin health checks, persisted smoke status from deploy scripts
+- **Legacy redirects** — old schedule/program URLs redirect to screens, playlists, or operate
 
-Main product gate now pending: remodel the visual design of the output plates so the channel looks intentionally produced rather than just operationally correct, then tighten operator alerts for drift, stalls, silence and media errors.
+Main product gate: remodel on-air plate visuals for a stronger broadcast look, then tighten operator alerts for stalled playback, silence, and missing assets.
 
-Deployment note: the active production path is still local standalone Next.js behind a Cloudflare tunnel. OpenNext/Cloudflare Workers support is configured and deployable, but should be treated as an alternate path until a real Workers deploy is smoke-tested.
+Deployment note: the active production path is local standalone Next.js behind a Cloudflare tunnel. OpenNext/Cloudflare Workers support is configured (`wrangler.jsonc`) as an alternate deploy path.
 
 ## Product Promise
 
-RTV Planner replaces scattered broadcast prep with one operational flow:
+Dig-Sign replaces scattered signage prep with one operational flow:
 
 1. Load or sync content.
-2. Build the broadcast day.
-3. Catch gaps, overlaps and missing fallbacks before air.
-4. Complete preflight.
-5. Launch browser output.
-6. Monitor the current signal.
-7. Stop cleanly with an audit trail.
-
-The value is not just playing media. The value is reducing live mistakes: wrong block, missing fallback, expired live URL, unreviewed media, silent output, or unclear operator handoff.
+2. Configure screens and playlists.
+3. Assign playlists by date range.
+4. Confirm health and fallback playlists.
+5. Launch browser output per screen.
+6. Monitor playback from Operate.
+7. Recover with audit trail and fallback loops.
 
 ## Main Routes
 
-- `/admin/login` - operator login
-- `/admin` - cockpit dashboard
-- `/admin/prepare` - unified intake for assets, Vimeo, music, guests and plates
-- `/admin/program` - daily programming hub for calendar, schedule, timed loops, fallback policy and health
-- `/admin/program/fallback` - global fallback policy (silent video, plate rotation, or emergency slate)
-- `/admin/operate` - live control-room hub for output, health, runbook and audit
-- `/admin/calendar` - program days
-- `/admin/schedule/[date]` - daily rundown
-- `/admin/runbook/[date]` - preflight/live/incident/shutdown checklist
-- `/admin/assets` - media library
-- `/admin/vimeo` - Vimeo sync/import
-- `/admin/guests` - guest records and individualized guest lineup plates
-- `/admin/slides` - slide library
-- `/admin/music` - background music assets
-- `/admin/output` - live output control and overrides
-- `/admin/health` - production readiness and Go Live Drill
-- `/admin/audit` - operational audit trail
-- `/manual` - public operator manual
-- `/notion` - status and operating guide
-- `/pending` - current roadmap and backlog
-- `/output/live` - fullscreen browser playout
-- `/output/preview/[blockId]` - fullscreen block preview
-- `/api/health` - machine health check
-- `/api/media/assets/[assetId]` - public media proxy for uploaded assets stored in local Supabase Storage
+### Operator console
 
-## Production Workflow
+| Route | Purpose |
+|-------|---------|
+| `/admin/login` | Operator login |
+| `/admin` | Dashboard |
+| `/admin/prepare` | Content hub (links to plates, media, music, import) |
+| `/admin/screens` | Screen list and configuration |
+| `/admin/screens/[slug]` | Single screen: timezone, fallback playlist, assignments |
+| `/admin/playlists` | Content playlist list |
+| `/admin/playlists/[id]` | Visual loop editor (plates + media, drag-and-drop) |
+| `/admin/operate` | Screen monitor and capture URLs |
+| `/admin/assets` | Media library |
+| `/admin/vimeo` | Vimeo sync/import |
+| `/admin/slides` | Plate library (weather, YouTube, templates) |
+| `/admin/music` | Background music playlists |
+| `/admin/settings` | Integration settings |
+| `/admin/health` | Production readiness |
+| `/admin/audit` | Operational audit trail |
 
-1. Open `/admin/prepare` and add or sync content: assets, Vimeo shows, music, guest plates, weather
-   city plates and data plates.
-2. Open `/admin/program` and build the day: calendar, schedule, timed loops, fallback policy and
-   schedule health.
-3. Configure **Fallback policy** at `/admin/program/fallback` before going active: silent video
-   loop, plate rotation with background music, or emergency slate only.
-4. Use **Fill range with plates** on `/admin/schedule/[date]` when the day needs a timed slide loop
-   in the rundown. This is schedule-only and does not change the global fallback policy.
-5. For normal video programs that are not live/Reuters/ads/promos, enable the optional
-   `PREVIOUSLY RECORDED` bug from the block editor when editorial needs that disclosure.
-6. Resolve schedule health issues and confirm fallback policy is **Ready** before activating the day.
-   Unscheduled gaps show as **Protected** or **Unprotected** depending on fallback readiness.
-7. Open `/admin/operate`, complete the runbook, open Output, launch Live Browser Output and click
-   `Start Output` once to unlock audio.
-8. Capture the live browser window in OBS/vMix.
-9. During live, watch active block, next block, fallback reason, playlist/audio state, playback
-   state and runbook notes from Operate/Output.
-10. Stop broadcast and complete shutdown checks.
+### Public / capture
 
-If the output page reloads mid-show, it asks the server for the active block and resumes video at the current scheduled offset. Browser audio still requires one operator click after load or reload.
+| Route | Purpose |
+|-------|---------|
+| `/output/live` | Redirects to `/output/live/main` |
+| `/output/live/[screenSlug]` | Fullscreen browser player for OBS/vMix capture |
+| `/output/slide/[slideId]` | Single-slide preview |
+| `/manual` | Public operator manual |
+| `/notion` | Status and operating guide |
+| `/pending` | Roadmap and backlog |
+| `/api/health` | Machine health summary |
+| `/api/output/channel/state` | Player state (`?screen=` + optional `?token=`) |
+| `/api/media/assets/[assetId]` | Public media proxy for R2-stored uploads |
+
+### Legacy redirects (bookmarks)
+
+Old TV-schedule URLs redirect automatically:
+
+- `/admin/program` → `/admin/screens`
+- `/admin/calendar`, `/admin/schedule/*` → `/admin/playlists` or `/admin/screens`
+- `/admin/runbook/*`, `/admin/output` → `/admin/operate`
+- `/live`, `/output/preview/*` → `/output/live/main`
+
+## Daily Workflow
+
+1. Open **Prepare** and add content: upload media, sync Vimeo, create weather/YouTube plates, configure music playlists.
+2. Open **Signage → Screens** and confirm each physical display has a screen row (default: `main`).
+3. Create **content playlists** with the visual loop editor (plates and ready media, duration per item).
+4. **Assign playlists** to screens by date range; set a **fallback playlist** on each screen for off-hours or empty days.
+5. Open **Health** and fix any failing checks (env, D1, R2, Vimeo, output token, screens configured).
+6. Open **Operate**, copy the capture URL for each screen (`/output/live/[slug]?token=...`).
+7. Open the URL on the capture machine, click **Start Output** once to unlock audio, capture in OBS/vMix.
+8. During playback, watch the screen monitor on Operate for missing assets or fallback states.
+
+Default timezone for screens and day resolution: `America/Argentina/Buenos_Aires`.
 
 ## Stack
 
@@ -109,9 +101,8 @@ If the output page reloads mid-show, it asks the server for the active block and
 - React 19
 - TypeScript
 - Tailwind CSS
-- Supabase database/storage
+- Cloudflare D1 + R2 (via Drizzle ORM)
 - Vimeo API
-- Reuters stream snapshots
 - `hls.js`
 - Vitest
 - Playwright
@@ -133,30 +124,23 @@ http://localhost:3450
 Required `.env` values:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
 APP_ENCRYPTION_KEY=
 ADMIN_BOOTSTRAP_TOKEN=
-OUTPUT_CAPTURE_TOKEN=
-ALERT_WEBHOOK_URL=
-ALERT_WEBHOOK_COOLDOWN_MS=600000
-NEXT_PUBLIC_APP_BASE_URL=
+OUTPUT_CAPTURE_TOKEN=          # required in production
 APP_BASE_URL=
-VIMEO_ACCESS_TOKEN=
+NEXT_PUBLIC_APP_BASE_URL=
 ```
 
-Optional external data inputs:
+Optional:
 
 ```bash
-OPENWEATHER_API_KEY= # optional; weather falls back to Open-Meteo when unset
-ROXOM_METALS_API_URL=https://api.roxom.tv/api/metals # optional override
+VIMEO_ACCESS_TOKEN=
+OPENWEATHER_API_KEY=           # weather falls back to Open-Meteo when unset
+ALERT_WEBHOOK_URL=
+ALERT_WEBHOOK_COOLDOWN_MS=600000
+DIGSIGN_BASE_URL=              # smoke scripts
+ALLOW_DEMO_DATA=true           # local dev only; never in production HTTPS
 ```
-
-Production currently uses local Supabase for database/storage. Keep `NEXT_PUBLIC_SUPABASE_URL`
-pointed at the local Supabase service, and set `NEXT_PUBLIC_APP_BASE_URL` or `APP_BASE_URL` to the
-public app origin, for example `https://rtvtime.diegodella.ar`. Uploaded ads/promos are stored in
-Supabase but played through the public app proxy at `/api/media/assets/[assetId]`.
 
 Generate an encryption key:
 
@@ -170,118 +154,80 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 npm run dev
 npm run typecheck
 npm run lint
-npm run format:check
-npm test -- --run
+npm run test
 npm run build
 npm run smoke:http
-npm run smoke:prod
 bash scripts/deploy_local_tunnel.sh
 npm run cf:build
 npm run cf:deploy
 ```
 
-Active production deploy for `rtvtime.diegodella.ar`:
+Active production deploy for `digsign.diegodella.ar`:
 
 ```bash
 bash scripts/deploy_local_tunnel.sh
 ```
 
-The active production path is local systemd service plus Cloudflare tunnel.
-
-Alternate Cloudflare Workers/OpenNext path:
+Alternate Cloudflare Workers path:
 
 ```bash
 npm run cf:build
 npm run cf:deploy
 ```
 
-Cloudflare deploys must keep dashboard vars/secrets configured for Supabase, `APP_ENCRYPTION_KEY`, `ADMIN_BOOTSTRAP_TOKEN`, `OUTPUT_CAPTURE_TOKEN`, app base URLs and any provider tokens such as Vimeo or Reuters. The scripts use `--keep-vars` so dashboard variables are preserved.
+Cloudflare deploys must keep dashboard vars/secrets configured: `APP_ENCRYPTION_KEY`, `ADMIN_BOOTSTRAP_TOKEN`, `OUTPUT_CAPTURE_TOKEN`, app base URLs, and Vimeo token. Deploy scripts use `--keep-vars` to preserve dashboard variables.
 
 ## Database
 
-Normal migrations live in:
+D1 migrations live in:
 
 ```txt
-supabase/migrations/
+drizzle/
 ```
 
-Fresh Supabase bootstrap SQL for migration/offline setup:
-
-```txt
-public/manual/supabase-bootstrap.sql
-```
-
-Standalone guest lineup migration for existing backends:
-
-```txt
-supabase/migrations/20260522120000_guest_lineup.sql
-supabase/migrations/20260522172000_slide_asset_metadata.sql
-public/manual/guest-lineup-migration.sql
-public/manual/slide-asset-metadata-migration.sql
-```
-
-Standalone rate-limit hardening migration for existing backends:
-
-```txt
-supabase/migrations/20260522153000_atomic_rate_limits.sql
-public/manual/atomic-rate-limits-migration.sql
-```
-
-Events/calendar slide migration:
-
-```txt
-supabase/migrations/20260525181000_events_calendar.sql
-public/manual/supabase-bootstrap.sql
-```
-
-Seed data:
-
-```txt
-supabase/seed.sql
-```
-
-Regenerate Supabase types:
+Apply to remote D1 (production):
 
 ```bash
-npm run supabase:types
+wrangler d1 migrations apply dig-sign-db --remote
+# or with named env:
+wrangler d1 migrations apply dig-sign-db --remote --env prod
 ```
 
-Backfill uploaded assets that were saved with local `127.0.0.1` storage URLs:
+Migration order:
 
-```bash
-node scripts/backfill_public_storage_urls.mjs
-node scripts/backfill_public_storage_urls.mjs --apply
-```
+| File | Purpose |
+|------|---------|
+| `0000_closed_christian_walker.sql` | Base schema |
+| `0001_music_playlists.sql` | Music playlists |
+| `0002_screen_playlists.sql` | Screens, playlists, assignments |
+| `0003_drop_guests.sql` | Remove guest tables |
+| `0004_drop_schedule.sql` | Remove hour-based schedule tables |
 
-The dry run prints candidate rows. `--apply` rewrites rows with `storage_bucket` and `storage_path`
-to the public app proxy URL.
+After `0004`, these tables are **gone**: `program_days`, `program_blocks`, `scheduled_layers`, `output_overrides`, `operator_runbook_checks`, `events`.
 
 ## Production Gates
 
-Before live use:
+Before trusting a screen in production:
 
 - `/api/health` has no failing checks.
-- the latest Supabase migrations are applied, including guest lineup and atomic rate limits.
-- `/admin/health` Go Live Drill passes.
-- current day exists and is `active`.
-- active block has ready media or a ready fallback policy.
-- uploaded media URLs use `https://rtvtime.diegodella.ar/api/media/assets/...`, not `127.0.0.1`.
-- `/output/live?debug=true` plays on the capture browser after `Start Output`.
-- OBS/vMix browser capture has been validated for video/audio; recheck after deploy or capture-machine changes.
-- operator confirms fallback policy, runbook and shutdown process.
+- D1 migrations through `0004` are applied.
+- At least one **active screen** exists (`/admin/screens`).
+- Each screen has a **fallback playlist** with playable items.
+- Today's date has a playlist assignment (or fallback covers the gap).
+- `/output/live/main?token=...` plays on the capture browser after **Start Output**.
+- OBS/vMix browser capture validated for video and audio.
+- Uploaded media URLs use the public app proxy, not `127.0.0.1`.
 
 ## Roadmap
 
 Near-term priorities:
 
-- remodel the visual design of on-air plates, cards and output surfaces
-- improve operator alerts for drift, stalled playback, silence and media errors
-- replace public health detail with admin-only diagnostics in any external status dashboard
-- expand schedule copy/recurring-day tools after the live workflow is stable
+- remodel on-air plate visuals
+- improve operator alerts for stalled playback, silence, and missing assets
+- expand recurring playlist templates and multi-screen layouts
 
-See:
+See also:
 
 - `/pending`
 - `/notion`
-- `docs/gantt.md`
 - `docs/production-readiness.md`

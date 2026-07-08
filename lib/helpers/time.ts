@@ -19,12 +19,12 @@ export function parseTimecode(value: string): number {
     throw new Error(`Invalid timecode: ${value}`);
 }
 
-export const PLAYOUT_TIMEZONE = 'America/Los_Angeles';
-export const PLAYOUT_TIMEZONE_LABEL = 'SF';
+export const PLAYOUT_TIMEZONE = 'America/Argentina/Buenos_Aires';
+export const PLAYOUT_TIMEZONE_LABEL = 'BA';
 
 export const HELPER_TIMEZONES = [
     { label: 'London', timeZone: 'Europe/London' },
-    { label: 'Buenos Aires', timeZone: 'America/Argentina/Buenos_Aires' },
+    { label: 'Los Angeles', timeZone: 'America/Los_Angeles' },
     { label: 'Hong Kong', timeZone: 'Asia/Hong_Kong' },
 ] as const;
 

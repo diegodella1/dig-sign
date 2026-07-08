@@ -1,9 +1,13 @@
-import type { FallbackCarouselCard, FallbackCarouselSet } from '@/lib/fallback-carousel';
-import { isPlayableFallbackCarouselAsset } from '@/lib/fallback-carousel';
+import { isPlayablePlaylistAsset } from '@/lib/content-playlists';
 import type { MediaAsset, SlideAsset } from '@/lib/types';
 
-export type LoopEditorCard = FallbackCarouselCard & {
+export type LoopEditorCard = {
     key: string;
+    kind: 'slide' | 'asset';
+    id: string;
+    slideId?: string;
+    assetId?: string;
+    durationSeconds: number;
 };
 
 export function sortSlidesByTitle(a: SlideAsset, b: SlideAsset) {
@@ -14,51 +18,10 @@ export function sortAssetsByTitle(a: MediaAsset, b: MediaAsset) {
     return a.title.localeCompare(b.title);
 }
 
-export { isPlayableFallbackCarouselAsset };
-
-export function cardsFromCarouselSet(
-    set: FallbackCarouselSet | null,
-    readySlides: SlideAsset[],
-    slideById: Map<string, SlideAsset>,
-    assetById: Map<string, MediaAsset>,
-): LoopEditorCard[] {
-    const sourceCards = set?.cards.length
-        ? set.cards
-        : readySlides.slice(0, 3).map((slide) => ({
-              kind: 'slide' as const,
-              id: slide.id,
-              slideId: slide.id,
-              durationSeconds: slide.defaultDurationSeconds ?? 30,
-          }));
-
-    return sourceCards
-        .filter((card) => (card.kind === 'asset' ? assetById.has(card.id) : slideById.has(card.id)))
-        .map((card, index) => ({
-            ...card,
-            key: `${card.kind}-${card.id}-${index}`,
-        }));
-}
-
-export function initialScheduledCards(readySlides: SlideAsset[]): LoopEditorCard[] {
-    const first = readySlides[0];
-
-    if (!first) {
-        return [];
-    }
-
-    return [
-        {
-            key: 'row-1',
-            kind: 'slide',
-            id: first.id,
-            slideId: first.id,
-            durationSeconds: first.defaultDurationSeconds ?? 30,
-        },
-    ];
-}
+export { isPlayablePlaylistAsset };
 
 export function itemLabelForCard(
-    card: FallbackCarouselCard,
+    card: Pick<LoopEditorCard, 'kind' | 'id'>,
     slideById: Map<string, SlideAsset>,
     assetById: Map<string, MediaAsset>,
 ) {
@@ -67,6 +30,48 @@ export function itemLabelForCard(
         : slideById.get(card.id)?.title;
 }
 
-export function countLoopCards(cards: LoopEditorCard[], kind: FallbackCarouselCard['kind'], id: string) {
+export function countLoopCards(cards: LoopEditorCard[], kind: LoopEditorCard['kind'], id: string) {
     return cards.filter((card) => card.kind === kind && card.id === id).length;
+}
+
+export function cardsFromPlaylistItems(
+    items: Array<{
+        assetId: string | null;
+        slideId: string | null;
+        durationSeconds: number | null;
+    }>,
+    slideById: Map<string, SlideAsset>,
+    assetById: Map<string, MediaAsset>,
+): LoopEditorCard[] {
+    const cards: LoopEditorCard[] = [];
+
+    for (const [index, item] of items.entries()) {
+        if (item.assetId && assetById.has(item.assetId)) {
+            const asset = assetById.get(item.assetId)!;
+
+            cards.push({
+                key: `asset-${item.assetId}-${index}`,
+                kind: 'asset',
+                id: item.assetId,
+                assetId: item.assetId,
+                durationSeconds:
+                    item.durationSeconds ?? asset.durationSeconds ?? (asset.mediaKind === 'image' ? 15 : 30),
+            });
+            continue;
+        }
+
+        if (item.slideId && slideById.has(item.slideId)) {
+            const slide = slideById.get(item.slideId)!;
+
+            cards.push({
+                key: `slide-${item.slideId}-${index}`,
+                kind: 'slide',
+                id: item.slideId,
+                slideId: item.slideId,
+                durationSeconds: item.durationSeconds ?? slide.defaultDurationSeconds ?? 30,
+            });
+        }
+    }
+
+    return cards;
 }

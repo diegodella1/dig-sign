@@ -1,6 +1,5 @@
 export type ProgramStatus = 'draft' | 'ready' | 'active' | 'archived';
 export type AssetStatus = 'draft' | 'syncing' | 'ready' | 'failed' | 'archived';
-export type GuestStatus = 'draft' | 'ready' | 'archived';
 export type AssetLifecycleState =
     | 'synced'
     | 'reviewed'
@@ -16,8 +15,7 @@ export type SourceType =
     | 'remote_image'
     | 'remote_mp4'
     | 'hls'
-    | 'rtmp'
-    | 'reuters';
+    | 'rtmp';
 export type MediaKind = 'video' | 'image' | 'audio' | 'graphic';
 export type BlockType = 'video' | 'image' | 'slide' | 'ad' | 'promo' | 'fallback';
 export type LayerType = 'overlay' | 'image' | 'slide' | 'logo_bug' | 'lower_third' | 'promo';
@@ -29,25 +27,14 @@ export type Position =
     | 'bottom_bar'
     | 'custom';
 
-export type BlockCategory =
-    | 'mercados'
-    | 'earthcam'
-    | 'clima'
-    | 'calendario'
-    | 'trending'
-    | 'deuda'
-    | 'reuters'
-    | 'broadcast';
+export type BlockCategory = 'media' | 'slide' | 'announcement' | 'ad' | 'generic';
 
 export const BLOCK_CATEGORIES: readonly BlockCategory[] = [
-    'mercados',
-    'earthcam',
-    'clima',
-    'calendario',
-    'trending',
-    'deuda',
-    'reuters',
-    'broadcast',
+    'media',
+    'slide',
+    'announcement',
+    'ad',
+    'generic',
 ] as const;
 
 export type MediaAsset = {
@@ -92,27 +79,6 @@ export type SlideAsset = {
     updatedAt: string;
 };
 
-export type Guest = {
-    id: string;
-    name: string;
-    role?: string | null;
-    company?: string | null;
-    host?: string | null;
-    program?: string | null;
-    category: string;
-    appearanceAt?: string | null;
-    photoUrl?: string | null;
-    photoAssetId?: string | null;
-    videoUrl?: string | null;
-    videoAssetId?: string | null;
-    color: string;
-    sortOrder: number;
-    status: GuestStatus;
-    metadata?: Record<string, unknown> | null;
-    createdAt: string;
-    updatedAt: string;
-};
-
 export type ProgramDay = {
     id: string;
     airDate: string;
@@ -149,7 +115,7 @@ export type OutputOverride = {
     id: string;
     programDayId: string;
     enabled: boolean;
-    sourceType: 'scheduled_block' | 'vimeo' | 'reuters' | 'slide' | 'hls' | 'remote_image';
+    sourceType: 'scheduled_block' | 'vimeo' | 'slide' | 'hls' | 'remote_image';
     blockId?: string | null;
     assetId?: string | null;
     slideId?: string | null;

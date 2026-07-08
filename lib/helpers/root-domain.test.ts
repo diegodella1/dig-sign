@@ -19,14 +19,6 @@ describe('root-domain routing', () => {
         }
     });
 
-    it('redirects legacy /rtvtime paths to root paths', () => {
-        const request = new NextRequest('https://rtvtime.diegodella.ar/rtvtime/manual?x=1');
-        const response = middleware(request);
-
-        expect(response.status).toBe(308);
-        expect(response.headers.get('location')).toBe('https://rtvtime.diegodella.ar/manual?x=1');
-    });
-
     it('keeps manual and pending public outside admin login', () => {
         const previous = process.env.ADMIN_BOOTSTRAP_TOKEN;
         process.env.ADMIN_BOOTSTRAP_TOKEN = 'required-admin-token';

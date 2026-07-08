@@ -16,7 +16,6 @@ describe('LoopEditor', () => {
 
             return (
                 <LoopEditor
-                    mode="gap-fill"
                     slides={slides}
                     assets={[]}
                     cards={cards}
@@ -58,7 +57,6 @@ describe('LoopEditor', () => {
 
             return (
                 <LoopEditor
-                    mode="gap-fill"
                     slides={slides}
                     assets={[]}
                     cards={cards}

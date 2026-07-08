@@ -465,7 +465,7 @@ function VimeoAssetRow({
                 >
                     Edit in Library
                 </Link>
-                <Link className="btn-primary" href="/admin/calendar">
+                <Link className="btn-primary" href="/admin/screens">
                     Schedule this
                 </Link>
             </div>

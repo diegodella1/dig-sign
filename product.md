@@ -1,8 +1,8 @@
-# Roxom Playout Manager Product Plan
+# Dig-Sign Product Plan
 
 ## Product Identity
 
-Roxom Playout Manager is an internal broadcast operations product for programming what appears on Roxom TV output, when it appears, and how it recovers when something fails.
+Dig-Sign is an internal digital signage operations product for programming what appears on your displays, when it appears, and how it recovers when something fails.
 
 The product is not a consumer website, not a passive video library, and not only a weather or camera rotation tool. It is a CMS-controlled playout layer for a television workflow. The viewer does not interact with it. Operators, producers, and content administrators use it to assemble the signal that is later captured by vMix, OBS, or another broadcast system.
 

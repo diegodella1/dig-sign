@@ -1,25 +1,4 @@
 export {
-    archiveProgramBlock,
-    bulkUpdateProgramBlockStatus,
-    createBulkCardLoop,
-    createLongTestSchedule,
-    createProgramBlock,
-    createProgramDayFromTemplate,
-    deleteProgramBlock,
-    duplicateProgramBlock,
-    ensureProgramDay,
-    fillProgramBlockContent,
-    markLiveObjectEnded,
-    moveProgramBlock,
-    reorderProgramBlocks,
-    resizeProgramBlock,
-    scheduleLiveObjectOverride,
-    updateLiveObjectLowerThird,
-    updateProgramBlock,
-    updateProgramDayStatus,
-} from './mutations/blocks';
-
-export {
     archiveSlideAsset,
     createMediaAsset,
     createSlideAsset,
@@ -28,35 +7,13 @@ export {
 } from './mutations/assets';
 
 export {
-    archiveGuest,
-    archiveGuestPlate,
-    attachGuestMediaAsset,
-    createGuest,
-    createGuestPlate,
-    updateGuest,
-    updateGuestPlate,
-} from './mutations/guests';
-
-export {
-    activateFallbackCarouselSet,
-    deleteFallbackCarouselSet,
-    createScheduledLayer,
     createWeatherPlate,
     createYouTubeSlide,
-    saveFallbackCarouselSet,
-    saveGlobalFallbackCarouselFromSlides,
-    setFallbackCarouselEnabled,
-    setScheduledLayerEnabled,
-    updateRunbookCheck,
     updateWeatherPlate,
-} from './mutations/slides';
-
-export { setFallbackPolicy } from './mutations/fallback';
+} from './mutations/plates';
 
 export {
     archiveMusicPlaylist,
-    assignFallbackPlaylist,
-    assignSchedulePlaylist,
     createMusicPlaylist,
     readMusicOutputConfig,
     saveMusicOutputConfig,
@@ -64,19 +21,12 @@ export {
     updateMusicPlaylist,
 } from './mutations/music-playlists';
 
-export {
-    clearOutputOverride,
-    ensureVimeoAssetCached,
-    goLiveWithReuters,
-    goLiveWithVimeo,
-    scheduleReutersBlock,
-    scheduleVimeoBlock,
-    searchVimeoCatalog,
-    setReutersOutputOverride,
-} from './mutations/output';
+export { createSignageScreen, updateSignageScreen } from './mutations/screens';
 
 export {
-    forceEmergencyLoopOutput,
-    forceNextBlockOutput,
-    skipActiveBlock,
-} from './mutations/output-advance';
+    assignPlaylistToScreen,
+    createSignagePlaylist,
+    removePlaylistAssignment,
+    saveSignagePlaylistItems,
+    updateSignagePlaylist,
+} from './mutations/content-playlists';

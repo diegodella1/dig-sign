@@ -6,15 +6,15 @@ if [[ "${ALLOW_STAGING_WRITE_SMOKE:-}" != "true" ]]; then
   exit 1
 fi
 
-base_url="${RTV_STAGING_BASE_URL:-${RTV_BASE_URL:-}}"
+base_url="${DIGSIGN_STAGING_BASE_URL:-${DIGSIGN_BASE_URL:-}}"
 if [[ -z "$base_url" ]]; then
-  echo "RTV_STAGING_BASE_URL is required" >&2
+  echo "DIGSIGN_STAGING_BASE_URL is required" >&2
   exit 1
 fi
 base_url="${base_url%/}"
 
-if [[ -n "${RTV_PROD_BASE_URL:-}" && "${base_url}" == "${RTV_PROD_BASE_URL%/}" ]]; then
-  echo "Refusing to run write smoke against RTV_PROD_BASE_URL." >&2
+if [[ -n "${DIGSIGN_PROD_BASE_URL:-}" && "${base_url}" == "${DIGSIGN_PROD_BASE_URL%/}" ]]; then
+  echo "Refusing to run write smoke against DIGSIGN_PROD_BASE_URL." >&2
   exit 1
 fi
 if [[ "$base_url" != *"staging"* && "${ALLOW_NON_STAGING_WRITE_SMOKE:-}" != "true" ]]; then

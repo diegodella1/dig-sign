@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, PackageOpen, RadioTower, Settings } from 'lucide-react';
+import { MonitorPlay, PackageOpen, RadioTower, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -19,31 +19,25 @@ export const primaryNavItems: NavItem[] = [
         label: 'Operate',
         href: '/admin/operate',
         icon: RadioTower,
-        activePaths: ['/admin/output'],
+        activePaths: ['/admin/operate'],
     },
     {
         label: 'Prepare',
         href: '/admin/prepare',
         icon: PackageOpen,
-        activePaths: [
-            '/admin/assets',
-            '/admin/vimeo',
-            '/admin/slides',
-            '/admin/guests',
-            '/admin/music',
-        ],
+        activePaths: ['/admin/assets', '/admin/vimeo', '/admin/slides', '/admin/music'],
     },
     {
-        label: 'Program',
-        href: '/admin/program',
-        icon: CalendarDays,
-        activePaths: ['/admin/calendar', '/admin/schedule'],
+        label: 'Signage',
+        href: '/admin/screens',
+        icon: MonitorPlay,
+        activePaths: ['/admin/playlists', '/admin/screens'],
     },
     {
         label: 'Admin',
         href: '/admin/settings',
         icon: Settings,
-        activePaths: ['/admin/health', '/admin/runbook', '/admin/audit'],
+        activePaths: ['/admin/health', '/admin/audit'],
     },
 ];
 
@@ -141,7 +135,7 @@ function findActiveHref(pathname: string): string | null {
     }
 
     if (pathname === '/admin') {
-        return '/admin/program';
+        return '/admin/screens';
     }
 
     return null;

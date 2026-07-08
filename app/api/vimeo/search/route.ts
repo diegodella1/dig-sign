@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 import { requireAdmin } from '@/lib/auth/auth';
-import { searchVimeoCatalog } from '@/lib/manual-broadcast';
-import { vimeoSearchSchema } from '@/lib/schemas';
+import { searchVimeoAccountVideos } from '@/lib/services/vimeo';
+import { getVimeoToken } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
+
+const vimeoSearchSchema = z.object({
+    query: z.string().trim().min(1, 'Query is required'),
+});
 
 export async function GET(request: Request) {
     try {
@@ -18,15 +23,25 @@ export async function GET(request: Request) {
                 { status: 400 },
             );
         }
-        const result = await searchVimeoCatalog(parsed.data.query);
 
-        if (!result.success) {
-            console.error('[api/vimeo/search]', result.error);
+        const token = await getVimeoToken();
 
-            return NextResponse.json({ error: result.error }, { status: 500 });
+        if (!token) {
+            return NextResponse.json({ error: 'Vimeo token not configured' }, { status: 500 });
         }
 
-        return NextResponse.json(result.data, { headers: { 'Cache-Control': 'no-store' } });
+        const videos = await searchVimeoAccountVideos(token, parsed.data.query);
+
+        return NextResponse.json(
+            videos.map((video) => ({
+                id: video.uri.split('/').pop() ?? video.uri,
+                uri: video.uri,
+                title: video.name ?? 'Untitled',
+                durationSeconds: video.duration ?? null,
+                thumbnailUrl: video.pictures?.sizes?.[0]?.link ?? null,
+            })),
+            { headers: { 'Cache-Control': 'no-store' } },
+        );
     } catch (error) {
         if (error instanceof Error && error.message === 'Unauthorized') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

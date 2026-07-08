@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 const shipped = [
-    'Single-tenant operator console for Roxom TV',
+    'Single-tenant operator console for Dig-Sign',
     'Named operators, admin sessions and role guards',
     'Rate limiting, CSRF protection and output token flow',
     'Admin health checks and Go Live Drill',
@@ -12,19 +12,14 @@ const shipped = [
     'Loop Builder for scheduled slide loops, visual fallback carousel, or both',
     'Runbook for preflight, live operation, incident notes and shutdown',
     'Output overrides for urgent live cuts',
-    'Music preferences for slides, images and visual fallbacks',
-    'Dynamic Reuters HLS/RTMP stream snapshots',
-    'Roxom metals API integration with Pyth fallback for gold and silver plates',
+    'Music playlists for slides, images and visual fallbacks',
     'Open-Meteo weather fallback when OpenWeather is not configured',
-    'Supabase events table for calendar/event plates',
     'Browser output for OBS/vMix capture',
-    'Previously Recorded bug for normal video programs with four-corner placement',
+    'Previously Recorded bug for normal video blocks with four-corner placement',
     'Browser output confirmed in web player, vMix and OBS',
-    'Public media proxy for uploaded ads/promos stored in local Supabase Storage',
-    'Guest records and individualized Guest Lineup plates with URL or uploaded photo/video media',
+    'Public media proxy for uploaded ads/promos',
     'Time-accurate video reload resume',
     'Audit identity for critical operations',
-    'Supabase readiness schema and fresh-project bootstrap SQL',
     'Persisted smoke status for deploy/read-only smoke checks',
     'OpenNext/Cloudflare Workers deploy path configured',
 ];
@@ -36,16 +31,14 @@ const verification = [
     'i18n check passed',
     'security service-role guard passed',
     'audit trail guard passed',
-    'Vitest passed: 348 tests',
+    'Vitest passed',
     'Next production build passed',
-    'local production deploy passed',
     'local read-only smoke passed',
-    'public production read-only smoke passed',
 ];
 
 const nextSteps = [
     'Provision day-to-day named operators and keep bootstrap token as emergency-only access.',
-    'Remodel the visual design of cards, plates and output surfaces for final broadcast identity.',
+    'Remodel the visual design of cards, plates and output surfaces for a final display identity.',
     'Add output drift monitoring and incident prompts for silence, black output and stalled video.',
     'Finish i18n and validation copy cleanup.',
     'Smoke-test a real OpenNext/Cloudflare Workers deploy before making it production-primary.',
@@ -59,55 +52,41 @@ const operationSteps = [
             'Upload videos, images, audio and graphics from the Prepare hub.',
             'Sync Vimeo or open the direct Vimeo route from Prepare.',
             'Register remote URLs when needed.',
-            'Create weather city plates and data plates before scheduling.',
+            'Create weather city plates and custom plates before scheduling.',
             'Mark assets as ready only after reviewing playback, duration and fallback.',
         ],
     },
     {
-        name: '2. Prepare guest plates',
-        route: '/admin/guests',
+        name: '2. Program the day',
+        route: '/admin/screens',
         actions: [
-            'Create guest records with name, role, company, host, program, category and appearance time.',
-            'Use either URL fields or uploaded files for guest photos and short muted videos.',
-            'Create one Guest Lineup plate per editorial group, for example guests 1-4, guests 5-7 or a single featured guest.',
-            'Preview each guest plate before scheduling it.',
-        ],
-    },
-    {
-        name: '3. Program the day',
-        route: '/admin/program',
-        actions: [
-            'Create or open the programming day.',
+            'Create or open the schedule day.',
             'Add blocks in chronological order from Schedule.',
             'Use Loop Builder for silent slide loops.',
             'Choose scheduled loop, fallback carousel only, or both.',
-            'Assign an asset, slide or Reuters stream.',
-            'For Reuters, paste the current HLS/RTMP endpoint because those URLs are dynamic.',
+            'Assign an asset, slide or live stream.',
         ],
     },
     {
-        name: '4. Review the schedule',
-        route: '/admin/schedule/<date>',
+        name: '3. Build playlists',
+        route: '/admin/playlists',
         actions: [
-            'Fix gaps.',
-            'Fix overlaps.',
-            'Resolve missing or not-ready assets.',
-            'Review fallback policy: block fallback, day fallback, global fallback video or visual fallback carousel.',
-            'Use schedule health deep links to jump directly to the affected block.',
+            'Create content playlists with plates and media.',
+            'Assign playlists to screens by date range.',
+            'Set a fallback playlist per screen when nothing is scheduled.',
         ],
     },
     {
-        name: '5. Complete the runbook',
-        route: '/admin/runbook/<date>',
+        name: '4. Monitor output',
+        route: '/admin/operate',
         actions: [
-            'Complete preflight before going live.',
-            'Record live operation notes.',
-            'Use incident mode if there is degradation.',
-            'Complete shutdown after the broadcast ends.',
+            'Review each screen monitor tile.',
+            'Confirm the active playlist and current item.',
+            'Use health checks before opening hours.',
         ],
     },
     {
-        name: '6. Go live',
+        name: '5. Go live',
         route: '/admin/operate',
         actions: [
             'Activate the correct day.',
@@ -119,19 +98,19 @@ const operationSteps = [
         ],
     },
     {
-        name: '7. Operate during live',
+        name: '6. Operate during live',
         route: '/admin/operate',
         actions: [
             'Monitor current block, next block, fallback reason, playlist/audio state and playback errors.',
-            'Use Reuters live override only when the output must cut immediately to a dynamic endpoint.',
+            'Use live override only when the output must cut immediately to a dynamic endpoint.',
             'Return to schedule when the override ends.',
         ],
     },
     {
-        name: '8. Stop broadcast',
-        route: '/admin/output',
+        name: '7. Stop playback',
+        route: '/admin/operate',
         actions: [
-            'Use Stop broadcast.',
+            'Use Stop output.',
             'Confirm that active overrides are cleared.',
             'Complete shutdown checks.',
             'Review the audit log.',
@@ -141,11 +120,9 @@ const operationSteps = [
 
 const preAirChecks = [
     '/api/health returns ok:true.',
-    'Supabase check OK.',
     'Schema/migrations OK.',
-    'Storage buckets OK.',
+    'Storage OK.',
     'Vimeo token/playback ready.',
-    'Reuters readiness OK if Reuters is used.',
     'OUTPUT_CAPTURE_TOKEN configured.',
     'Browser output opens on the capture machine.',
     'Start Output unlocks audio.',
@@ -156,16 +133,16 @@ const preAirChecks = [
 ];
 
 const releaseGates = [
-    'rtk npm run typecheck',
-    'rtk npm run lint',
-    'rtk npm run format:check',
-    'rtk npm run i18n:check',
-    'rtk npm run security:service-role',
-    'rtk npm run security:audit-trail',
-    'rtk npm test',
-    'rtk npm run build',
-    'rtk bash scripts/local_readonly_smoke.sh',
-    'rtk bash scripts/prod_readonly_smoke.sh',
+    'npm run typecheck',
+    'npm run lint',
+    'npm run format:check',
+    'npm run i18n:check',
+    'npm run security:service-role',
+    'npm run security:audit-trail',
+    'npm test',
+    'npm run build',
+    'bash scripts/local_readonly_smoke.sh',
+    'bash scripts/prod_readonly_smoke.sh',
 ];
 
 export default function NotionStatusPage() {
@@ -195,31 +172,29 @@ export default function NotionStatusPage() {
 
                 <article className="space-y-12 rounded-sm bg-[#fbfbfa] text-[16px] leading-7">
                     <section className="space-y-5">
-                        <div className="text-6xl leading-none">📡</div>
-                        <p className="text-sm font-medium text-[#787774]">RTV Planner</p>
+                        <div className="text-6xl leading-none">🖥️</div>
+                        <p className="text-sm font-medium text-[#787774]">Dig-Sign</p>
                         <h1 className="text-4xl font-bold leading-tight tracking-[-0.01em] text-[#2f2f2b] md:text-5xl">
-                            RTV Planner status
+                            Dig-Sign status
                         </h1>
 
                         <Callout>
-                            Status: <strong>production live.</strong> Ready for controlled broadcast
-                            operation with an operator present. Browser output has been confirmed in
-                            web player, vMix and OBS; guest lineup plates, metals, weather and
-                            calendar/event plates now use real data paths or operator-managed
-                            inputs. The main remaining product gate is final broadcast plate design
-                            plus stronger output alerts.
+                            Status: <strong>production ready.</strong> Ready for controlled operation
+                            with an operator present. Browser output has been confirmed in web
+                            player, vMix and OBS. The main remaining product gate is final plate
+                            design plus stronger output alerts.
                         </Callout>
 
                         <h2 className={h2Class}>Current status</h2>
                         <p>
-                            RTV Planner is the broadcast control room for Roxom TV. It gives
+                            Dig-Sign is the control room for scheduled digital signage. It gives
                             operators one place to prepare content, program the daily rundown, check
-                            schedule risk, run preflight and send browser playout into OBS or vMix.
+                            schedule risk, run preflight and send browser output into OBS or vMix.
                         </p>
                         <p>
-                            The admin workflow is now grouped by intent: Prepare for content and
-                            plates, Program for day/rundown/loop/fallback work and Operate for live
-                            output, health, runbook and recovery.
+                            The admin workflow is grouped by intent: Prepare for content and plates,
+                            Program for day/rundown/loop/fallback work and Operate for live output,
+                            health, runbook and recovery.
                         </p>
 
                         <h2 className={h2Class}>Operator map</h2>
@@ -239,14 +214,13 @@ export default function NotionStatusPage() {
                                             <code className={codeClass}>/admin/prepare</code>
                                         </td>
                                         <td className="py-3">
-                                            Create media, music, guest plates, weather and data
-                                            plates.
+                                            Create media, music, weather and custom plates.
                                         </td>
                                     </tr>
                                     <tr className="border-b border-[#e9e7e3] align-top">
                                         <td className="py-3 pr-4 font-medium">Program</td>
                                         <td className="py-3 pr-4">
-                                            <code className={codeClass}>/admin/program</code>
+                                            <code className={codeClass}>/admin/screens</code>
                                         </td>
                                         <td className="py-3">
                                             Build the day, create loops, set fallback and fix
@@ -287,104 +261,12 @@ export default function NotionStatusPage() {
                             ))}
                         </ul>
 
-                        <h2 className={h2Class}>Health status</h2>
-                        <ul className={listClass}>
-                            <li>/api/health returns ok: true after deploy checks.</li>
-                            <li>
-                                Status can show degraded when there is no live day loaded or the
-                                persisted smoke status is stale/failing.
-                            </li>
-                            <li>
-                                Schema, Supabase, storage, Vimeo, Reuters and output checks are
-                                healthy.
-                            </li>
-                            <li>
-                                Uploaded local-storage assets play through{' '}
-                                <code className={codeClass}>/api/media/assets/&lt;assetId&gt;</code>
-                                .
-                            </li>
-                        </ul>
-
                         <h2 className={h2Class}>Next steps</h2>
                         <ol className={numberListClass}>
                             {nextSteps.map((item) => (
                                 <li key={item}>{item}</li>
                             ))}
                         </ol>
-
-                        <h2 className={h2Class}>Notes</h2>
-                        <ul className={listClass}>
-                            <li>
-                                Prepare, Program and Operate are the primary operator hubs. Direct
-                                routes like <code className={codeClass}>/admin/assets</code>,{' '}
-                                <code className={codeClass}>/admin/schedule/&lt;date&gt;</code> and{' '}
-                                <code className={codeClass}>/admin/output</code> remain available
-                                for deep work.
-                            </li>
-                            <li>
-                                Loop Builder can create scheduled slide blocks, update the global
-                                visual fallback carousel, or do both in one action. Fallback-only
-                                updates do not create scheduled blocks.
-                            </li>
-                            <li>
-                                Reuters stream URLs are dynamic snapshots. Expired or rotated
-                                HLS/RTMP endpoints must be refreshed.
-                            </li>
-                            <li>
-                                Metals plates read Roxom metals data for gold and silver and fall
-                                back to Pyth when needed. Weather uses OpenWeather when configured
-                                and Open-Meteo otherwise.
-                            </li>
-                            <li>
-                                Calendar/event plates read the Supabase events table from{' '}
-                                <code className={codeClass}>
-                                    supabase/migrations/20260525181000_events_calendar.sql
-                                </code>
-                                .
-                            </li>
-                            <li>
-                                The Previously Recorded bug is block metadata on normal video
-                                programs only. It does not render on ads, promos, slides, images,
-                                fallback, Reuters streams or manual overrides.
-                            </li>
-                            <li>
-                                Smoke scripts require environment variables to be loaded, including
-                                OUTPUT_CAPTURE_TOKEN.
-                            </li>
-                            <li>
-                                Supabase can remain local in production. Uploaded media should
-                                expose public app proxy URLs, not raw{' '}
-                                <code className={codeClass}>127.0.0.1</code> storage URLs.
-                            </li>
-                            <li>
-                                Browser output is the active playout surface. OBS/vMix capture has
-                                been confirmed for the current workflow and should be rechecked
-                                after deploy or machine changes.
-                            </li>
-                            <li>
-                                OpenNext/Cloudflare Workers is configured as an alternate deploy
-                                path. Keep Cloudflare dashboard vars/secrets set and smoke-test a
-                                real Workers deploy before making it primary.
-                            </li>
-                            <li>
-                                Guest lineup plates are operator-configurable, and key non-guest
-                                plates now have real data/fallback paths. The visual design still
-                                needs a broadcast-quality remodel.
-                            </li>
-                            <li>
-                                Existing Supabase backends need the standalone guest migration at{' '}
-                                <code className={codeClass}>
-                                    public/manual/guest-lineup-migration.sql
-                                </code>{' '}
-                                or the normal repo migration in{' '}
-                                <code className={codeClass}>supabase/migrations</code>.
-                            </li>
-                            <li>
-                                If output reloads mid-show, the video seeks to the current schedule
-                                offset before playback resumes. Audio may still require a Start
-                                Output click after reload.
-                            </li>
-                        </ul>
                     </section>
 
                     <hr className="border-[#e9e7e3]" />
@@ -397,8 +279,8 @@ export default function NotionStatusPage() {
 
                         <h2 className={h2Class}>Objective</h2>
                         <p>
-                            RTV Planner turns a daily broadcast plan into an operator-run signal:
-                            media library, schedule, runbook, fallbacks, live monitor and fullscreen
+                            Dig-Sign turns a daily signage plan into an operator-run signal: media
+                            library, schedule, runbook, fallbacks, live monitor and fullscreen
                             browser output.
                         </p>
 
@@ -449,7 +331,7 @@ export default function NotionStatusPage() {
 
                         <h2 className={h2Class}>Operating rules</h2>
                         <ul className={listClass}>
-                            <li>Browser output is the primary playout surface.</li>
+                            <li>Browser output is the primary output surface.</li>
                             <li>
                                 OBS/vMix captures `/output/live`; operators click Start Output to
                                 unlock audio.

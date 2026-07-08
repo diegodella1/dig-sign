@@ -11,7 +11,7 @@ cp -R .next/static/. .next/standalone/.next/static/
 rm -rf .next/standalone/public
 cp -R public .next/standalone/public
 
-sudo systemctl restart rtvplanner.service
+sudo systemctl restart digsign.service
 sleep 3
 
 curl -fsS http://127.0.0.1:3450/manual >/dev/null
@@ -37,4 +37,4 @@ done
 
 node scripts/record_smoke_status.mjs ok local-deploy >/dev/null
 curl -fsS http://127.0.0.1:3450/api/health >/dev/null
-echo "rtvplanner production deploy ok"
+echo "dig-sign production deploy ok"
