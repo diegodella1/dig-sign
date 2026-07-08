@@ -19,6 +19,10 @@ export default async function ScreensPage() {
             name: String(formData.get('name') || ''),
             slug: String(formData.get('slug') || ''),
             layoutPresetId: String(formData.get('layout_preset_id') || '') || null,
+            orientation:
+                String(formData.get('orientation') || 'horizontal') === 'vertical'
+                    ? 'vertical'
+                    : 'horizontal',
         });
 
         if (!result.success) {
@@ -35,8 +39,11 @@ export default async function ScreensPage() {
             </Notice>
 
             <section className="mt-4 rounded-md border border-line bg-surface-elevated-2 p-4">
-                <FormHeader title="Add screen" detail="Create a player endpoint for a physical display." />
-                <form action={createScreenAction} className="mt-3 grid gap-3 md:grid-cols-4">
+                <FormHeader
+                    title="Add screen"
+                    detail="Create a player endpoint for a physical display."
+                />
+                <form action={createScreenAction} className="mt-3 grid gap-3 md:grid-cols-5">
                     <label className="grid gap-1 text-sm">
                         <span className="text-muted">Name</span>
                         <input
@@ -68,6 +75,17 @@ export default async function ScreensPage() {
                             ))}
                         </select>
                     </label>
+                    <label className="grid gap-1 text-sm">
+                        <span className="text-muted">Orientation</span>
+                        <select
+                            name="orientation"
+                            defaultValue="horizontal"
+                            className="rounded-md border border-line bg-surface px-3 py-2"
+                        >
+                            <option value="horizontal">Horizontal 16:9</option>
+                            <option value="vertical">Vertical 9:16</option>
+                        </select>
+                    </label>
                     <div className="flex items-end">
                         <button
                             type="submit"
@@ -80,11 +98,12 @@ export default async function ScreensPage() {
             </section>
 
             <section className="mt-6">
-                <FormHeader title="Active screens" detail="Each screen loops its assigned playlist for today." />
+                <FormHeader
+                    title="Active screens"
+                    detail="Each screen loops its assigned playlist for today."
+                />
                 {!screens.length ? (
-                    <EmptyState title="No screens yet">
-                        Create your first screen above.
-                    </EmptyState>
+                    <EmptyState title="No screens yet">Create your first screen above.</EmptyState>
                 ) : (
                     <ul className="mt-3 divide-y divide-line rounded-md border border-line bg-surface-elevated-2">
                         {screens.map((screen) => (
@@ -95,7 +114,10 @@ export default async function ScreensPage() {
                                 <div>
                                     <p className="font-semibold">{screen.name}</p>
                                     <p className="text-sm text-muted">
-                                        /output/live/{screen.slug} · {screen.timezone}
+                                        /output/live/{screen.slug} · {screen.timezone} ·{' '}
+                                        {screen.orientation === 'vertical'
+                                            ? 'Vertical 9:16'
+                                            : 'Horizontal 16:9'}
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">

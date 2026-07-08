@@ -19,12 +19,14 @@ import { isoDateInTimezone } from './helpers/time';
 import type { MediaAsset, SlideAsset } from './types';
 
 export type ContentPlaylistStatus = 'draft' | 'ready' | 'archived';
+export type PlaylistOrientation = 'horizontal' | 'vertical';
 export type WeekdayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
 export type ContentPlaylist = {
     id: string;
     vendorId: string;
     name: string;
+    orientation: PlaylistOrientation;
     status: ContentPlaylistStatus;
     itemCount: number;
     createdAt: string;
@@ -118,6 +120,7 @@ export async function getContentPlaylist(
 export async function createContentPlaylist(input: {
     name: string;
     status?: ContentPlaylistStatus;
+    orientation?: PlaylistOrientation;
 }): Promise<ContentPlaylist> {
     const scope = await requireTenantScope();
     const db = await getDb();
@@ -128,6 +131,7 @@ export async function createContentPlaylist(input: {
         id,
         vendorId: tenantValue(scope),
         name: input.name.trim(),
+        orientation: normalizeOrientation(input.orientation),
         status: input.status ?? 'draft',
         createdAt: now,
         updatedAt: now,
@@ -137,6 +141,7 @@ export async function createContentPlaylist(input: {
         id,
         vendorId: tenantValue(scope),
         name: input.name.trim(),
+        orientation: normalizeOrientation(input.orientation),
         status: input.status ?? 'draft',
         itemCount: 0,
         createdAt: now,
@@ -146,7 +151,11 @@ export async function createContentPlaylist(input: {
 
 export async function updateContentPlaylist(
     id: string,
-    input: Partial<{ name: string; status: ContentPlaylistStatus }>,
+    input: Partial<{
+        name: string;
+        status: ContentPlaylistStatus;
+        orientation: PlaylistOrientation;
+    }>,
 ): Promise<ContentPlaylist | null> {
     const scope = await requireTenantScope();
     const db = await getDb();
@@ -159,6 +168,10 @@ export async function updateContentPlaylist(
 
     if (input.status !== undefined) {
         patch.status = input.status;
+    }
+
+    if (input.orientation !== undefined) {
+        patch.orientation = normalizeOrientation(input.orientation);
     }
 
     await db
@@ -179,6 +192,7 @@ export async function updateContentPlaylist(
         id: detail.id,
         vendorId: detail.vendorId,
         name: detail.name,
+        orientation: detail.orientation,
         status: detail.status as ContentPlaylistStatus,
         itemCount: detail.items.length,
         createdAt: detail.createdAt,
@@ -290,18 +304,22 @@ export async function createPlaylistAssignment(input: {
     const scope = await requireTenantScope();
     const db = await getDb();
     const [screen] = await db
-        .select({ vendorId: screens.vendorId })
+        .select({ vendorId: screens.vendorId, orientation: screens.orientation })
         .from(screens)
         .where(eq(screens.id, input.screenId))
         .limit(1);
     const [playlist] = await db
-        .select({ vendorId: contentPlaylists.vendorId })
+        .select({ vendorId: contentPlaylists.vendorId, orientation: contentPlaylists.orientation })
         .from(contentPlaylists)
         .where(eq(contentPlaylists.id, input.playlistId))
         .limit(1);
 
     if (!screen || !playlist || screen.vendorId !== playlist.vendorId) {
         throw new Error('Playlist and screen must belong to the same vendor');
+    }
+
+    if (normalizeOrientation(screen.orientation) !== normalizeOrientation(playlist.orientation)) {
+        throw new Error('Playlist orientation does not match screen orientation');
     }
 
     if (scope.kind === 'vendor' && playlist.vendorId !== scope.vendorId) {
@@ -571,11 +589,16 @@ function mapPlaylist(row: ContentPlaylistRow, itemCount: number): ContentPlaylis
         id: row.id,
         vendorId: row.vendorId,
         name: row.name,
+        orientation: normalizeOrientation(row.orientation),
         status: row.status as ContentPlaylistStatus,
         itemCount,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
     };
+}
+
+function normalizeOrientation(value: string | null | undefined): PlaylistOrientation {
+    return value === 'vertical' ? 'vertical' : 'horizontal';
 }
 
 function mapPlaylistItem(row: ContentPlaylistItemRow): ContentPlaylistItem {

@@ -389,6 +389,7 @@ export const screens = sqliteTable(
         }),
         fallbackPlaylistId: text('fallback_playlist_id'),
         timezone: text('timezone'),
+        orientation: text('orientation').notNull().default('horizontal'),
         status: text('status').notNull().default('active'),
         createdAt: text('created_at')
             .notNull()
@@ -417,6 +418,7 @@ export const contentPlaylists = sqliteTable('content_playlists', {
         .default('default')
         .references(() => vendors.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    orientation: text('orientation').notNull().default('horizontal'),
     status: text('status').notNull().default('ready'),
     createdAt: text('created_at')
         .notNull()

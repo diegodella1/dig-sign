@@ -24,10 +24,13 @@ export type Screen = {
     layoutPresetId: string | null;
     fallbackPlaylistId: string | null;
     timezone: string;
+    orientation: ScreenOrientation;
     status: string;
     createdAt: string;
     updatedAt: string;
 };
+
+export type ScreenOrientation = 'horizontal' | 'vertical';
 
 export const listScreens = cache(async (): Promise<Screen[]> => {
     await ensureSignageBootstrap();
@@ -118,6 +121,7 @@ export async function createScreen(input: {
     layoutPresetId?: string | null;
     fallbackPlaylistId?: string | null;
     timezone?: string | null;
+    orientation?: ScreenOrientation | null;
 }): Promise<Screen> {
     await ensureSignageBootstrap();
     const scope = await requireTenantScope();
@@ -133,6 +137,7 @@ export async function createScreen(input: {
         layoutPresetId: input.layoutPresetId ?? null,
         fallbackPlaylistId: input.fallbackPlaylistId ?? null,
         timezone: input.timezone ?? null,
+        orientation: normalizeOrientation(input.orientation),
         status: 'active',
         createdAt: now,
         updatedAt: now,
@@ -146,6 +151,7 @@ export async function createScreen(input: {
         layoutPresetId: input.layoutPresetId ?? null,
         fallbackPlaylistId: input.fallbackPlaylistId ?? null,
         timezone: input.timezone ?? PLAYOUT_TIMEZONE,
+        orientation: normalizeOrientation(input.orientation),
         status: 'active',
         createdAt: now,
         updatedAt: now,
@@ -160,6 +166,7 @@ export async function updateScreen(
         layoutPresetId: string | null;
         fallbackPlaylistId: string | null;
         timezone: string | null;
+        orientation: ScreenOrientation | null;
         status: string;
     }>,
 ): Promise<Screen | null> {
@@ -186,6 +193,10 @@ export async function updateScreen(
 
     if (input.timezone !== undefined) {
         patch.timezone = input.timezone;
+    }
+
+    if (input.orientation !== undefined) {
+        patch.orientation = normalizeOrientation(input.orientation);
     }
 
     if (input.status !== undefined) {
@@ -237,6 +248,7 @@ async function ensureSignageBootstrap() {
         slug: 'main',
         layoutPresetId: presetId,
         timezone: PLAYOUT_TIMEZONE,
+        orientation: 'horizontal',
         status: 'active',
         createdAt: now,
         updatedAt: now,
@@ -252,10 +264,15 @@ function mapScreen(row: ScreenRow): Screen {
         layoutPresetId: row.layoutPresetId,
         fallbackPlaylistId: row.fallbackPlaylistId,
         timezone: row.timezone ?? PLAYOUT_TIMEZONE,
+        orientation: normalizeOrientation(row.orientation),
         status: row.status,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
     };
+}
+
+function normalizeOrientation(value: string | null | undefined): ScreenOrientation {
+    return value === 'vertical' ? 'vertical' : 'horizontal';
 }
 
 function mapLayoutPreset(row: LayoutPresetRow): LayoutPreset {

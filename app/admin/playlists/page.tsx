@@ -17,6 +17,10 @@ export default async function PlaylistsPage() {
         const result = await createSignagePlaylist({
             name: String(formData.get('name') || ''),
             status: 'draft',
+            orientation:
+                String(formData.get('orientation') || 'horizontal') === 'vertical'
+                    ? 'vertical'
+                    : 'horizontal',
         });
 
         if (!result.success) {
@@ -29,7 +33,10 @@ export default async function PlaylistsPage() {
     return (
         <AdminShell title="Playlists" subNav={programSubNav}>
             <section className="rounded-md border border-line bg-surface-elevated-2 p-4">
-                <FormHeader title="New playlist" detail="Build ordered loops of slides and media." />
+                <FormHeader
+                    title="New playlist"
+                    detail="Build ordered loops of slides and media."
+                />
                 <form action={createPlaylistAction} className="mt-3 flex flex-wrap gap-3">
                     <input
                         name="name"
@@ -37,6 +44,14 @@ export default async function PlaylistsPage() {
                         placeholder="Morning loop"
                         className="min-w-[16rem] flex-1 rounded-md border border-line bg-surface px-3 py-2"
                     />
+                    <select
+                        name="orientation"
+                        defaultValue="horizontal"
+                        className="rounded-md border border-line bg-surface px-3 py-2"
+                    >
+                        <option value="horizontal">Horizontal 16:9</option>
+                        <option value="vertical">Vertical 9:16</option>
+                    </select>
                     <button
                         type="submit"
                         className="rounded-md bg-accent-positive px-4 py-2 text-sm font-semibold text-white"
@@ -47,7 +62,10 @@ export default async function PlaylistsPage() {
             </section>
 
             <section className="mt-6">
-                <FormHeader title="Content playlists" detail="Mark ready before assigning to screens." />
+                <FormHeader
+                    title="Content playlists"
+                    detail="Mark ready before assigning to screens."
+                />
                 {!playlists.length ? (
                     <EmptyState title="No playlists yet">
                         Create a playlist to start building signage loops.
@@ -62,7 +80,10 @@ export default async function PlaylistsPage() {
                                 <div>
                                     <p className="font-semibold">{playlist.name}</p>
                                     <p className="text-sm text-muted">
-                                        {playlist.itemCount} items · {playlist.status}
+                                        {playlist.itemCount} items · {playlist.status} ·{' '}
+                                        {playlist.orientation === 'vertical'
+                                            ? 'Vertical 9:16'
+                                            : 'Horizontal 16:9'}
                                     </p>
                                 </div>
                                 <Link

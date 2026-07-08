@@ -23,6 +23,12 @@ type BackgroundMusic = {
     tracks: Array<{ id: string; title: string; url: string }>;
 } | null;
 
+type ScreenOrientation = 'horizontal' | 'vertical';
+
+type OutputGeometry = {
+    screenOrientation?: ScreenOrientation;
+};
+
 type RecordedBug = {
     label: 'PREVIOUSLY RECORDED';
     position: 'top_left' | 'top_right' | 'bottom_left' | 'bottom_right';
@@ -35,7 +41,7 @@ type LiveLowerThird = {
 };
 
 type OutputState =
-    | {
+    | ({
           kind: 'hls' | 'mp4';
           signature: string;
           blockId?: string | null;
@@ -58,8 +64,8 @@ type OutputState =
           liveStatus?: string;
           lowerThird?: LiveLowerThird;
           backgroundMusic: BackgroundMusic;
-      }
-    | {
+      } & OutputGeometry)
+    | ({
           kind: 'embed';
           signature: string;
           blockId?: string | null;
@@ -74,8 +80,8 @@ type OutputState =
           presentation?: 'fit' | 'vertical_blur';
           background?: 'black' | 'blur';
           backgroundMusic: BackgroundMusic;
-      }
-    | {
+      } & OutputGeometry)
+    | ({
           kind: 'youtube_live';
           signature: string;
           blockId: string;
@@ -92,8 +98,8 @@ type OutputState =
           liveStatus: string;
           lowerThird: LiveLowerThird;
           backgroundMusic: BackgroundMusic;
-      }
-    | {
+      } & OutputGeometry)
+    | ({
           kind: 'slide';
           signature: string;
           blockId: string | null;
@@ -108,8 +114,8 @@ type OutputState =
           serverSeconds: number;
           generatedAt: string;
           backgroundMusic: BackgroundMusic;
-      }
-    | {
+      } & OutputGeometry)
+    | ({
           kind: 'image';
           signature: string;
           blockId: string;
@@ -121,8 +127,8 @@ type OutputState =
           serverSeconds: number;
           generatedAt: string;
           backgroundMusic: BackgroundMusic;
-      }
-    | {
+      } & OutputGeometry)
+    | ({
           kind: 'fallback';
           signature: string;
           reason: string;
@@ -130,7 +136,7 @@ type OutputState =
           serverSeconds: number;
           generatedAt: string;
           backgroundMusic: BackgroundMusic;
-      };
+      } & OutputGeometry);
 
 type Props = {
     debug?: boolean;
@@ -574,15 +580,10 @@ export function BrowserOutputRenderer({ debug = false, startAt, token, screen = 
             data-expected-offset={Math.floor(expected)}
             data-drift-seconds={driftSeconds.toFixed(2)}
             data-drift-warning={driftWarning ? 'true' : 'false'}
+            data-screen-orientation={screenOrientation(state)}
         >
             <div className="absolute inset-0 grid place-items-center bg-black">
-                <div
-                    className="relative overflow-hidden bg-black"
-                    style={{
-                        width: 'min(100vw, calc(100vh * 16 / 9))',
-                        height: 'min(100vh, calc(100vw * 9 / 16))',
-                    }}
-                >
+                <div className="relative overflow-hidden bg-black" style={outputFrameStyle(state)}>
                     <video ref={videoRef} className={videoClassName(state)} />
                     {shouldRenderBlurBackground(state) ? (
                         <>
@@ -598,10 +599,10 @@ export function BrowserOutputRenderer({ debug = false, startAt, token, screen = 
                             <div className="pointer-events-none absolute inset-0 z-[1] bg-black/30" />
                         </>
                     ) : null}
+                    <VisualState state={state} mediaState={mediaState} />
                 </div>
             </div>
             <audio ref={musicRef} />
-            <VisualState state={state} mediaState={mediaState} />
             <RecordedBugOverlay state={state} />
             <LiveLowerThirdOverlay state={state} />
             {!armed ? (
@@ -645,6 +646,24 @@ export function BrowserOutputRenderer({ debug = false, startAt, token, screen = 
 }
 
 const LIVE_DEAD_TIMEOUT_MS = 60_000;
+
+function screenOrientation(state: OutputState | null): ScreenOrientation {
+    return state?.screenOrientation === 'vertical' ? 'vertical' : 'horizontal';
+}
+
+function outputFrameStyle(state: OutputState | null) {
+    if (screenOrientation(state) === 'vertical') {
+        return {
+            width: 'min(100vw, calc(100vh * 9 / 16))',
+            height: 'min(100vh, calc(100vw * 16 / 9))',
+        };
+    }
+
+    return {
+        width: 'min(100vw, calc(100vh * 16 / 9))',
+        height: 'min(100vh, calc(100vw * 9 / 16))',
+    };
+}
 
 function RecordedBugOverlay({ state }: { state: OutputState | null }) {
     if (!state || !isVideoState(state) || !state.recordedBug) {

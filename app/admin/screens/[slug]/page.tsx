@@ -27,11 +27,7 @@ const WEEKDAYS: Array<{ key: WeekdayKey; label: string }> = [
     { key: 'sun', label: 'Sun' },
 ];
 
-export default async function ScreenDetailPage({
-    params,
-}: {
-    params: Promise<{ slug: string }>;
-}) {
+export default async function ScreenDetailPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
     const screen = await getScreenBySlug(slug);
 
@@ -44,6 +40,9 @@ export default async function ScreenDetailPage({
         listAssignmentsForScreen(screen.id),
         listLayoutPresets(),
     ]);
+    const compatiblePlaylists = playlists.filter(
+        (playlist) => playlist.orientation === screen.orientation,
+    );
     const playlistById = new Map(playlists.map((playlist) => [playlist.id, playlist]));
 
     async function saveScreenAction(formData: FormData) {
@@ -55,6 +54,10 @@ export default async function ScreenDetailPage({
             layoutPresetId: String(formData.get('layout_preset_id') || '') || null,
             fallbackPlaylistId: String(formData.get('fallback_playlist_id') || '') || null,
             timezone: String(formData.get('timezone') || '') || null,
+            orientation:
+                String(formData.get('orientation') || 'horizontal') === 'vertical'
+                    ? 'vertical'
+                    : 'horizontal',
         });
 
         if (!result.success) {
@@ -105,7 +108,10 @@ export default async function ScreenDetailPage({
             </Notice>
 
             <section className="mt-4 rounded-md border border-line bg-surface-elevated-2 p-4">
-                <FormHeader title="Screen settings" detail="Slug controls the player URL path." />
+                <FormHeader
+                    title="Screen settings"
+                    detail="Slug controls the player URL path. Orientation controls the output canvas."
+                />
                 <form action={saveScreenAction} className="mt-3 grid gap-3 md:grid-cols-2">
                     <input type="hidden" name="id" value={screen.id} />
                     <label className="grid gap-1 text-sm">
@@ -162,6 +168,17 @@ export default async function ScreenDetailPage({
                             className="rounded-md border border-line bg-surface px-3 py-2"
                         />
                     </label>
+                    <label className="grid gap-1 text-sm md:col-span-2">
+                        <span className="text-muted">Orientation</span>
+                        <select
+                            name="orientation"
+                            defaultValue={screen.orientation}
+                            className="rounded-md border border-line bg-surface px-3 py-2"
+                        >
+                            <option value="horizontal">Horizontal 16:9</option>
+                            <option value="vertical">Vertical 9:16</option>
+                        </select>
+                    </label>
                     <div className="md:col-span-2">
                         <button
                             type="submit"
@@ -174,7 +191,10 @@ export default async function ScreenDetailPage({
             </section>
 
             <section className="mt-6 rounded-md border border-line bg-surface-elevated-2 p-4">
-                <FormHeader title="Day assignments" detail="Higher priority wins when multiple rules match today." />
+                <FormHeader
+                    title="Day assignments"
+                    detail="Higher priority wins when multiple rules match today."
+                />
                 <form action={assignPlaylistAction} className="mt-3 grid gap-3 md:grid-cols-2">
                     <label className="grid gap-1 text-sm md:col-span-2">
                         <span className="text-muted">Playlist</span>
@@ -184,12 +204,17 @@ export default async function ScreenDetailPage({
                             className="rounded-md border border-line bg-surface px-3 py-2"
                         >
                             <option value="">Choose playlist</option>
-                            {playlists.map((playlist) => (
+                            {compatiblePlaylists.map((playlist) => (
                                 <option key={playlist.id} value={playlist.id}>
                                     {playlist.name} ({playlist.itemCount} items)
                                 </option>
                             ))}
                         </select>
+                        {!compatiblePlaylists.length ? (
+                            <span className="text-xs text-muted">
+                                No {screen.orientation} playlists yet. Create one in Playlists.
+                            </span>
+                        ) : null}
                     </label>
                     <label className="grid gap-1 text-sm">
                         <span className="text-muted">Start date</span>
@@ -247,17 +272,23 @@ export default async function ScreenDetailPage({
                                 className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                             >
                                 <div>
-                                    <p className="font-semibold">{playlist?.name ?? assignment.playlistId}</p>
+                                    <p className="font-semibold">
+                                        {playlist?.name ?? assignment.playlistId}
+                                    </p>
                                     <p className="text-sm text-muted">
-                                        {assignment.startDate ?? '…'} → {assignment.endDate ?? '…'} · priority{' '}
-                                        {assignment.priority}
+                                        {assignment.startDate ?? '…'} → {assignment.endDate ?? '…'}{' '}
+                                        · priority {assignment.priority}
                                         {assignment.weekdays.length
                                             ? ` · ${assignment.weekdays.join(', ')}`
                                             : ' · all days'}
                                     </p>
                                 </div>
                                 <form action={deleteAssignmentAction}>
-                                    <input type="hidden" name="assignment_id" value={assignment.id} />
+                                    <input
+                                        type="hidden"
+                                        name="assignment_id"
+                                        value={assignment.id}
+                                    />
                                     <button type="submit" className="text-sm text-danger">
                                         Remove
                                     </button>

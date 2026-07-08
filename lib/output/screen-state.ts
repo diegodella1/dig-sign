@@ -36,6 +36,7 @@ export async function composeScreenState(inputs: ScreenStateInputs) {
     const base: ChannelStateBase = {
         serverSeconds: secondsSinceMidnightInTimezone(now, timezone),
         generatedAt: now.toISOString(),
+        screenOrientation: screen.orientation,
     };
     const resolved = await resolvePlaylistForScreen({
         screenId: screen.id,
@@ -89,6 +90,7 @@ export async function composeScreenState(inputs: ScreenStateInputs) {
         ...base,
         screenSlug: screen.slug,
         screenName: screen.name,
+        screenOrientation: screen.orientation,
         playlistId: playlist.id,
         assignmentId: resolved.assignment?.id ?? null,
         reason: resolved.reason,

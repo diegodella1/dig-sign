@@ -8,6 +8,7 @@ export async function createSignageScreen(input: {
     layoutPresetId?: string | null;
     fallbackPlaylistId?: string | null;
     timezone?: string | null;
+    orientation?: 'horizontal' | 'vertical' | null;
 }): Promise<Result<{ id: string; slug: string }>> {
     try {
         const screen = await auditedMutation(
@@ -32,6 +33,7 @@ export async function updateSignageScreen(input: {
     layoutPresetId?: string | null;
     fallbackPlaylistId?: string | null;
     timezone?: string | null;
+    orientation?: 'horizontal' | 'vertical' | null;
     status?: string;
 }): Promise<Result<void>> {
     try {
@@ -44,6 +46,7 @@ export async function updateSignageScreen(input: {
                     name: input.name,
                     slug: input.slug,
                     fallbackPlaylistId: input.fallbackPlaylistId,
+                    orientation: input.orientation,
                 },
             },
             async () => {

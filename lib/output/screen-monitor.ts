@@ -7,6 +7,7 @@ export type ScreenMonitorSnapshot = {
     slug: string;
     name: string;
     timezone: string;
+    orientation: 'horizontal' | 'vertical';
     serverSeconds: number;
     playlistId: string | null;
     playlistName: string | null;
@@ -58,14 +59,13 @@ async function snapshotForScreen(
     const durationSeconds =
         typeof stateRecord.durationSeconds === 'number' ? stateRecord.durationSeconds : null;
     const elapsedSeconds =
-        typeof stateRecord.startOffsetSeconds === 'number'
-            ? stateRecord.startOffsetSeconds
-            : null;
+        typeof stateRecord.startOffsetSeconds === 'number' ? stateRecord.startOffsetSeconds : null;
 
     return {
         slug: screen.slug,
         name: screen.name,
         timezone,
+        orientation: screen.orientation,
         serverSeconds,
         playlistId: resolved.playlistId,
         playlistName: playlist?.name ?? null,

@@ -3,6 +3,7 @@ import { secondsSinceMidnightInTimezone } from '@/lib/helpers/time';
 export type ChannelStateBase = {
     serverSeconds: number;
     generatedAt: string;
+    screenOrientation?: 'horizontal' | 'vertical';
 };
 
 export function fallbackState(reason: string, base?: ChannelStateBase) {
@@ -13,6 +14,7 @@ export function fallbackState(reason: string, base?: ChannelStateBase) {
         title: 'Dig-Sign fallback',
         serverSeconds: base?.serverSeconds ?? secondsSinceMidnightInTimezone(),
         generatedAt: base?.generatedAt ?? new Date().toISOString(),
+        screenOrientation: base?.screenOrientation ?? 'horizontal',
         backgroundMusic: null,
     };
 }

@@ -5,6 +5,7 @@ import {
     deletePlaylistAssignment,
     setContentPlaylistItems,
     updateContentPlaylist,
+    type PlaylistOrientation,
     type ContentPlaylistStatus,
     type WeekdayKey,
 } from '../content-playlists';
@@ -13,13 +14,14 @@ import { err, extractError, ok, type Result } from '../result';
 export async function createSignagePlaylist(input: {
     name: string;
     status?: ContentPlaylistStatus;
+    orientation?: PlaylistOrientation;
 }): Promise<Result<{ id: string }>> {
     try {
         const playlist = await auditedMutation(
             {
                 action: 'content_playlist.created',
                 entityType: 'content_playlists',
-                metadata: { name: input.name },
+                metadata: { name: input.name, orientation: input.orientation },
             },
             async () => createContentPlaylist(input),
         );
@@ -34,6 +36,7 @@ export async function updateSignagePlaylist(input: {
     id: string;
     name?: string;
     status?: ContentPlaylistStatus;
+    orientation?: PlaylistOrientation;
 }): Promise<Result<void>> {
     try {
         await auditedMutation(
@@ -41,7 +44,11 @@ export async function updateSignagePlaylist(input: {
                 action: 'content_playlist.updated',
                 entityType: 'content_playlists',
                 entityId: input.id,
-                metadata: { name: input.name, status: input.status },
+                metadata: {
+                    name: input.name,
+                    status: input.status,
+                    orientation: input.orientation,
+                },
             },
             async () => {
                 const updated = await updateContentPlaylist(input.id, input);
