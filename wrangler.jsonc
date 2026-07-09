@@ -44,7 +44,7 @@
         {
             "binding": "DB",
             "database_name": "dig-sign-db",
-            "database_id": "PLACEHOLDER_PROD_D1_ID",
+            "database_id": "59b0524c-5cc6-41cb-9536-bffd580c3a61",
             "migrations_dir": "./drizzle",
         },
     ],
@@ -112,7 +112,7 @@
                 {
                     "binding": "DB",
                     "database_name": "dig-sign-db",
-                    "database_id": "PLACEHOLDER_PROD_D1_ID",
+                    "database_id": "59b0524c-5cc6-41cb-9536-bffd580c3a61",
                     "migrations_dir": "./drizzle",
                 },
             ],
