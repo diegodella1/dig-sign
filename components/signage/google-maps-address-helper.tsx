@@ -25,7 +25,11 @@ export function GoogleMapsAddressHelper({
     const [googleMapsUrl, setGoogleMapsUrl] = useState(defaultGoogleMapsUrl ?? '');
 
     const suggestedQuery = useMemo(
-        () => [locationName, address].map((part) => part.trim()).filter(Boolean).join(', '),
+        () =>
+            [locationName, address]
+                .map((part) => part.trim())
+                .filter(Boolean)
+                .join(', '),
         [locationName, address],
     );
     const suggestedUrl = suggestedQuery ? mapsSearchUrl(suggestedQuery) : '';
