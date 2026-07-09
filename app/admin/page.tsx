@@ -13,19 +13,23 @@ import { listVendors } from '@/lib/vendors';
 
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
+import type { OperatorHealthReport } from '@/lib/health/health-checks';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
     const scope = await requireTenantScope();
     const [assets, healthReport, screens, playlists, monitor] = await Promise.all([
-        getAssetSummaries(),
-        collectOperatorHealth(),
-        listScreens(),
-        listContentPlaylists(),
-        buildSignageMonitorPayload(),
+        getAssetSummaries().catch(() => []),
+        collectOperatorHealth().catch(fallbackHealthReport),
+        listScreens().catch(() => []),
+        listContentPlaylists().catch(() => []),
+        buildSignageMonitorPayload().catch(() => ({
+            generatedAt: new Date().toISOString(),
+            screens: [],
+        })),
     ]);
-    const vendors = scope.kind === 'global' ? await listVendors() : [];
+    const vendors = scope.kind === 'global' ? await listVendors().catch(() => []) : [];
     const readyAssets = assets.filter((asset) => asset.status === 'ready').length;
     const needsFix = assets.length - readyAssets;
     const readyPlaylists = playlists.filter(
@@ -452,4 +456,67 @@ function OperationalPanel({
             {children}
         </section>
     );
+}
+
+function fallbackHealthReport(error: unknown): OperatorHealthReport {
+    const message = error instanceof Error ? error.message : 'Health check unavailable';
+
+    return {
+        ok: false,
+        status: 'fail',
+        service: 'dig-sign',
+        generatedAt: new Date().toISOString(),
+        uptime: 0,
+        checks: {
+            env: {
+                id: 'env',
+                label: 'Environment',
+                ok: false,
+                status: 'fail',
+                message,
+            },
+            supabase: {
+                id: 'supabase',
+                label: 'Database',
+                ok: false,
+                status: 'fail',
+                message: 'Database check unavailable',
+            },
+            schema: {
+                id: 'schema',
+                label: 'Schema',
+                ok: false,
+                status: 'fail',
+                message: 'Schema check unavailable',
+            },
+            storage: {
+                id: 'storage',
+                label: 'Storage',
+                ok: false,
+                status: 'fail',
+                message: 'Storage check unavailable',
+            },
+            output: {
+                id: 'output',
+                label: 'Output',
+                ok: false,
+                status: 'fail',
+                message: 'Output check unavailable',
+            },
+            migrations: {
+                id: 'migrations',
+                label: 'Migrations',
+                ok: false,
+                status: 'fail',
+                message: 'Migration check unavailable',
+            },
+            smoke: {
+                id: 'smoke',
+                label: 'Smoke',
+                ok: false,
+                status: 'fail',
+                message: 'Smoke check unavailable',
+            },
+        },
+    };
 }
