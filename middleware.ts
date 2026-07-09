@@ -226,6 +226,8 @@ function contentSecurityPolicy() {
     const connectSrc = ["'self'", 'https:', 'wss:'];
     const frameSrc = [
         "'self'",
+        'https://www.google.com',
+        'https://maps.google.com',
         'https://www.youtube.com',
         'https://www.youtube-nocookie.com',
         'https://player.vimeo.com',
