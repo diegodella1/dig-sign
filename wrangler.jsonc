@@ -33,7 +33,7 @@
     "kv_namespaces": [
         {
             "binding": "SLIDE_DATA_KV",
-            "id": "9f83185620c54181a75c0462fd906193",
+            "id": "23efcaa8fddf46a5b33e0acb6d8fcc6b",
             "preview_id": "1592b3ff06a44ae9b3aee486420382eb",
         },
     ],
@@ -71,7 +71,7 @@
             "kv_namespaces": [
                 {
                     "binding": "SLIDE_DATA_KV",
-                    "id": "9f83185620c54181a75c0462fd906193",
+                    "id": "23efcaa8fddf46a5b33e0acb6d8fcc6b",
                     "preview_id": "1592b3ff06a44ae9b3aee486420382eb",
                 },
             ],
