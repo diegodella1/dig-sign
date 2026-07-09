@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { programSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
+import { GoogleMapsAddressHelper } from '@/components/signage/google-maps-address-helper';
 import { EmptyState, FormHeader, Notice } from '@/components/ui';
 import { directLiveOutputHrefForScreen } from '@/lib/auth/output-auth';
 import { createSignageScreen } from '@/lib/mutations';
@@ -89,30 +90,7 @@ export default async function ScreensPage() {
                             <option value="vertical">Vertical 9:16</option>
                         </select>
                     </label>
-                    <label className="grid gap-1 text-sm md:col-span-2">
-                        <span className="text-muted">Place / location</span>
-                        <input
-                            name="location_name"
-                            placeholder="Lobby, branch, store"
-                            className="rounded-md border border-line bg-surface px-3 py-2"
-                        />
-                    </label>
-                    <label className="grid gap-1 text-sm md:col-span-3">
-                        <span className="text-muted">Address</span>
-                        <input
-                            name="address"
-                            placeholder="Street, city, country"
-                            className="rounded-md border border-line bg-surface px-3 py-2"
-                        />
-                    </label>
-                    <label className="grid gap-1 text-sm md:col-span-2">
-                        <span className="text-muted">Google Maps URL</span>
-                        <input
-                            name="google_maps_url"
-                            placeholder="Optional"
-                            className="rounded-md border border-line bg-surface px-3 py-2"
-                        />
-                    </label>
+                    <GoogleMapsAddressHelper className="md:col-span-5" />
                     <div className="flex items-end">
                         <button
                             type="submit"

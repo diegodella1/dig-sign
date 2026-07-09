@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { programSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
+import { GoogleMapsAddressHelper } from '@/components/signage/google-maps-address-helper';
 import { FormHeader, Notice } from '@/components/ui';
 import {
     isPlayableContentPlaylist,
@@ -231,33 +232,12 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
                             <option value="vertical">Vertical 9:16</option>
                         </select>
                     </label>
-                    <label className="grid gap-1 text-sm">
-                        <span className="text-muted">Place / location</span>
-                        <input
-                            name="location_name"
-                            defaultValue={screen.locationName ?? ''}
-                            placeholder="Lobby, branch, store"
-                            className="rounded-md border border-line bg-surface px-3 py-2"
-                        />
-                    </label>
-                    <label className="grid gap-1 text-sm">
-                        <span className="text-muted">Address</span>
-                        <input
-                            name="address"
-                            defaultValue={screen.address ?? ''}
-                            placeholder="Street, city, country"
-                            className="rounded-md border border-line bg-surface px-3 py-2"
-                        />
-                    </label>
-                    <label className="grid gap-1 text-sm md:col-span-2">
-                        <span className="text-muted">Google Maps URL</span>
-                        <input
-                            name="google_maps_url"
-                            defaultValue={screen.googleMapsUrl ?? ''}
-                            placeholder="Optional"
-                            className="rounded-md border border-line bg-surface px-3 py-2"
-                        />
-                    </label>
+                    <GoogleMapsAddressHelper
+                        defaultLocationName={screen.locationName}
+                        defaultAddress={screen.address}
+                        defaultGoogleMapsUrl={screen.googleMapsUrl}
+                        className="md:col-span-2"
+                    />
                     <div className="md:col-span-2">
                         <button
                             type="submit"
