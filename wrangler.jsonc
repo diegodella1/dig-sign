@@ -29,6 +29,12 @@
         "directory": ".open-next/assets",
         "binding": "ASSETS",
     },
+    "routes": [
+        {
+            "pattern": "digsign.diegodella.ar",
+            "custom_domain": true,
+        },
+    ],
     // ─── Slide-data KV cache (Phase E1) ─────────────────────────────────────────
     "kv_namespaces": [
         {
@@ -71,7 +77,7 @@
             "kv_namespaces": [
                 {
                     "binding": "SLIDE_DATA_KV",
-                    "id": "23efcaa8fddf46a5b33e0acb6d8fcc6b",
+                    "id": "9f83185620c54181a75c0462fd906193",
                     "preview_id": "1592b3ff06a44ae9b3aee486420382eb",
                 },
             ],
@@ -101,10 +107,16 @@
                 "directory": ".open-next/assets",
                 "binding": "ASSETS",
             },
+            "routes": [
+                {
+                    "pattern": "digsign.diegodella.ar",
+                    "custom_domain": true,
+                },
+            ],
             "kv_namespaces": [
                 {
                     "binding": "SLIDE_DATA_KV",
-                    "id": "9f83185620c54181a75c0462fd906193",
+                    "id": "23efcaa8fddf46a5b33e0acb6d8fcc6b",
                     "preview_id": "1592b3ff06a44ae9b3aee486420382eb",
                 },
             ],
