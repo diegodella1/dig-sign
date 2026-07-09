@@ -6,7 +6,7 @@ import { AdminShell } from '@/components/admin/admin-shell';
 import { EmptyState, FormHeader, Notice } from '@/components/ui';
 import { directLiveOutputHrefForScreen } from '@/lib/auth/output-auth';
 import { createSignageScreen } from '@/lib/mutations';
-import { listLayoutPresets, listScreens } from '@/lib/screens';
+import { listLayoutPresets, listScreens, screenMapsHref } from '@/lib/screens';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +23,9 @@ export default async function ScreensPage() {
                 String(formData.get('orientation') || 'horizontal') === 'vertical'
                     ? 'vertical'
                     : 'horizontal',
+            locationName: String(formData.get('location_name') || '') || null,
+            address: String(formData.get('address') || '') || null,
+            googleMapsUrl: String(formData.get('google_maps_url') || '') || null,
         });
 
         if (!result.success) {
@@ -43,7 +46,7 @@ export default async function ScreensPage() {
                     title="Add screen"
                     detail="Create a player endpoint for a physical display."
                 />
-                <form action={createScreenAction} className="mt-3 grid gap-3 md:grid-cols-5">
+                <form action={createScreenAction} className="mt-3 grid gap-3 md:grid-cols-6">
                     <label className="grid gap-1 text-sm">
                         <span className="text-muted">Name</span>
                         <input
@@ -86,6 +89,30 @@ export default async function ScreensPage() {
                             <option value="vertical">Vertical 9:16</option>
                         </select>
                     </label>
+                    <label className="grid gap-1 text-sm md:col-span-2">
+                        <span className="text-muted">Place / location</span>
+                        <input
+                            name="location_name"
+                            placeholder="Lobby, branch, store"
+                            className="rounded-md border border-line bg-surface px-3 py-2"
+                        />
+                    </label>
+                    <label className="grid gap-1 text-sm md:col-span-3">
+                        <span className="text-muted">Address</span>
+                        <input
+                            name="address"
+                            placeholder="Street, city, country"
+                            className="rounded-md border border-line bg-surface px-3 py-2"
+                        />
+                    </label>
+                    <label className="grid gap-1 text-sm md:col-span-2">
+                        <span className="text-muted">Google Maps URL</span>
+                        <input
+                            name="google_maps_url"
+                            placeholder="Optional"
+                            className="rounded-md border border-line bg-surface px-3 py-2"
+                        />
+                    </label>
                     <div className="flex items-end">
                         <button
                             type="submit"
@@ -106,38 +133,58 @@ export default async function ScreensPage() {
                     <EmptyState title="No screens yet">Create your first screen above.</EmptyState>
                 ) : (
                     <ul className="mt-3 divide-y divide-line rounded-md border border-line bg-surface-elevated-2">
-                        {screens.map((screen) => (
-                            <li
-                                key={screen.id}
-                                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                            >
-                                <div>
-                                    <p className="font-semibold">{screen.name}</p>
-                                    <p className="text-sm text-muted">
-                                        /output/live/{screen.slug} · {screen.timezone} ·{' '}
-                                        {screen.orientation === 'vertical'
-                                            ? 'Vertical 9:16'
-                                            : 'Horizontal 16:9'}
-                                    </p>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    <Link
-                                        href={`/admin/screens/${screen.slug}`}
-                                        className="rounded-md border border-line px-3 py-1.5 text-sm"
-                                    >
-                                        Manage
-                                    </Link>
-                                    <a
-                                        href={directLiveOutputHrefForScreen(screen.slug)}
-                                        className="rounded-md border border-line px-3 py-1.5 text-sm"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                    >
-                                        Open player
-                                    </a>
-                                </div>
-                            </li>
-                        ))}
+                        {screens.map((screen) => {
+                            const mapsHref = screenMapsHref(screen);
+
+                            return (
+                                <li
+                                    key={screen.id}
+                                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                                >
+                                    <div>
+                                        <p className="font-semibold">{screen.name}</p>
+                                        <p className="text-sm text-muted">
+                                            /output/live/{screen.slug} · {screen.timezone} ·{' '}
+                                            {screen.orientation === 'vertical'
+                                                ? 'Vertical 9:16'
+                                                : 'Horizontal 16:9'}
+                                        </p>
+                                        {screen.locationName || screen.address ? (
+                                            <p className="mt-1 text-sm text-muted">
+                                                {screen.locationName ?? 'Location'}{' '}
+                                                {screen.address ? `· ${screen.address}` : ''}
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {mapsHref ? (
+                                            <a
+                                                href={mapsHref}
+                                                className="rounded-md border border-line px-3 py-1.5 text-sm"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            >
+                                                Maps
+                                            </a>
+                                        ) : null}
+                                        <Link
+                                            href={`/admin/screens/${screen.slug}`}
+                                            className="rounded-md border border-line px-3 py-1.5 text-sm"
+                                        >
+                                            Manage
+                                        </Link>
+                                        <a
+                                            href={directLiveOutputHrefForScreen(screen.slug)}
+                                            className="rounded-md border border-line px-3 py-1.5 text-sm"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                        >
+                                            Open player
+                                        </a>
+                                    </div>
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
             </section>

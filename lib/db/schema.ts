@@ -390,6 +390,9 @@ export const screens = sqliteTable(
         fallbackPlaylistId: text('fallback_playlist_id'),
         timezone: text('timezone'),
         orientation: text('orientation').notNull().default('horizontal'),
+        locationName: text('location_name'),
+        address: text('address'),
+        googleMapsUrl: text('google_maps_url'),
         status: text('status').notNull().default('active'),
         createdAt: text('created_at')
             .notNull()

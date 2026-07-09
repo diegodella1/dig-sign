@@ -25,6 +25,9 @@ export type Screen = {
     fallbackPlaylistId: string | null;
     timezone: string;
     orientation: ScreenOrientation;
+    locationName: string | null;
+    address: string | null;
+    googleMapsUrl: string | null;
     status: string;
     createdAt: string;
     updatedAt: string;
@@ -122,6 +125,9 @@ export async function createScreen(input: {
     fallbackPlaylistId?: string | null;
     timezone?: string | null;
     orientation?: ScreenOrientation | null;
+    locationName?: string | null;
+    address?: string | null;
+    googleMapsUrl?: string | null;
 }): Promise<Screen> {
     await ensureSignageBootstrap();
     const scope = await requireTenantScope();
@@ -138,6 +144,9 @@ export async function createScreen(input: {
         fallbackPlaylistId: input.fallbackPlaylistId ?? null,
         timezone: input.timezone ?? null,
         orientation: normalizeOrientation(input.orientation),
+        locationName: cleanOptional(input.locationName),
+        address: cleanOptional(input.address),
+        googleMapsUrl: cleanOptional(input.googleMapsUrl),
         status: 'active',
         createdAt: now,
         updatedAt: now,
@@ -152,6 +161,9 @@ export async function createScreen(input: {
         fallbackPlaylistId: input.fallbackPlaylistId ?? null,
         timezone: input.timezone ?? PLAYOUT_TIMEZONE,
         orientation: normalizeOrientation(input.orientation),
+        locationName: cleanOptional(input.locationName),
+        address: cleanOptional(input.address),
+        googleMapsUrl: cleanOptional(input.googleMapsUrl),
         status: 'active',
         createdAt: now,
         updatedAt: now,
@@ -167,6 +179,9 @@ export async function updateScreen(
         fallbackPlaylistId: string | null;
         timezone: string | null;
         orientation: ScreenOrientation | null;
+        locationName: string | null;
+        address: string | null;
+        googleMapsUrl: string | null;
         status: string;
     }>,
 ): Promise<Screen | null> {
@@ -197,6 +212,18 @@ export async function updateScreen(
 
     if (input.orientation !== undefined) {
         patch.orientation = normalizeOrientation(input.orientation);
+    }
+
+    if (input.locationName !== undefined) {
+        patch.locationName = cleanOptional(input.locationName);
+    }
+
+    if (input.address !== undefined) {
+        patch.address = cleanOptional(input.address);
+    }
+
+    if (input.googleMapsUrl !== undefined) {
+        patch.googleMapsUrl = cleanOptional(input.googleMapsUrl);
     }
 
     if (input.status !== undefined) {
@@ -249,6 +276,9 @@ async function ensureSignageBootstrap() {
         layoutPresetId: presetId,
         timezone: PLAYOUT_TIMEZONE,
         orientation: 'horizontal',
+        locationName: 'Default location',
+        address: null,
+        googleMapsUrl: null,
         status: 'active',
         createdAt: now,
         updatedAt: now,
@@ -265,10 +295,41 @@ function mapScreen(row: ScreenRow): Screen {
         fallbackPlaylistId: row.fallbackPlaylistId,
         timezone: row.timezone ?? PLAYOUT_TIMEZONE,
         orientation: normalizeOrientation(row.orientation),
+        locationName: row.locationName ?? null,
+        address: row.address ?? null,
+        googleMapsUrl: row.googleMapsUrl ?? null,
         status: row.status,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
     };
+}
+
+export function screenMapsHref(screen: Pick<Screen, 'address' | 'googleMapsUrl'>) {
+    if (screen.googleMapsUrl) {
+        return screen.googleMapsUrl;
+    }
+
+    if (!screen.address) {
+        return null;
+    }
+
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(screen.address)}`;
+}
+
+export function screenMapsEmbedSrc(screen: Pick<Screen, 'address' | 'googleMapsUrl'>) {
+    if (!screen.address && !screen.googleMapsUrl) {
+        return null;
+    }
+
+    const query = screen.address || screen.googleMapsUrl || '';
+
+    return `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
+}
+
+function cleanOptional(value: string | null | undefined) {
+    const trimmed = value?.trim();
+
+    return trimmed ? trimmed : null;
 }
 
 function normalizeOrientation(value: string | null | undefined): ScreenOrientation {

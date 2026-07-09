@@ -1,5 +1,13 @@
 import Link from 'next/link';
-import { ListChecks, MonitorPlay, Music, PackageOpen, RadioTower, Settings } from 'lucide-react';
+import {
+    ListChecks,
+    MapPin,
+    MonitorPlay,
+    Music,
+    PackageOpen,
+    RadioTower,
+    Settings,
+} from 'lucide-react';
 
 import { AdminShell } from '@/components/admin/admin-shell';
 import { ButtonLink, MetricTile, Notice } from '@/components/ui';
@@ -8,7 +16,7 @@ import { getAssetSummaries } from '@/lib/data';
 import { collectOperatorHealth } from '@/lib/health/health-checks';
 import { listContentPlaylists } from '@/lib/content-playlists';
 import { buildSignageMonitorPayload } from '@/lib/output/screen-monitor';
-import { listScreens } from '@/lib/screens';
+import { listScreens, screenMapsEmbedSrc, screenMapsHref } from '@/lib/screens';
 import { listVendors } from '@/lib/vendors';
 
 export const dynamic = 'force-dynamic';
@@ -34,6 +42,7 @@ export default async function AdminDashboardPage() {
     const issueScreens = monitor.screens.filter(
         (screen) => !screen.playlistId || screen.outputKind === 'fallback',
     ).length;
+    const locatedScreens = screens.filter((screen) => screenMapsEmbedSrc(screen));
 
     if (scope.kind === 'vendor') {
         return (
@@ -71,6 +80,78 @@ export default async function AdminDashboardPage() {
                         detail="Current player output"
                         tone={issueScreens ? 'warn' : 'ok'}
                     />
+                </section>
+
+                <section className="mb-8">
+                    <div className="mb-3 flex items-center gap-3">
+                        <MapPin size={24} aria-hidden="true" />
+                        <div>
+                            <h2 className="font-display text-2xl font-bold uppercase">
+                                Screen Locations
+                            </h2>
+                            <p className="mt-1 text-sm font-medium text-muted">
+                                Physical addresses for your screens.
+                            </p>
+                        </div>
+                    </div>
+                    {locatedScreens.length ? (
+                        <div className="grid gap-5 lg:grid-cols-2">
+                            {locatedScreens.map((screen) => {
+                                const mapsHref = screenMapsHref(screen);
+                                const mapsEmbedSrc = screenMapsEmbedSrc(screen);
+
+                                return (
+                                    <article
+                                        key={screen.id}
+                                        className="surface-card overflow-hidden"
+                                    >
+                                        <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-line p-4">
+                                            <div>
+                                                <h3 className="font-display text-lg font-bold uppercase">
+                                                    {screen.name}
+                                                </h3>
+                                                <p className="mt-1 text-sm font-medium text-muted">
+                                                    {screen.locationName ?? 'Location'}
+                                                    {screen.address ? ` · ${screen.address}` : ''}
+                                                </p>
+                                            </div>
+                                            {mapsHref ? (
+                                                <a
+                                                    href={mapsHref}
+                                                    className="rounded-md border border-line px-3 py-1.5 text-sm"
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    Google Maps
+                                                </a>
+                                            ) : null}
+                                        </div>
+                                        {mapsEmbedSrc ? (
+                                            <iframe
+                                                title={`${screen.name} map`}
+                                                src={mapsEmbedSrc}
+                                                className="h-64 w-full border-0"
+                                                loading="lazy"
+                                                referrerPolicy="no-referrer-when-downgrade"
+                                            />
+                                        ) : null}
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <section className="surface-card p-5">
+                            <p className="font-semibold">No screen addresses yet.</p>
+                            <p className="mt-1 text-sm font-medium text-muted">
+                                Add an address from Screens to show each display on Google Maps.
+                            </p>
+                            <div className="mt-4">
+                                <ButtonLink href="/admin/screens" variant="secondary">
+                                    Add addresses
+                                </ButtonLink>
+                            </div>
+                        </section>
+                    )}
                 </section>
 
                 <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">

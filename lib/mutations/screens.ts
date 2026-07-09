@@ -9,13 +9,21 @@ export async function createSignageScreen(input: {
     fallbackPlaylistId?: string | null;
     timezone?: string | null;
     orientation?: 'horizontal' | 'vertical' | null;
+    locationName?: string | null;
+    address?: string | null;
+    googleMapsUrl?: string | null;
 }): Promise<Result<{ id: string; slug: string }>> {
     try {
         const screen = await auditedMutation(
             {
                 action: 'screen.created',
                 entityType: 'screens',
-                metadata: { name: input.name, slug: input.slug },
+                metadata: {
+                    name: input.name,
+                    slug: input.slug,
+                    locationName: input.locationName,
+                    address: input.address,
+                },
             },
             async () => createScreen(input),
         );
@@ -34,6 +42,9 @@ export async function updateSignageScreen(input: {
     fallbackPlaylistId?: string | null;
     timezone?: string | null;
     orientation?: 'horizontal' | 'vertical' | null;
+    locationName?: string | null;
+    address?: string | null;
+    googleMapsUrl?: string | null;
     status?: string;
 }): Promise<Result<void>> {
     try {
@@ -47,6 +58,9 @@ export async function updateSignageScreen(input: {
                     slug: input.slug,
                     fallbackPlaylistId: input.fallbackPlaylistId,
                     orientation: input.orientation,
+                    locationName: input.locationName,
+                    address: input.address,
+                    googleMapsUrl: input.googleMapsUrl,
                 },
             },
             async () => {

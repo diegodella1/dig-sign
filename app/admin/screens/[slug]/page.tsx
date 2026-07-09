@@ -15,7 +15,12 @@ import {
     removePlaylistAssignment,
     updateSignageScreen,
 } from '@/lib/mutations';
-import { listLayoutPresets, getScreenBySlug } from '@/lib/screens';
+import {
+    getScreenBySlug,
+    listLayoutPresets,
+    screenMapsEmbedSrc,
+    screenMapsHref,
+} from '@/lib/screens';
 
 import type { WeekdayKey } from '@/lib/content-playlists';
 
@@ -49,6 +54,8 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
         (playlist) => playlist.orientation === screen.orientation,
     );
     const playlistById = new Map(playlists.map((playlist) => [playlist.id, playlist]));
+    const mapsHref = screenMapsHref(screen);
+    const mapsEmbedSrc = screenMapsEmbedSrc(screen);
 
     async function saveScreenAction(formData: FormData) {
         'use server';
@@ -63,6 +70,9 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
                 String(formData.get('orientation') || 'horizontal') === 'vertical'
                     ? 'vertical'
                     : 'horizontal',
+            locationName: String(formData.get('location_name') || '') || null,
+            address: String(formData.get('address') || '') || null,
+            googleMapsUrl: String(formData.get('google_maps_url') || '') || null,
         });
 
         if (!result.success) {
@@ -111,6 +121,38 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
             <Notice tone="info" title="Player URL">
                 <code>/output/live/{screen.slug}</code>
             </Notice>
+            {mapsEmbedSrc ? (
+                <section className="mt-4 overflow-hidden rounded-md border border-line bg-surface-elevated-2">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+                        <div>
+                            <h2 className="font-headline text-base font-bold uppercase">
+                                Location
+                            </h2>
+                            <p className="text-sm text-muted">
+                                {screen.locationName ?? screen.name}
+                                {screen.address ? ` · ${screen.address}` : ''}
+                            </p>
+                        </div>
+                        {mapsHref ? (
+                            <a
+                                href={mapsHref}
+                                className="rounded-md border border-line px-3 py-1.5 text-sm"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                Open Google Maps
+                            </a>
+                        ) : null}
+                    </div>
+                    <iframe
+                        title={`${screen.name} map`}
+                        src={mapsEmbedSrc}
+                        className="h-72 w-full border-0"
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                    />
+                </section>
+            ) : null}
 
             <section className="mt-4 rounded-md border border-line bg-surface-elevated-2 p-4">
                 <FormHeader
@@ -188,6 +230,33 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
                             <option value="horizontal">Horizontal 16:9</option>
                             <option value="vertical">Vertical 9:16</option>
                         </select>
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                        <span className="text-muted">Place / location</span>
+                        <input
+                            name="location_name"
+                            defaultValue={screen.locationName ?? ''}
+                            placeholder="Lobby, branch, store"
+                            className="rounded-md border border-line bg-surface px-3 py-2"
+                        />
+                    </label>
+                    <label className="grid gap-1 text-sm">
+                        <span className="text-muted">Address</span>
+                        <input
+                            name="address"
+                            defaultValue={screen.address ?? ''}
+                            placeholder="Street, city, country"
+                            className="rounded-md border border-line bg-surface px-3 py-2"
+                        />
+                    </label>
+                    <label className="grid gap-1 text-sm md:col-span-2">
+                        <span className="text-muted">Google Maps URL</span>
+                        <input
+                            name="google_maps_url"
+                            defaultValue={screen.googleMapsUrl ?? ''}
+                            placeholder="Optional"
+                            className="rounded-md border border-line bg-surface px-3 py-2"
+                        />
                     </label>
                     <div className="md:col-span-2">
                         <button
