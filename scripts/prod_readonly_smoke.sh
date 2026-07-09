@@ -35,6 +35,12 @@ echo "health"
 curl -sS "$base_url/api/health" >"$tmp_dir/health.json"
 node scripts/assert_health_no_non_smoke_fail.mjs "$tmp_dir/health.json"
 
+echo "public pages"
+curl -fsS "$base_url/" >"$tmp_dir/home.html"
+curl -fsS "$base_url/business" >"$tmp_dir/business.html"
+curl -fsS "$base_url/manual" >"$tmp_dir/manual.html"
+grep -qi "DigSign" "$tmp_dir/business.html"
+
 echo "admin auth redirect"
 admin_status="$(curl -sS -o /dev/null -w "%{http_code}" "$base_url/admin/screens")"
 case "$admin_status" in
@@ -50,7 +56,7 @@ echo "output session"
 session_headers="$tmp_dir/output-session.headers"
 session_status="$(curl -sS -D "$session_headers" -o /dev/null -w "%{http_code}" \
   --cookie "rpm_admin_token=${ADMIN_BOOTSTRAP_TOKEN}" \
-  "$base_url/api/output/session?debug=true&return_to=/output/live")"
+  "$base_url/api/output/session?debug=true&return_to=/output/live/main")"
 case "$session_status" in
   301|302|303|307|308) ;;
   *) echo "Expected output session redirect, got $session_status" >&2; exit 1 ;;
@@ -62,33 +68,24 @@ if [[ "$location" == *"0.0.0.0"* || "$location" == *"localhost"* || "$location" 
   exit 1
 fi
 
-echo "playout schedule"
-schedule_query=""
+echo "output state"
+state_query=""
 if [[ -n "${OUTPUT_CAPTURE_TOKEN:-}" ]]; then
-  schedule_query="?token=${OUTPUT_CAPTURE_TOKEN}"
+  state_query="?token=${OUTPUT_CAPTURE_TOKEN}"
 fi
-curl -fsS "$base_url/api/playout/schedule${schedule_query}" >"$tmp_dir/schedule.json"
+curl -fsS "$base_url/api/output/channel/state${state_query}" >"$tmp_dir/state.json"
 node -e '
 const fs = require("fs");
 const payload = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-if (!payload.schedule || !Array.isArray(payload.schedule.blocks)) process.exit(1);
-const block = payload.schedule.blocks.find((item) => item && (item.status === "ready" || item.status === "active"));
-if (block?.id) fs.writeFileSync(process.argv[2], block.id);
-' "$tmp_dir/schedule.json" "$tmp_dir/block_id"
+if (!payload || typeof payload.kind !== "string") process.exit(1);
+' "$tmp_dir/state.json"
 
 echo "live output"
-curl -fsS "$base_url/output/live${output_query}" >"$tmp_dir/output.html"
+curl -fsS "$base_url/output/live/main${output_query}" >"$tmp_dir/output.html"
 test -s "$tmp_dir/output.html"
 if grep -Eqi '<nav\b|href="/admin' "$tmp_dir/output.html"; then
   echo "Admin UI leaked into output route" >&2
   exit 1
-fi
-
-if [[ -s "$tmp_dir/block_id" ]]; then
-  block_id="$(cat "$tmp_dir/block_id")"
-  echo "preview output"
-  curl -fsS "$base_url/output/preview/${block_id}${output_query}" >"$tmp_dir/preview.html"
-  test -s "$tmp_dir/preview.html"
 fi
 
 echo "audit page"

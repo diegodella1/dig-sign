@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 import type { ModeSubNavItem } from '@/components/broadcast/mode-sub-nav-items';
 
@@ -9,6 +9,8 @@ export type { ModeSubNavItem } from '@/components/broadcast/mode-sub-nav-items';
 
 export function ModeSubNav({ items }: { items: ModeSubNavItem[] }) {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const currentHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
 
     return (
         <nav
@@ -16,11 +18,15 @@ export function ModeSubNav({ items }: { items: ModeSubNavItem[] }) {
             aria-label="Section navigation"
         >
             {items.map((item) => {
+                const itemPath = item.href.split('?')[0]!;
+                const hasQuery = item.href.includes('?');
                 const active =
-                    pathname === item.href ||
-                    item.match?.some(
-                        (path) => pathname === path || pathname.startsWith(`${path}/`),
-                    );
+                    (hasQuery && currentHref === item.href) ||
+                    (!hasQuery &&
+                        (pathname === itemPath ||
+                            item.match?.some(
+                                (path) => pathname === path || pathname.startsWith(`${path}/`),
+                            )));
 
                 return (
                     <Link

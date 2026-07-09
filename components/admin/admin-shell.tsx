@@ -1,4 +1,4 @@
-import { Bell, HelpCircle, LogOut, Search, Settings2, UserCircle } from 'lucide-react';
+import { HelpCircle, LogOut, Settings2, UserCircle } from 'lucide-react';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -37,6 +37,7 @@ export async function AdminShell({
         await revokeCurrentOperatorSession();
         redirect('/admin/login?logged_out=1');
     }
+    const scopeKind = session.vendorId ? 'vendor' : 'global';
 
     return (
         <div className="min-h-screen bg-surface-elevated-1 text-ink">
@@ -55,7 +56,7 @@ export async function AdminShell({
                     </span>
                 </Link>
                 <div className="flex flex-1 flex-col px-4">
-                    <AdminNav />
+                    <AdminNav scopeKind={scopeKind} />
                 </div>
                 <div className="mx-4 mt-auto border-t-2 border-line pt-4">
                     <Link
@@ -87,32 +88,12 @@ export async function AdminShell({
                                 {title}
                             </h1>
                         </div>
-                        <label className="relative hidden w-72 lg:block">
-                            <Search
-                                size={16}
-                                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-                                aria-hidden="true"
-                            />
-                            <span className="sr-only">Search</span>
-                            <input
-                                className="h-10 border-2 border-line bg-panel pl-9 pr-3 font-body text-sm text-ink shadow-[2px_2px_0_#1a1a1a]"
-                                placeholder="Search resources..."
-                                type="search"
-                            />
-                        </label>
                         {actions ? (
                             <div className="hidden flex-wrap items-center gap-2 sm:flex">
                                 {actions}
                             </div>
                         ) : null}
                         <div className="hidden items-center gap-2 md:flex">
-                            <button
-                                type="button"
-                                className="grid h-10 w-10 place-items-center border-2 border-transparent text-ink hover:border-line hover:bg-panel-soft"
-                                aria-label="Notifications"
-                            >
-                                <Bell size={19} aria-hidden="true" />
-                            </button>
                             <Link
                                 href="/admin/settings"
                                 className="grid h-10 w-10 place-items-center border-2 border-transparent text-ink hover:border-line hover:bg-panel-soft"
@@ -138,7 +119,7 @@ export async function AdminShell({
                             <ModeSubNav items={subNav} />
                         </div>
                     ) : null}
-                    <AdminNav mobile />
+                    <AdminNav mobile scopeKind={scopeKind} />
                 </header>
 
                 <div className="min-w-0 p-4 md:p-6 xl:p-7">{children}</div>

@@ -164,13 +164,13 @@ export default async function PlaylistDetailPage({ params }: { params: Promise<{
                                     disabled={!playlist.itemCount}
                                     className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    Approve
+                                    Aprobar
                                 </button>
                             </form>
                             {playlist.approvalState !== 'rejected' ? (
                                 <form action={rejectAction}>
                                     <button type="submit" className="btn-secondary">
-                                        Reject
+                                        Rechazar
                                     </button>
                                 </form>
                             ) : null}
@@ -182,7 +182,7 @@ export default async function PlaylistDetailPage({ params }: { params: Promise<{
                                 disabled={!playlist.itemCount}
                                 className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                Submit for Approval
+                                Enviar a aprobacion
                             </button>
                         </form>
                     )
@@ -234,7 +234,7 @@ export default async function PlaylistDetailPage({ params }: { params: Promise<{
                         type="submit"
                         className="rounded-md bg-accent-positive px-4 py-2 text-sm font-semibold text-white"
                     >
-                        Save
+                        Guardar draft
                     </button>
                 </form>
             </section>
@@ -248,6 +248,7 @@ export default async function PlaylistDetailPage({ params }: { params: Promise<{
                     slides={slides}
                     assets={assets}
                     initialItems={initialItems}
+                    orientation={playlist.orientation}
                     saveItemsAction={saveItemsAction}
                 />
             </section>

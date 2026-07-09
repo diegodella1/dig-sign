@@ -5,7 +5,8 @@ import { notFound } from 'next/navigation';
 import { programSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { GoogleMapsAddressHelper } from '@/components/signage/google-maps-address-helper';
-import { FormHeader, Notice } from '@/components/ui';
+import { ButtonLink, ClearStateBadge, FormHeader } from '@/components/ui';
+import { directLiveOutputHrefForScreen } from '@/lib/auth/output-auth';
 import {
     isPlayableContentPlaylist,
     listAssignmentsForScreen,
@@ -16,6 +17,7 @@ import {
     removePlaylistAssignment,
     updateSignageScreen,
 } from '@/lib/mutations';
+import { buildSignageMonitorPayload } from '@/lib/output/screen-monitor';
 import {
     getScreenBySlug,
     listLayoutPresets,
@@ -45,10 +47,11 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
         notFound();
     }
 
-    const [playlists, assignments, presets] = await Promise.all([
+    const [playlists, assignments, presets, monitor] = await Promise.all([
         listContentPlaylists(),
         listAssignmentsForScreen(screen.id),
         listLayoutPresets(),
+        buildSignageMonitorPayload(),
     ]);
     const playablePlaylists = playlists.filter(isPlayableContentPlaylist);
     const compatiblePlaylists = playablePlaylists.filter(
@@ -57,6 +60,9 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
     const playlistById = new Map(playlists.map((playlist) => [playlist.id, playlist]));
     const mapsHref = screenMapsHref(screen);
     const mapsEmbedSrc = screenMapsEmbedSrc(screen);
+    const current = monitor.screens.find((item) => item.slug === screen.slug);
+    const blocked = !current?.playlistId || current.outputKind === 'fallback';
+    const playerHref = directLiveOutputHrefForScreen(screen.slug);
 
     async function saveScreenAction(formData: FormData) {
         'use server';
@@ -119,9 +125,85 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
 
     return (
         <AdminShell title={screen.name} subNav={programSubNav}>
-            <Notice tone="info" title="Player URL">
-                <code>/output/live/{screen.slug}</code>
-            </Notice>
+            <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
+                <div
+                    className={`surface-card p-5 ${blocked ? 'border-warn-line' : 'border-success-line'}`}
+                >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <p className="eyebrow">Que se esta reproduciendo</p>
+                            <h2 className="mt-2 font-display text-3xl font-bold uppercase">
+                                {current?.playlistName ?? 'Sin playlist asignada'}
+                            </h2>
+                            <p className="mt-2 text-sm font-medium text-muted">
+                                {current?.title ?? 'El player no tiene contenido listo para hoy.'}
+                            </p>
+                        </div>
+                        <ClearStateBadge tone={blocked ? 'warn' : 'ok'}>
+                            {blocked ? 'requiere accion' : 'en vivo'}
+                        </ClearStateBadge>
+                    </div>
+                    <div className="mt-5 grid gap-3 md:grid-cols-3">
+                        <ScreenFact
+                            label="Orientacion"
+                            value={orientationLabel(screen.orientation)}
+                        />
+                        <ScreenFact
+                            label="Playlist"
+                            value={current?.playlistName ?? 'Sin asignar'}
+                        />
+                        <ScreenFact label="Salida" value={current?.outputKind ?? 'sin estado'} />
+                    </div>
+                </div>
+
+                <aside className="surface-card p-5">
+                    <p className="eyebrow text-accent-positive">Que hago ahora</p>
+                    <div className="mt-4 grid gap-3">
+                        <ButtonLink
+                            href={compatiblePlaylists.length ? '#assignments' : '/admin/playlists'}
+                        >
+                            {compatiblePlaylists.length
+                                ? 'Asignar a pantalla'
+                                : 'Crear playlist compatible'}
+                        </ButtonLink>
+                        <a
+                            href={playerHref}
+                            className="btn-secondary"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Abrir player
+                        </a>
+                        <ButtonLink href="/admin/playlists" variant="secondary">
+                            Ver playlists
+                        </ButtonLink>
+                    </div>
+                </aside>
+            </section>
+
+            <section className="mt-5 surface-card p-4">
+                <FormHeader
+                    title="Setup tecnico"
+                    detail="Player URL, token de salida, link directo y ubicacion."
+                />
+                <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
+                    <div className="border-2 border-line bg-panel-soft px-3 py-2">
+                        <p className="text-[10px] font-bold uppercase text-muted">Player URL</p>
+                        <code className="mt-1 block break-all text-sm">
+                            /output/live/{screen.slug}
+                        </code>
+                    </div>
+                    <div className="border-2 border-line bg-panel-soft px-3 py-2">
+                        <p className="text-[10px] font-bold uppercase text-muted">Token</p>
+                        <p className="mt-1 text-sm font-semibold">
+                            Output token protegido por servidor
+                        </p>
+                    </div>
+                    <a href={playerHref} className="btn-primary" target="_blank" rel="noreferrer">
+                        Abrir player
+                    </a>
+                </div>
+            </section>
             {mapsEmbedSrc ? (
                 <section className="mt-4 overflow-hidden rounded-md border border-line bg-surface-elevated-2">
                     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
@@ -249,7 +331,10 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
                 </form>
             </section>
 
-            <section className="mt-6 rounded-md border border-line bg-surface-elevated-2 p-4">
+            <section
+                id="assignments"
+                className="mt-6 rounded-md border border-line bg-surface-elevated-2 p-4"
+            >
                 <FormHeader
                     title="Day assignments"
                     detail="Higher priority wins when multiple rules match today."
@@ -313,11 +398,8 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
                         </div>
                     </fieldset>
                     <div className="md:col-span-2">
-                        <button
-                            type="submit"
-                            className="rounded-md border border-line px-4 py-2 text-sm font-semibold"
-                        >
-                            Add assignment
+                        <button type="submit" className="btn-primary">
+                            Asignar a pantalla
                         </button>
                     </div>
                 </form>
@@ -366,4 +448,17 @@ export default async function ScreenDetailPage({ params }: { params: Promise<{ s
             </p>
         </AdminShell>
     );
+}
+
+function ScreenFact({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="border-2 border-line bg-panel-soft px-3 py-2">
+            <p className="text-[10px] font-bold uppercase text-muted">{label}</p>
+            <p className="mt-1 text-sm font-semibold">{value}</p>
+        </div>
+    );
+}
+
+function orientationLabel(orientation: 'horizontal' | 'vertical') {
+    return orientation === 'vertical' ? 'Vertical 9:16' : 'Horizontal 16:9';
 }

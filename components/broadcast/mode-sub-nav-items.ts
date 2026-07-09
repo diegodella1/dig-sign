@@ -5,15 +5,19 @@ export type ModeSubNavItem = {
 };
 
 export const prepareSubNav: ModeSubNavItem[] = [
-    { label: 'Overview', href: '/admin/prepare' },
-    { label: 'Plates', href: '/admin/slides', match: ['/admin/slides'] },
-    { label: 'Media', href: '/admin/assets', match: ['/admin/assets'] },
-    { label: 'Music', href: '/admin/music', match: ['/admin/music'] },
+    { label: 'Contenido', href: '/admin/assets', match: ['/admin/assets'] },
+    { label: 'Placas', href: '/admin/slides', match: ['/admin/slides'] },
+    { label: 'Musica', href: '/admin/music', match: ['/admin/music'] },
 ];
 
 export const programSubNav: ModeSubNavItem[] = [
-    { label: 'Screens', href: '/admin/screens', match: ['/admin/screens'] },
+    { label: 'Pantallas', href: '/admin/screens', match: ['/admin/screens'] },
     { label: 'Playlists', href: '/admin/playlists', match: ['/admin/playlists'] },
+    {
+        label: 'Aprobaciones',
+        href: '/admin/playlists?approval=submitted',
+        match: ['/admin/playlists'],
+    },
 ];
 
 /** @deprecated Use programSubNav. Kept for legacy imports during redirect cleanup. */

@@ -4,15 +4,21 @@ import Link from 'next/link';
 import { programSubNav } from '@/components/broadcast/mode-sub-nav-items';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { GoogleMapsAddressHelper } from '@/components/signage/google-maps-address-helper';
-import { EmptyState, FormHeader, Notice } from '@/components/ui';
+import { ClearStateBadge, EmptyState, FormHeader, Notice } from '@/components/ui';
 import { directLiveOutputHrefForScreen } from '@/lib/auth/output-auth';
 import { createSignageScreen } from '@/lib/mutations';
+import { buildSignageMonitorPayload } from '@/lib/output/screen-monitor';
 import { listLayoutPresets, listScreens, screenMapsHref } from '@/lib/screens';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ScreensPage() {
-    const [screens, presets] = await Promise.all([listScreens(), listLayoutPresets()]);
+    const [screens, presets, monitor] = await Promise.all([
+        listScreens(),
+        listLayoutPresets(),
+        buildSignageMonitorPayload(),
+    ]);
+    const monitorBySlug = new Map(monitor.screens.map((screen) => [screen.slug, screen]));
 
     async function createScreenAction(formData: FormData) {
         'use server';
@@ -38,8 +44,8 @@ export default async function ScreensPage() {
 
     return (
         <AdminShell title="Screens" subNav={programSubNav}>
-            <Notice tone="info" title="Multi-screen output">
-                Each screen has its own player URL and day-based playlist assignments.
+            <Notice tone="info" title="Pantallas">
+                Cada pantalla tiene orientacion, player URL y playlist compatible asignada.
             </Notice>
 
             <section className="mt-4 rounded-md border border-line bg-surface-elevated-2 p-4">
@@ -104,28 +110,50 @@ export default async function ScreensPage() {
 
             <section className="mt-6">
                 <FormHeader
-                    title="Active screens"
-                    detail="Each screen loops its assigned playlist for today."
+                    title="Pantallas activas"
+                    detail="Estado actual, playlist en reproduccion y acciones de setup."
                 />
                 {!screens.length ? (
-                    <EmptyState title="No screens yet">Create your first screen above.</EmptyState>
+                    <EmptyState title="No tenes pantallas">
+                        Pedi al admin que cree una o agregala aca.
+                    </EmptyState>
                 ) : (
-                    <ul className="mt-3 divide-y divide-line rounded-md border border-line bg-surface-elevated-2">
+                    <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {screens.map((screen) => {
                             const mapsHref = screenMapsHref(screen);
+                            const status = monitorBySlug.get(screen.slug);
+                            const blocked = !status?.playlistId || status.outputKind === 'fallback';
 
                             return (
-                                <li
+                                <article
                                     key={screen.id}
-                                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                                    className={`surface-card p-4 ${blocked ? 'border-warn-line' : 'border-success-line'}`}
                                 >
-                                    <div>
-                                        <p className="font-semibold">{screen.name}</p>
-                                        <p className="text-sm text-muted">
-                                            /output/live/{screen.slug} · {screen.timezone} ·{' '}
-                                            {screen.orientation === 'vertical'
-                                                ? 'Vertical 9:16'
-                                                : 'Horizontal 16:9'}
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <h3 className="font-display text-xl font-bold uppercase">
+                                                {screen.name}
+                                            </h3>
+                                            <p className="mt-1 text-sm text-muted">
+                                                {screen.orientation === 'vertical'
+                                                    ? 'Vertical 9:16'
+                                                    : 'Horizontal 16:9'}{' '}
+                                                · {screen.timezone}
+                                            </p>
+                                        </div>
+                                        <ClearStateBadge tone={blocked ? 'warn' : 'ok'}>
+                                            {blocked ? 'accion' : 'online'}
+                                        </ClearStateBadge>
+                                    </div>
+                                    <div className="mt-4 border-t border-line pt-3">
+                                        <p className="text-[10px] font-bold uppercase text-muted">
+                                            Reproduciendo
+                                        </p>
+                                        <p className="mt-1 font-semibold">
+                                            {status?.playlistName ?? 'Sin playlist asignada'}
+                                        </p>
+                                        <p className="mt-1 text-sm text-muted">
+                                            {status?.title ?? `Player /output/live/${screen.slug}`}
                                         </p>
                                         {screen.locationName || screen.address ? (
                                             <p className="mt-1 text-sm text-muted">
@@ -134,11 +162,11 @@ export default async function ScreensPage() {
                                             </p>
                                         ) : null}
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="mt-4 flex flex-wrap gap-2">
                                         {mapsHref ? (
                                             <a
                                                 href={mapsHref}
-                                                className="rounded-md border border-line px-3 py-1.5 text-sm"
+                                                className="btn-secondary"
                                                 target="_blank"
                                                 rel="noreferrer"
                                             >
@@ -147,23 +175,23 @@ export default async function ScreensPage() {
                                         ) : null}
                                         <Link
                                             href={`/admin/screens/${screen.slug}`}
-                                            className="rounded-md border border-line px-3 py-1.5 text-sm"
+                                            className="btn-primary"
                                         >
                                             Manage
                                         </Link>
                                         <a
                                             href={directLiveOutputHrefForScreen(screen.slug)}
-                                            className="rounded-md border border-line px-3 py-1.5 text-sm"
+                                            className="btn-secondary"
                                             target="_blank"
                                             rel="noreferrer"
                                         >
                                             Open player
                                         </a>
                                     </div>
-                                </li>
+                                </article>
                             );
                         })}
-                    </ul>
+                    </div>
                 )}
             </section>
         </AdminShell>

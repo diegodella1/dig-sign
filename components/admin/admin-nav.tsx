@@ -1,6 +1,15 @@
 'use client';
 
-import { LayoutDashboard, MonitorPlay, PackageOpen, RadioTower, Settings } from 'lucide-react';
+import {
+    Building2,
+    CheckSquare,
+    Clapperboard,
+    Home,
+    MonitorPlay,
+    Music,
+    PackageOpen,
+    Settings,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -14,42 +23,84 @@ type NavItem = {
     activePaths?: string[];
 };
 
-export const primaryNavItems: NavItem[] = [
+const vendorNavItems: NavItem[] = [
     {
-        label: 'Dashboard',
+        label: 'Inicio',
         href: '/admin',
-        icon: LayoutDashboard,
+        icon: Home,
         match: 'exact',
     },
     {
-        label: 'Operate',
-        href: '/admin/operate',
-        icon: RadioTower,
-        activePaths: ['/admin/operate'],
-    },
-    {
-        label: 'Prepare',
-        href: '/admin/prepare',
-        icon: PackageOpen,
-        activePaths: ['/admin/assets', '/admin/slides', '/admin/music'],
-    },
-    {
-        label: 'Signage',
+        label: 'Pantallas',
         href: '/admin/screens',
         icon: MonitorPlay,
-        activePaths: ['/admin/playlists', '/admin/screens'],
+        activePaths: ['/admin/screens'],
     },
     {
-        label: 'Admin',
-        href: '/admin/settings',
-        icon: Settings,
-        activePaths: ['/admin/health', '/admin/audit'],
+        label: 'Contenido',
+        href: '/admin/assets',
+        icon: PackageOpen,
+        activePaths: ['/admin/assets', '/admin/slides'],
+    },
+    {
+        label: 'Playlists',
+        href: '/admin/playlists',
+        icon: Clapperboard,
+        activePaths: ['/admin/playlists'],
+    },
+    {
+        label: 'Musica',
+        href: '/admin/music',
+        icon: Music,
+        activePaths: ['/admin/music'],
     },
 ];
 
-export function AdminNav({ mobile = false }: { mobile?: boolean }) {
+const globalNavItems: NavItem[] = [
+    {
+        label: 'Inicio',
+        href: '/admin',
+        icon: Home,
+        match: 'exact',
+    },
+    {
+        label: 'Vendors',
+        href: '/admin/settings',
+        icon: Building2,
+        activePaths: ['/admin/settings'],
+    },
+    {
+        label: 'Aprobaciones',
+        href: '/admin/playlists?approval=submitted',
+        icon: CheckSquare,
+        activePaths: ['/admin/playlists'],
+    },
+    {
+        label: 'Pantallas',
+        href: '/admin/screens',
+        icon: MonitorPlay,
+        activePaths: ['/admin/screens'],
+    },
+    {
+        label: 'Sistema',
+        href: '/admin/health',
+        icon: Settings,
+        activePaths: ['/admin/health', '/admin/audit', '/admin/operate'],
+    },
+];
+
+export const primaryNavItems: NavItem[] = vendorNavItems;
+
+export function AdminNav({
+    mobile = false,
+    scopeKind = 'vendor',
+}: {
+    mobile?: boolean;
+    scopeKind?: 'global' | 'vendor';
+}) {
+    const items = scopeKind === 'global' ? globalNavItems : vendorNavItems;
     const pathname = usePathname();
-    const activeHref = findActiveHref(pathname);
+    const activeHref = findActiveHref(pathname, items);
 
     if (mobile) {
         return (
@@ -57,7 +108,7 @@ export function AdminNav({ mobile = false }: { mobile?: boolean }) {
                 className="mt-3 flex max-w-full gap-2 overflow-x-auto pb-1 md:hidden"
                 aria-label="Admin sections"
             >
-                {primaryNavItems.map(({ label, href, icon: Icon }) => {
+                {items.map(({ label, href, icon: Icon }) => {
                     const active = href === activeHref;
 
                     return (
@@ -85,7 +136,7 @@ export function AdminNav({ mobile = false }: { mobile?: boolean }) {
 
     return (
         <nav className="flex flex-1 flex-col gap-2" aria-label="Admin sections">
-            {primaryNavItems.map((item) => (
+            {items.map((item) => (
                 <NavIconLink key={item.href} item={item} active={item.href === activeHref} />
             ))}
         </nav>
@@ -114,14 +165,14 @@ function NavIconLink({ item, active }: { item: NavItem; active: boolean }) {
     );
 }
 
-function findActiveHref(pathname: string): string | null {
-    for (const item of primaryNavItems) {
+function findActiveHref(pathname: string, items: NavItem[]): string | null {
+    for (const item of items) {
         if (pathname === item.href.split('?')[0]) {
             return item.href;
         }
     }
 
-    for (const item of primaryNavItems) {
+    for (const item of items) {
         if (
             item.activePaths?.some((path) => pathname === path || pathname.startsWith(`${path}/`))
         ) {
@@ -129,7 +180,7 @@ function findActiveHref(pathname: string): string | null {
         }
     }
 
-    for (const item of primaryNavItems) {
+    for (const item of items) {
         if (item.match === 'exact') {
             continue;
         }
@@ -138,10 +189,6 @@ function findActiveHref(pathname: string): string | null {
         if (pathname.startsWith(`${basePath}/`)) {
             return item.href;
         }
-    }
-
-    if (pathname === '/admin') {
-        return '/admin/screens';
     }
 
     return null;

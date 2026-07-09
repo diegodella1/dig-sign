@@ -84,9 +84,19 @@ export default async function AssetsPage({
                 return false;
             }
 
+            if (params.kind === 'embed' && asset.sourceType !== 'embed') {
+                return false;
+            }
+
+            if (params.kind === 'remote_image' && asset.sourceType !== 'remote_image') {
+                return false;
+            }
+
             if (
                 params.kind &&
-                !['all', 'videos', 'images', 'image', 'audio'].includes(params.kind) &&
+                !['all', 'videos', 'images', 'image', 'audio', 'embed', 'remote_image'].includes(
+                    params.kind,
+                ) &&
                 asset.assetType !== params.kind
             ) {
                 return false;
@@ -185,14 +195,10 @@ export default async function AssetsPage({
 
     return (
         <AdminShell
-            title="Media library"
-            description="Upload and verify playable video, image and audio files."
+            title="Contenido"
+            description="Subidos, YouTube, URLs publicas, placas y musica para armar playlists."
             subNav={prepareSubNav}
-            actions={
-                <ButtonLink href="/admin/playlists" variant="secondary">
-                    Fallback policy
-                </ButtonLink>
-            }
+            actions={<ButtonLink href="/admin/playlists">Armar playlist</ButtonLink>}
         >
             {params.uploaded ? (
                 <Notice tone="ok">Media uploaded and saved as an asset.</Notice>
@@ -356,15 +362,35 @@ export default async function AssetsPage({
                         <button className="btn-secondary self-end">Apply</button>
                     </form>
                 </details>
+                <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-line pb-3">
+                    <FilterLink href="/admin/assets" active={!params.status && !params.kind}>
+                        Subidos
+                    </FilterLink>
+                    <FilterLink href="/admin/assets?kind=embed" active={params.kind === 'embed'}>
+                        YouTube
+                    </FilterLink>
+                    <FilterLink
+                        href="/admin/assets?kind=remote_image"
+                        active={params.kind === 'remote_image'}
+                    >
+                        URLs publicas
+                    </FilterLink>
+                    <ButtonLink href="/admin/slides" variant="secondary">
+                        Placas
+                    </ButtonLink>
+                    <FilterLink href="/admin/assets?kind=audio" active={params.kind === 'audio'}>
+                        Musica
+                    </FilterLink>
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <FilterLink href="/admin/assets" active={!params.status && !params.kind}>
-                        All
+                        Todo
                     </FilterLink>
                     <FilterLink
                         href="/admin/assets?status=attention"
                         active={params.status === 'attention'}
                     >
-                        Needs Fix
+                        Necesita accion
                     </FilterLink>
                     <FilterLink
                         href="/admin/assets?status=ready"
@@ -380,12 +406,6 @@ export default async function AssetsPage({
                         active={params.kind === 'images' || params.kind === 'image'}
                     >
                         Images
-                    </FilterLink>
-                    <ButtonLink href="/admin/slides" variant="secondary">
-                        Plates
-                    </ButtonLink>
-                    <FilterLink href="/admin/assets?kind=audio" active={params.kind === 'audio'}>
-                        Music
                     </FilterLink>
                     <details className="rounded-md border border-line bg-panel-soft px-3 py-2 text-sm">
                         <summary className="cursor-pointer font-semibold text-muted">
@@ -629,6 +649,8 @@ function LibraryItemRow({
 }) {
     const status = item.asset.status;
     const isFallbackLoop = fallbackLoopEnabled(item.asset);
+    const orientation = assetOrientation(item.asset);
+    const useState = lifecycleState(item.asset) === 'scheduled_in_use';
 
     return (
         <details id={`asset-${item.id}`} className="group border-b border-line p-4 last:border-b-0">
@@ -649,6 +671,16 @@ function LibraryItemRow({
                         {isFallbackLoop ? (
                             <ClearStateBadge tone="ok">Silent gap fill</ClearStateBadge>
                         ) : null}
+                        <ClearStateBadge tone="info">
+                            {orientation === 'vertical'
+                                ? 'Vertical 9:16'
+                                : orientation === 'horizontal'
+                                  ? 'Horizontal 16:9'
+                                  : 'Vertical + Horizontal'}
+                        </ClearStateBadge>
+                        <ClearStateBadge tone={useState ? 'ok' : 'neutral'}>
+                            {useState ? 'Usado en playlist' : 'Sin uso activo'}
+                        </ClearStateBadge>
                     </p>
                 </div>
                 <span className="text-sm text-muted">{libraryItemDuration(item)}</span>
@@ -737,10 +769,7 @@ function AssetEditForm({
     asset: MediaAsset;
     action: (formData: FormData) => Promise<void>;
 }) {
-    const orientation = String(
-        asset.metadata?.orientation ||
-            (asset.metadata?.presentation === 'vertical_blur' ? 'vertical' : 'auto'),
-    );
+    const orientation = assetOrientation(asset);
 
     return (
         <form
@@ -858,6 +887,13 @@ function AssetEditForm({
                 {fileDetailLine(asset)}
             </div>
         </form>
+    );
+}
+
+function assetOrientation(asset: MediaAsset) {
+    return String(
+        asset.metadata?.orientation ||
+            (asset.metadata?.presentation === 'vertical_blur' ? 'vertical' : 'auto'),
     );
 }
 
