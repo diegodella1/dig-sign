@@ -31,8 +31,8 @@
     },
     "routes": [
         {
-            "pattern": "digsign.diegodella.ar",
-            "custom_domain": true,
+            "pattern": "digsign.diegodella.ar/*",
+            "zone_name": "diegodella.ar",
         },
     ],
     // ─── Slide-data KV cache (Phase E1) ─────────────────────────────────────────
@@ -109,8 +109,8 @@
             },
             "routes": [
                 {
-                    "pattern": "digsign.diegodella.ar",
-                    "custom_domain": true,
+                    "pattern": "digsign.diegodella.ar/*",
+                    "zone_name": "diegodella.ar",
                 },
             ],
             "kv_namespaces": [
